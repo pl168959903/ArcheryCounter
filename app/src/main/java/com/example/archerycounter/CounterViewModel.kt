@@ -99,9 +99,20 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
 
     private var wakeLock: PowerManager.WakeLock? = null
 
-    private val detector = ShotDetector(spikeThreshold = _threshold.value) { peak, triggerMs ->
+    private val detector = ShotDetector(
+        spikeThreshold = _threshold.value,
+        stillThreshold = settings.stillThreshold.value.toFloat(),
+        cooldownMs = settings.cooldownSec.value * 1000L,
+    ) { peak, triggerMs ->
         onShot(peak, triggerMs)
     }
+
+    // 分趟：即時數到第幾箭（滿一趟時震動提醒）
+    private val endTracker = EndTracker()
+
+    // 放箭後等滿 1 秒才能算跟隨動作；這裡記著還在等的那幾箭。只有傳感器線程會新增，但 start/stop 會清空，所以加鎖
+    private class PendingFollow(val sessionId: String?, val index: Int, val triggerMs: Long)
+    private val pendingFollow = ArrayList<PendingFollow>()
 
     // 没有线性加速度传感器时，用低通滤波估算重力
     private val gravity = FloatArray(3)
@@ -115,6 +126,8 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
     init {
         viewModelScope.launch(Dispatchers.IO) { recorder.activeId } // 暖机，建立存储目录
         viewModelScope.launch { settings.wakeLock.collect { updateWakeLock() } }
+        viewModelScope.launch { settings.stillThreshold.collect { detector.stillThreshold = it.toFloat() } }
+        viewModelScope.launch { settings.cooldownSec.collect { detector.cooldownMs = it * 1000L } }
     }
 
     // ---- 侦测与记录 ----
@@ -126,6 +139,8 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         detector.reset()
         tracker.reset()
         live.clear()
+        endTracker.reset()
+        synchronized(pendingFollow) { pendingFollow.clear() }
         gravityReady = false
         lastGx = 0f
         lastGy = 0f
@@ -152,6 +167,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         if (!_running.value) return
         _running.value = false // 之后到达的传感器事件会被丢弃
         sensorManager.unregisterListener(this)
+        synchronized(pendingFollow) { pendingFollow.clear() } // 還沒滿 1 秒的就不補了
         recorder.stop(System.currentTimeMillis())
         _activeId.value = null
         updateWakeLock()
@@ -175,7 +191,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
             null
         }
 
-        recorder.addShot(
+        val index = recorder.addShot(
             relMs = (triggerMs - baseElapsedMs).coerceAtLeast(0L),
             peak = peak,
             threshold = detector.spikeThreshold,
@@ -183,9 +199,51 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
             gyroRms = gyr,
             waveform = wave,
         )
+        if (index >= 0 && settings.followThrough.value) {
+            synchronized(pendingFollow) { pendingFollow.add(PendingFollow(_activeId.value, index, triggerMs)) }
+        }
         _lastShot.value = LastShot(peak, st.accelRms, gyr)
         changeCount(+1)
-        buzz()
+
+        // 滿一趟震動節奏不同的樣式（只震這個，不再先震一下短的）；否則就是一般的放箭震動
+        val endFull = settings.showEnds.value && endTracker.onShot(triggerMs, settings.arrowsPerEnd.value)
+        if (endFull && settings.endVibration.value != EndVibration.OFF) {
+            buzzEnd(settings.endVibration.value)
+        } else {
+            buzzShot()
+        }
+    }
+
+    /**
+     * 放箭後滿 1 秒（傳感器時間）才補上跟隨動作：較長的波形和放箭後晃動量。
+     * 每一筆傳感器資料都會呼叫，沒有在等的箭時只是檢查一下空清單。
+     */
+    private fun finishFollowThrough(nowMs: Long) {
+        val ready: List<PendingFollow> = synchronized(pendingFollow) {
+            if (pendingFollow.isEmpty()) return
+            val done = pendingFollow.filter { nowMs >= it.triggerMs + StabilityTracker.FOLLOW_END_MS }
+            pendingFollow.removeAll(done.toSet())
+            done
+        }
+        for (p in ready) {
+            val f = tracker.followThrough(p.triggerMs)
+            val wave = if (settings.recordWaveform.value) {
+                tracker.waveform(
+                    triggerMs = p.triggerMs,
+                    preMs = windowMs + ShotDetector.GAP_MS,
+                    postMs = StabilityTracker.FOLLOW_END_MS,
+                )
+            } else {
+                null
+            }
+            recorder.attachFollow(
+                expectedId = p.sessionId,
+                index = p.index,
+                waveform = wave,
+                followAccelRms = f.accelRms,
+                followGyroRms = if (gyroSensor != null) f.gyroRms else null,
+            )
+        }
     }
 
     // ---- 计数与阈值 ----
@@ -194,6 +252,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         // 按「−」時，如果這次記錄裡還有沒取消的箭，就把最近一筆標記為誤判（數據保留），
         // 不另外記一筆手動 −1，避免重複扣掉。沒有可取消的箭才當作一般的手動修正。
         if (delta < 0 && recorder.cancelLastShot()) {
+            endTracker.cancelLast()
             changeCount(delta)
             _lastShot.value = null
             return
@@ -252,15 +311,36 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
      * 回傳時存檔已經排進佇列，之後再讀取一定讀到新內容。
      */
     suspend fun setShotCancelled(id: String, index: Int, cancelled: Boolean): Unit =
+        updateShot(id, index) { it.copy(cancelled = cancelled) }
+
+    /** 事後輸入／清除某一箭的環數（0～10，null 為清除）。進行中的記錄不能改。 */
+    suspend fun setShotScore(id: String, index: Int, score: Int?): Unit =
+        updateShot(id, index) { it.copy(score = score?.coerceIn(0, 10)) }
+
+    private suspend fun updateShot(id: String, index: Int, change: (ShotEntry) -> ShotEntry): Unit =
         withContext(Dispatchers.IO) {
             if (id == _activeId.value) return@withContext
             val s = store.load(id) ?: return@withContext
             if (index !in s.shots.indices) return@withContext
             val shots = s.shots.toMutableList()
-            shots[index] = shots[index].copy(cancelled = cancelled)
+            shots[index] = change(shots[index])
             store.saveAsync(s.copy(shots = shots))
             _sessions.value = store.listSessions().sortedByDescending { it.startMs }
         }
+
+    /** 記錄頁管理模式：一次刪除多筆（進行中的那一筆會被略過）。 */
+    fun deleteSessions(ids: Set<String>) {
+        val active = _activeId.value
+        val targets = ids.filter { it != active }
+        if (targets.isEmpty()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            store.deleteMany(targets)
+            _sessions.value = store.listSessions().sortedByDescending { it.startMs }
+        }
+    }
+
+    /** 匯出 summary.csv 和 shots.csv 到 sessions 資料夾。回傳是否成功。 */
+    suspend fun exportSummary(): Boolean = withContext(Dispatchers.IO) { store.exportAll() }
 
     /** 即時波形：最近幾秒的加速度合力大小（m/s²），由舊到新。 */
     fun liveSnapshot(): FloatArray = live.snapshot()
@@ -297,8 +377,15 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         }
     }
 
-    private fun buzz() {
-        vibrator?.vibrate(VibrationEffect.createOneShot(120, VibrationEffect.DEFAULT_AMPLITUDE))
+    /** 每一箭：一次很短的輕震。 */
+    private fun buzzShot() {
+        vibrator?.vibrate(VibrationEffect.createOneShot(EndVibration.SHOT_MS, VibrationEffect.DEFAULT_AMPLITUDE))
+    }
+
+    /** 滿一趟：節奏明顯不同的震動；樣式為「關閉」時什麼都不做。設定頁選樣式時也用它試震。 */
+    fun buzzEnd(style: Int) {
+        val pattern = EndVibration.pattern(style) ?: return
+        vibrator?.vibrate(VibrationEffect.createWaveform(pattern, -1))
     }
 
     // ---- 传感器回调（背景线程） ----
@@ -337,6 +424,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         }
 
         tracker.addAccel(ax, ay, az, timeMs)
+        finishFollowThrough(timeMs)
         if (settings.liveWaveform.value) {
             live.add(timeMs, sqrt(ax * ax + ay * ay + az * az))
         }

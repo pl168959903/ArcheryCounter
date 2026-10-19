@@ -11,7 +11,7 @@ import kotlin.math.sqrt
  * 判定一次放箭需要同时满足：
  *   1. 加速度合力 >= [spikeThreshold]（放箭瞬间的冲击）
  *   2. 冲击之前约 0.5 秒手腕比较稳（拉满弓后的瞄准阶段），合力始终 < [stillThreshold]
- *   3. 距离上一次计数已超过 [COOLDOWN_MS]（避免一次放箭被算成多次）
+ *   3. 距离上一次计数已超过 [cooldownMs]（预设 [COOLDOWN_MS]，避免一次放箭被算成多次）
  *
  * 触发后会再收集 [CAPTURE_MS] 毫秒数据，取得这次冲击的真正峰值，然后回调 [onShot]
  * 回调带两个值：峰值，以及冲击开始（触发）的时间戳，后者用来回头计算放箭前的稳定度。
@@ -20,6 +20,8 @@ import kotlin.math.sqrt
 class ShotDetector(
     @Volatile var spikeThreshold: Float = DEFAULT_SPIKE_THRESHOLD,
     @Volatile var stillThreshold: Float = DEFAULT_STILL_THRESHOLD,
+    /** 两次计数之间的最短间隔（毫秒），可在设定页调整 */
+    @Volatile var cooldownMs: Long = COOLDOWN_MS,
     private val onShot: (peak: Float, triggerMs: Long) -> Unit,
 ) {
     private class Sample(val timeMs: Long, val magnitude: Float)
@@ -56,7 +58,7 @@ class ShotDetector(
         }
 
         if (magnitude < spikeThreshold) return
-        if (timeMs - lastTriggerMs < COOLDOWN_MS) return
+        if (timeMs - lastTriggerMs < cooldownMs) return
         if (!wasStill(timeMs)) return
 
         lastTriggerMs = timeMs

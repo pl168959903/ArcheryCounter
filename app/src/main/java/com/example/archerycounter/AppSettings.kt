@@ -36,6 +36,46 @@ class AppSettings(private val prefs: SharedPreferences) {
     /** 主画面显示即时波形。只影响显示，但最耗电。预设：关 */
     val liveWaveform: StateFlow<Boolean> = _liveWaveform.asStateFlow()
 
+    private val _showEnds = MutableStateFlow(prefs.getBoolean(KEY_SHOW_ENDS, true))
+    /** 分趟统计：详情页显示逐趟，并在满一趟时震动提醒。预设：开 */
+    val showEnds: StateFlow<Boolean> = _showEnds.asStateFlow()
+
+    private val _arrowsPerEnd = MutableStateFlow(
+        prefs.getInt(KEY_ARROWS_PER_END, DEFAULT_ARROWS_PER_END).coerceIn(MIN_ARROWS_PER_END, MAX_ARROWS_PER_END)
+    )
+    /** 每趟几箭。预设：6 */
+    val arrowsPerEnd: StateFlow<Int> = _arrowsPerEnd.asStateFlow()
+
+    private val _endVibration = MutableStateFlow(
+        prefs.getInt(KEY_END_VIBRATION, EndVibration.DEFAULT).coerceIn(0, EndVibration.STYLE_COUNT - 1)
+    )
+    /** 满一趟的震动样式，见 [EndVibration]。预设：三连震 */
+    val endVibration: StateFlow<Int> = _endVibration.asStateFlow()
+
+    private val _followThrough = MutableStateFlow(prefs.getBoolean(KEY_FOLLOW_THROUGH, true))
+    /** 记录放箭后 1 秒的跟随动作（更长的波形和放箭后晃动量）。预设：开 */
+    val followThrough: StateFlow<Boolean> = _followThrough.asStateFlow()
+
+    private val _showSessionTrend = MutableStateFlow(prefs.getBoolean(KEY_SESSION_TREND, true))
+    /** 记录列表显示平均晃动量，并提供跨次趋势图。只影响显示。预设：开 */
+    val showSessionTrend: StateFlow<Boolean> = _showSessionTrend.asStateFlow()
+
+    private val _recordScore = MutableStateFlow(prefs.getBoolean(KEY_RECORD_SCORE, false))
+    /** 单箭页显示环数输入。预设：关 */
+    val recordScore: StateFlow<Boolean> = _recordScore.asStateFlow()
+
+    private val _stillThreshold = MutableStateFlow(
+        prefs.getInt(KEY_STILL_THRESHOLD, DEFAULT_STILL_THRESHOLD).coerceIn(MIN_STILL_THRESHOLD, MAX_STILL_THRESHOLD)
+    )
+    /** 放箭前要先「静止」的上限（m/s²）。预设：5 */
+    val stillThreshold: StateFlow<Int> = _stillThreshold.asStateFlow()
+
+    private val _cooldownSec = MutableStateFlow(
+        prefs.getInt(KEY_COOLDOWN_SEC, DEFAULT_COOLDOWN_SEC).coerceIn(MIN_COOLDOWN_SEC, MAX_COOLDOWN_SEC)
+    )
+    /** 两次计数之间的最短间隔（秒）。预设：3 */
+    val cooldownSec: StateFlow<Int> = _cooldownSec.asStateFlow()
+
     fun setKeepScreenOn(v: Boolean) {
         _keepScreenOn.value = v
         prefs.edit().putBoolean(KEY_KEEP_SCREEN_ON, v).apply()
@@ -72,7 +112,63 @@ class AppSettings(private val prefs: SharedPreferences) {
         prefs.edit().putBoolean(KEY_LIVE_WAVEFORM, v).apply()
     }
 
+    fun setShowEnds(v: Boolean) {
+        _showEnds.value = v
+        prefs.edit().putBoolean(KEY_SHOW_ENDS, v).apply()
+    }
+
+    fun setArrowsPerEnd(v: Int) {
+        val value = v.coerceIn(MIN_ARROWS_PER_END, MAX_ARROWS_PER_END)
+        _arrowsPerEnd.value = value
+        prefs.edit().putInt(KEY_ARROWS_PER_END, value).apply()
+    }
+
+    fun setEndVibration(v: Int) {
+        val value = v.coerceIn(0, EndVibration.STYLE_COUNT - 1)
+        _endVibration.value = value
+        prefs.edit().putInt(KEY_END_VIBRATION, value).apply()
+    }
+
+    fun setFollowThrough(v: Boolean) {
+        _followThrough.value = v
+        prefs.edit().putBoolean(KEY_FOLLOW_THROUGH, v).apply()
+    }
+
+    fun setShowSessionTrend(v: Boolean) {
+        _showSessionTrend.value = v
+        prefs.edit().putBoolean(KEY_SESSION_TREND, v).apply()
+    }
+
+    fun setRecordScore(v: Boolean) {
+        _recordScore.value = v
+        prefs.edit().putBoolean(KEY_RECORD_SCORE, v).apply()
+    }
+
+    fun setStillThreshold(v: Int) {
+        val value = v.coerceIn(MIN_STILL_THRESHOLD, MAX_STILL_THRESHOLD)
+        _stillThreshold.value = value
+        prefs.edit().putInt(KEY_STILL_THRESHOLD, value).apply()
+    }
+
+    fun setCooldownSec(v: Int) {
+        val value = v.coerceIn(MIN_COOLDOWN_SEC, MAX_COOLDOWN_SEC)
+        _cooldownSec.value = value
+        prefs.edit().putInt(KEY_COOLDOWN_SEC, value).apply()
+    }
+
     companion object {
+        const val MIN_ARROWS_PER_END = 1
+        const val MAX_ARROWS_PER_END = 12
+        const val DEFAULT_ARROWS_PER_END = 6
+
+        const val MIN_STILL_THRESHOLD = 2
+        const val MAX_STILL_THRESHOLD = 10
+        const val DEFAULT_STILL_THRESHOLD = 5
+
+        const val MIN_COOLDOWN_SEC = 1
+        const val MAX_COOLDOWN_SEC = 6
+        const val DEFAULT_COOLDOWN_SEC = 3
+
         const val MIN_WINDOW_SEC = 1
         const val MAX_WINDOW_SEC = 3
         const val DEFAULT_WINDOW_SEC = 2
@@ -84,5 +180,13 @@ class AppSettings(private val prefs: SharedPreferences) {
         private const val KEY_SHOW_TREND = "show_trend_chart"
         private const val KEY_RECORD_WAVEFORM = "record_waveform"
         private const val KEY_LIVE_WAVEFORM = "live_waveform"
+        private const val KEY_SHOW_ENDS = "show_ends"
+        private const val KEY_ARROWS_PER_END = "arrows_per_end"
+        private const val KEY_END_VIBRATION = "end_vibration"
+        private const val KEY_FOLLOW_THROUGH = "follow_through"
+        private const val KEY_SESSION_TREND = "session_trend"
+        private const val KEY_RECORD_SCORE = "record_score"
+        private const val KEY_STILL_THRESHOLD = "still_threshold"
+        private const val KEY_COOLDOWN_SEC = "cooldown_sec"
     }
 }

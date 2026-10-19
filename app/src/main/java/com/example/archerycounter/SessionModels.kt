@@ -29,6 +29,12 @@ data class ShotEntry(
     val waveform: Waveform? = null,
     /** 被标记为误判。数据保留，但不计入箭数、统计和图表。 */
     val cancelled: Boolean = false,
+    /** 放箭后 0.3～1 秒的加速度晃动量，m/s²；没开「放箭后跟随动作」或放箭后很快就暂停时为 null */
+    val followAccelRms: Float? = null,
+    /** 放箭后 0.3～1 秒的角速度晃动量，°/s */
+    val followGyroRms: Float? = null,
+    /** 这一箭的环数（0～10）；没输入为 null */
+    val score: Int? = null,
 )
 
 /** 手动加减。[delta] 是实际改变的量（+1 或 −1）。 */
@@ -94,6 +100,14 @@ data class SessionStats(
     val gyroSteadiest: ShotRank?,
     val gyroShakiest: ShotRank?,
     val gyroTrend: Trend?,
+    /** 放箭后跟随晃动量的平均（只算有效的箭） */
+    val followAvg: Float? = null,
+    val followGyroAvg: Float? = null,
+    /** 有输入环数的有效箭数、环数平均 */
+    val scoredCount: Int = 0,
+    val scoreAvg: Float? = null,
+    /** 加速度晃动量和环数的相关系数（−1～1）；有环数的箭少于 [MIN_SHOTS_FOR_CORRELATION] 箭时为 null */
+    val scoreAccelCorr: Float? = null,
 )
 
 private class MetricStats(
@@ -105,6 +119,9 @@ private class MetricStats(
 
 /** 趋势至少要这么多箭（有数值的）才算，太少没有意义。 */
 private const val MIN_SHOTS_FOR_TREND = 6
+
+/** 算相关系数至少要这么多箭同时有晃动量和环数 */
+const val MIN_SHOTS_FOR_CORRELATION = 8
 
 /**
  * 有效的箭里，某个指标的（第几箭，数值）序列，趋势图和统计都用它。
@@ -147,7 +164,40 @@ fun computeStats(s: Session): SessionStats {
         gyroSteadiest = gyro.steadiest,
         gyroShakiest = gyro.shakiest,
         gyroTrend = gyro.trend,
+        followAvg = avgOrNull(valid.map { it.followAccelRms }),
+        followGyroAvg = avgOrNull(valid.map { it.followGyroRms }),
+        scoredCount = valid.count { it.score != null },
+        scoreAvg = avgOrNull(valid.map { it.score?.toFloat() }),
+        scoreAccelCorr = scoreCorrelation(valid),
     )
+}
+
+/** 忽略 null 后的平均；全是 null 就回传 null。 */
+internal fun avgOrNull(values: List<Float?>): Float? {
+    val nums = values.filterNotNull()
+    return if (nums.isEmpty()) null else nums.average().toFloat()
+}
+
+/** 有效的箭里，同时有加速度晃动量和环数的，两者的皮尔森相关系数。样本太少或没有变化时为 null。 */
+internal fun scoreCorrelation(valid: List<ShotEntry>): Float? {
+    val pairs = valid.mapNotNull { sh ->
+        val a = sh.accelRms
+        val sc = sh.score
+        if (a != null && sc != null) a.toDouble() to sc.toDouble() else null
+    }
+    if (pairs.size < MIN_SHOTS_FOR_CORRELATION) return null
+    val mx = pairs.map { it.first }.average()
+    val my = pairs.map { it.second }.average()
+    var sxy = 0.0
+    var sxx = 0.0
+    var syy = 0.0
+    for ((x, y) in pairs) {
+        sxy += (x - mx) * (y - my)
+        sxx += (x - mx) * (x - mx)
+        syy += (y - my) * (y - my)
+    }
+    if (sxx < 1e-12 || syy < 1e-12) return null
+    return (sxy / kotlin.math.sqrt(sxx * syy)).toFloat().coerceIn(-1f, 1f)
 }
 
 private fun metric(values: List<ShotRank>): MetricStats {

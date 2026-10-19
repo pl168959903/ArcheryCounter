@@ -102,8 +102,11 @@ private fun DetailContent(
     onDelete: () -> Unit,
 ) {
     val showTrend by vm.settings.showTrendChart.collectAsStateWithLifecycle()
+    val showEnds by vm.settings.showEnds.collectAsStateWithLifecycle()
+    val arrowsPerEnd by vm.settings.arrowsPerEnd.collectAsStateWithLifecycle()
     val stats = remember(session) { computeStats(session) }
     val timeline = remember(session) { buildTimeline(session) }
+    val ends = remember(session, arrowsPerEnd) { computeEnds(session, arrowsPerEnd) }
     val accelSeries = remember(session) { metricSeries(session, gyro = false) }
     val gyroSeries = remember(session) { metricSeries(session, gyro = true) }
     var confirmDelete by remember { mutableStateOf(false) }
@@ -150,6 +153,11 @@ private fun DetailContent(
             if (accelSeries.size < 2 && gyroSeries.size < 2) {
                 item { Note("至少要 2 箭有晃動量數據才畫得出趨勢圖") }
             }
+        }
+
+        if (showEnds && ends.isNotEmpty()) {
+            item { SectionTitle("逐趟（每趟 $arrowsPerEnd 箭）") }
+            ends.forEach { e -> item { Body(endText(session, e)) } }
         }
 
         item { SectionTitle("逐箭明細") }
@@ -244,6 +252,19 @@ private fun statsText(s: Session, st: SessionStats): String = buildString {
     append("平均間隔 ")
     append(if (st.intervalAvgSec == null) "—" else "${Fmt.num(st.intervalAvgSec, 0)} 秒")
 
+    if (st.followAvg != null || st.followGyroAvg != null) {
+        append("\n\n放箭後晃動（0.3～1 秒）")
+        if (st.followAvg != null) append("\n加速度 平均 ${Fmt.num(st.followAvg)} m/s²")
+        if (s.hasGyro && st.followGyroAvg != null) append("\n角速度 平均 ${Fmt.num(st.followGyroAvg, 1)} °/s")
+    }
+    if (st.scoredCount > 0) {
+        append("\n\n環數 平均 ${Fmt.numOrDash(st.scoreAvg, 1)}（已輸入 ${st.scoredCount} 箭）")
+        if (st.scoreAccelCorr != null) {
+            append("\n晃動量與環數的相關係數 ${Fmt.num(st.scoreAccelCorr, 2)}")
+            append("\n（−1～1；負值表示晃動越大、環數越低。箭數不多，僅供參考）")
+        }
+    }
+
     append("\n\n加速度晃動（m/s²）")
     appendStability(st.accelAvg, st.accelSteadiest, st.accelShakiest, st.accelTrend, 2)
 
@@ -274,6 +295,15 @@ private fun StringBuilder.appendStability(
     }
 }
 
+private fun endText(s: Session, e: EndStats): String = buildString {
+    append("第 ${e.number} 趟　第 ${e.firstShot}～${e.lastShot} 箭（${e.count} 箭）")
+    append("\n${Fmt.clock(s.startMs + e.startRelMs)} ～ ${Fmt.clock(s.startMs + e.endRelMs)}")
+    append("\n加速度晃動 ${Fmt.numOrDash(e.accelAvg)} m/s²")
+    if (s.hasGyro) append("\n角速度晃動 ${Fmt.numOrDash(e.gyroAvg, 1)} °/s")
+    if (e.followAvg != null) append("\n放箭後晃動 ${Fmt.num(e.followAvg)} m/s²")
+    if (e.scoreTotal != null) append("\n環數合計 ${e.scoreTotal}")
+}
+
 private fun manualText(s: Session, row: TimelineRow): String {
     val sign = if (row.delta > 0) "+" else "−"
     return "${Fmt.clock(s.startMs + row.relMs)} 手動 $sign${kotlin.math.abs(row.delta)}"
@@ -292,5 +322,7 @@ private fun shotText(s: Session, row: TimelineRow, shot: ShotEntry): String {
         if (s.hasGyro) {
             append("\n角速度晃動 ${Fmt.numOrDash(shot.gyroRms, 1)} °/s")
         }
+        if (shot.followAccelRms != null) append("\n放箭後晃動 ${Fmt.num(shot.followAccelRms)} m/s²")
+        if (shot.score != null) append("\n環數 ${shot.score}")
     }
 }

@@ -62,6 +62,26 @@ class SessionStore(baseDir: File) {
 
     fun delete(id: String) = onIo(Unit) { deleteFiles(id) }
 
+    /** 一次删除多笔（记录页的管理模式）。 */
+    fun deleteMany(ids: Collection<String>) = onIo(Unit) { ids.forEach { deleteFiles(it) } }
+
+    /**
+     * 把全部记录匯出成 summary.csv 和 shots.csv，放在 sessions 文件夹里，
+     * 这样一次 adb pull 就能一起取出。回传是否成功。
+     */
+    fun exportAll(): Boolean = onIo(false) {
+        try {
+            val all = dir.listFiles { f -> f.isFile && f.name.endsWith(".json") }
+                .orEmpty().mapNotNull { readFile(it) }
+            dir.mkdirs()
+            File(dir, ExportCsv.SUMMARY_FILE).writeText(ExportCsv.summary(all), Charsets.UTF_8)
+            File(dir, ExportCsv.SHOTS_FILE).writeText(ExportCsv.shots(all), Charsets.UTF_8)
+            true
+        } catch (e: IOException) {
+            false
+        }
+    }
+
     /** 删除全部记录，[keepId]（进行中的那一笔）除外。 */
     fun deleteAll(keepId: String?) = onIo(Unit) {
         val files = dir.listFiles { f -> f.isFile && f.name.endsWith(".json") }
@@ -116,7 +136,8 @@ class SessionStore(baseDir: File) {
  *
  * 结构：
  *   { "id", "startMs", "endMs"（-1 表示没有正常结束）, "threshold", "windowSec", "hasGyro", "rawCsv",
- *     "shots":  [ { "rel", "peak", "thr", "acc"?, "gyr"? } ],
+ *     "shots":  [ { "rel", "peak", "thr", "acc"?, "gyr"?, "x"?（1=誤判）, "wf"?（波形）,
+ *                   "fa"?, "fg"?（放箭後跟隨晃動量）, "sc"?（環數） } ],
  *     "manual": [ { "rel", "d" } ] }
  */
 internal object SessionJson {
@@ -141,6 +162,9 @@ internal object SessionJson {
             if (sh.accelRms != null && sh.accelRms.isFinite()) append(",\"acc\":").append(num(sh.accelRms))
             if (sh.gyroRms != null && sh.gyroRms.isFinite()) append(",\"gyr\":").append(num(sh.gyroRms))
             if (sh.cancelled) append(",\"x\":1")
+            if (sh.followAccelRms != null && sh.followAccelRms.isFinite()) append(",\"fa\":").append(num(sh.followAccelRms))
+            if (sh.followGyroRms != null && sh.followGyroRms.isFinite()) append(",\"fg\":").append(num(sh.followGyroRms))
+            if (sh.score != null) append(",\"sc\":").append(sh.score)
             if (sh.waveform != null) append(",\"wf\":").append(encodeWave(sh.waveform))
             append('}')
         }
@@ -172,6 +196,9 @@ internal object SessionJson {
                     accelRms = (m["acc"] as? Number)?.toFloat(),
                     gyroRms = (m["gyr"] as? Number)?.toFloat(),
                     waveform = parseWave(m["wf"]),
+                    followAccelRms = (m["fa"] as? Number)?.toFloat(),
+                    followGyroRms = (m["fg"] as? Number)?.toFloat(),
+                    score = (m["sc"] as? Number)?.toInt()?.coerceIn(0, 10),
                     cancelled = when (val x = m["x"]) {
                         is Boolean -> x
                         is Number -> x.toInt() != 0

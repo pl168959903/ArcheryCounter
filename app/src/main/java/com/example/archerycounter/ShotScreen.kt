@@ -2,6 +2,7 @@ package com.example.archerycounter
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
@@ -62,6 +63,7 @@ fun ShotScreen(vm: CounterViewModel) {
 @Composable
 private fun ShotContent(vm: CounterViewModel, session: Session, index: Int, shot: ShotEntry, isActive: Boolean) {
     val scope = rememberCoroutineScope()
+    val recordScore by vm.settings.recordScore.collectAsStateWithLifecycle()
 
     // 有效的第幾箭（不含誤判）
     val validNo = if (shot.cancelled) 0 else session.shots.take(index + 1).count { !it.cancelled }
@@ -91,6 +93,11 @@ private fun ShotContent(vm: CounterViewModel, session: Session, index: Int, shot
                     appendLine("加速度晃動 ${Fmt.numOrDash(shot.accelRms)} m/s²")
                     if (session.hasGyro) appendLine("角速度晃動 ${Fmt.numOrDash(shot.gyroRms, 1)} °/s")
                     append("分析視窗 放箭前 ${session.windowSec} 秒")
+                    if (shot.followAccelRms != null || shot.followGyroRms != null) {
+                        append("\n放箭後 0.3～1 秒晃動")
+                        if (shot.followAccelRms != null) append("\n加速度 ${Fmt.num(shot.followAccelRms)} m/s²")
+                        if (session.hasGyro && shot.followGyroRms != null) append("\n角速度 ${Fmt.num(shot.followGyroRms, 1)} °/s")
+                    }
                 }
             )
         }
@@ -101,6 +108,38 @@ private fun ShotContent(vm: CounterViewModel, session: Session, index: Int, shot
             item { ShotWaveform(wave) }
         } else {
             item { Note("這一箭沒有波形：記錄時「單箭波形」是關閉的，或當時資料不足") }
+        }
+
+        // 環數：設定頁開啟，或這一箭已經有環數時才顯示；誤判的箭不用輸入
+        if ((recordScore || shot.score != null) && !shot.cancelled) {
+            item { SectionTitle("環數") }
+            if (isActive) {
+                item { Note("進行中，暫停偵測後才能輸入環數") }
+            } else {
+                item {
+                    val score = shot.score
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        SmallRoundButton("−") {
+                            // 往下減到 0 之後再按一次就清除（回到沒輸入）
+                            val next = when {
+                                score == null -> null
+                                score <= 0 -> null
+                                else -> score - 1
+                            }
+                            scope.launch { vm.setShotScore(session.id, index, next) }
+                        }
+                        Text(if (score == null) "—" else score.toString(), style = MaterialTheme.typography.display3)
+                        SmallRoundButton("+") {
+                            val next = if (score == null) 10 else minOf(score + 1, 10)
+                            scope.launch { vm.setShotScore(session.id, index, next) }
+                        }
+                    }
+                }
+                item { Note("第一次按 + 是 10 環，再按 − 往下減；減到 0 再按 − 清除") }
+            }
         }
 
         item {

@@ -40,6 +40,10 @@ fun TrendChart(
     steadiest: ShotRank?,
     shakiest: ShotRank?,
     decimals: Int,
+    /** 横轴单位：逐箭的图是「箭」，跨次的图是「次」 */
+    noun: String = "箭",
+    /** 横轴说明；预设是「第 1 箭 → 第 N 箭」 */
+    rangeText: String? = null,
 ) {
     val lineColor = MaterialTheme.colors.primary
     val steadyColor = MaterialTheme.colors.secondary
@@ -83,14 +87,14 @@ fun TrendChart(
             }
         }
         Text(
-            text = "第 ${series.first().number} 箭 → 第 ${series.last().number} 箭",
+            text = rangeText ?: "第 ${series.first().number} $noun → 第 ${series.last().number} $noun",
             style = MaterialTheme.typography.caption2,
             color = MaterialTheme.colors.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
         if (steadiest != null) {
             Text(
-                text = "● 最穩 第 ${steadiest.number} 箭 ${Fmt.num(steadiest.value, decimals)}",
+                text = "● 最穩 第 ${steadiest.number} $noun ${Fmt.num(steadiest.value, decimals)}",
                 style = MaterialTheme.typography.caption2,
                 color = steadyColor,
                 textAlign = TextAlign.Center,
@@ -98,7 +102,7 @@ fun TrendChart(
         }
         if (shakiest != null) {
             Text(
-                text = "● 最不穩 第 ${shakiest.number} 箭 ${Fmt.num(shakiest.value, decimals)}",
+                text = "● 最不穩 第 ${shakiest.number} $noun ${Fmt.num(shakiest.value, decimals)}",
                 style = MaterialTheme.typography.caption2,
                 color = shakyColor,
                 textAlign = TextAlign.Center,

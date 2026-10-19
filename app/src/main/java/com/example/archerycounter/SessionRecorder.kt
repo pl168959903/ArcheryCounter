@@ -92,9 +92,31 @@ class SessionRecorder(private val store: SessionStore) {
         accelRms: Float?,
         gyroRms: Float?,
         waveform: Waveform? = null,
-    ) {
-        if (id == null) return
+    ): Int {
+        if (id == null) return -1
         shots.add(ShotEntry(relMs, peak, threshold, accelRms, gyroRms, waveform))
+        saveLocked(null)
+        return shots.size - 1
+    }
+
+    /**
+     * 放箭後 1 秒，補上這一箭的跟隨動作：較長的波形（若有）和放箭後晃動量。
+     * [index] 是 [addShot] 回傳的位置。記錄已經結束或換成別筆時，[expectedId] 對不上，就什麼都不做。
+     */
+    @Synchronized
+    fun attachFollow(
+        expectedId: String?,
+        index: Int,
+        waveform: Waveform?,
+        followAccelRms: Float?,
+        followGyroRms: Float?,
+    ) {
+        if (id == null || id != expectedId || index !in shots.indices) return
+        shots[index] = shots[index].copy(
+            waveform = waveform ?: shots[index].waveform,
+            followAccelRms = followAccelRms,
+            followGyroRms = followGyroRms,
+        )
         saveLocked(null)
     }
 

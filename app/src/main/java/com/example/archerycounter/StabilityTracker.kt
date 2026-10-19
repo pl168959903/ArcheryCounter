@@ -50,6 +50,18 @@ class StabilityTracker(capacity: Int = DEFAULT_CAPACITY) {
         )
 
     /**
+     * 放箭后的跟随晃动量：放箭后 [FOLLOW_START_MS]～[FOLLOW_END_MS] 毫秒这一段的晃动量
+     * （跳过放箭冲击本身）。放箭后的数据还不够（例如太早暂停）时，对应的值为 null。
+     */
+    fun followThrough(triggerMs: Long): Stability {
+        val endMs = triggerMs + FOLLOW_END_MS
+        // 加速度数据还没走到放箭后 1 秒（太早暂停），这一段是不完整的，不算
+        val latest = accel.latestMs()
+        if (latest == null || latest < endMs - FOLLOW_TOLERANCE_MS) return Stability(null, null)
+        return compute(endMs = endMs, windowMs = FOLLOW_END_MS - FOLLOW_START_MS)
+    }
+
+    /**
      * 取一箭放箭前后的降采样波形：窗口 (triggerMs − preMs, triggerMs + postMs]，
      * 每 [binMs] 毫秒一个点，取这段内合力大小的最大值（所以放箭的尖峰不会被平均掉）。
      * 加速度样本太少时回传 null；没有陀螺仪数据时 gyro 为空。
@@ -83,6 +95,9 @@ class StabilityTracker(capacity: Int = DEFAULT_CAPACITY) {
             size = 0
             next = 0
         }
+
+        /** 最新一笔样本的时间；没有样本为 null */
+        fun latestMs(): Long? = if (size == 0) null else t[(next - 1 + capacity) % capacity]
 
         fun add(timeMs: Long, vx: Float, vy: Float, vz: Float) {
             t[next] = timeMs
@@ -167,5 +182,10 @@ class StabilityTracker(capacity: Int = DEFAULT_CAPACITY) {
         const val MIN_SAMPLES = 10
         /** 单箭波形每个点代表 40ms（25Hz） */
         const val DEFAULT_BIN_MS = 40
+        /** 放箭后跟随动作的分析区间：0.3～1.0 秒（0.3 秒内还是放箭冲击） */
+        const val FOLLOW_START_MS = 300L
+        const val FOLLOW_END_MS = 1000L
+        /** 最新样本离放箭后 1 秒差多少以内还算数据完整（约 5 个样本） */
+        const val FOLLOW_TOLERANCE_MS = 50L
     }
 }
