@@ -76,6 +76,22 @@ class AppSettings(private val prefs: SharedPreferences) {
     /** 两次计数之间的最短间隔（秒）。预设：3 */
     val cooldownSec: StateFlow<Int> = _cooldownSec.asStateFlow()
 
+    private val _touchLock = MutableStateFlow(prefs.getBoolean(KEY_TOUCH_LOCK, true))
+    /** 偵測中主畫面提供「鎖定觸控」按鈕，避免拉弓、放箭時誤碰。預設：開 */
+    val touchLock: StateFlow<Boolean> = _touchLock.asStateFlow()
+
+    private val _tagsEnabled = MutableStateFlow(prefs.getBoolean(KEY_TAGS_ENABLED, true))
+    /** 新記錄自動帶上條件標籤（距離、弓種）。預設：開 */
+    val tagsEnabled: StateFlow<Boolean> = _tagsEnabled.asStateFlow()
+
+    private val _distanceTag = MutableStateFlow(prefs.getString(KEY_DISTANCE_TAG, "").orEmpty())
+    /** 目前的距離條件；空字串 = 未設定 */
+    val distanceTag: StateFlow<String> = _distanceTag.asStateFlow()
+
+    private val _bowTag = MutableStateFlow(prefs.getString(KEY_BOW_TAG, "").orEmpty())
+    /** 目前的弓種條件；空字串 = 未設定 */
+    val bowTag: StateFlow<String> = _bowTag.asStateFlow()
+
     fun setKeepScreenOn(v: Boolean) {
         _keepScreenOn.value = v
         prefs.edit().putBoolean(KEY_KEEP_SCREEN_ON, v).apply()
@@ -156,6 +172,26 @@ class AppSettings(private val prefs: SharedPreferences) {
         prefs.edit().putInt(KEY_COOLDOWN_SEC, value).apply()
     }
 
+    fun setTouchLock(v: Boolean) {
+        _touchLock.value = v
+        prefs.edit().putBoolean(KEY_TOUCH_LOCK, v).apply()
+    }
+
+    fun setTagsEnabled(v: Boolean) {
+        _tagsEnabled.value = v
+        prefs.edit().putBoolean(KEY_TAGS_ENABLED, v).apply()
+    }
+
+    fun setDistanceTag(v: String?) {
+        _distanceTag.value = v.orEmpty()
+        prefs.edit().putString(KEY_DISTANCE_TAG, v.orEmpty()).apply()
+    }
+
+    fun setBowTag(v: String?) {
+        _bowTag.value = v.orEmpty()
+        prefs.edit().putString(KEY_BOW_TAG, v.orEmpty()).apply()
+    }
+
     companion object {
         const val MIN_ARROWS_PER_END = 1
         const val MAX_ARROWS_PER_END = 12
@@ -181,6 +217,10 @@ class AppSettings(private val prefs: SharedPreferences) {
         private const val KEY_RECORD_WAVEFORM = "record_waveform"
         private const val KEY_LIVE_WAVEFORM = "live_waveform"
         private const val KEY_SHOW_ENDS = "show_ends"
+        private const val KEY_TOUCH_LOCK = "touch_lock"
+        private const val KEY_TAGS_ENABLED = "tags_enabled"
+        private const val KEY_DISTANCE_TAG = "distance_tag"
+        private const val KEY_BOW_TAG = "bow_tag"
         private const val KEY_ARROWS_PER_END = "arrows_per_end"
         private const val KEY_END_VIBRATION = "end_vibration"
         private const val KEY_FOLLOW_THROUGH = "follow_through"

@@ -3,13 +3,22 @@
 戴在手腕上，自動偵測每次放箭並計數；偵測到時手錶會震動一下，也可以用 − / + 手動修正。
 每次偵測都會自動存成一筆「記錄」，並分析每一箭放箭前**手臂的穩定度**，方便你比較每次射擊之間的差異。
 
-目前版本：**v1.4**。
+目前版本：**v1.5**。
 
 ---
 
 ## 版本記錄
 
-### v1.4（本版）
+### v1.5（本版）
+- **固定簽章，更新時不用先卸載**：設定好 GitHub Secrets 之後，每次編譯出來的 APK 簽章都一樣，可以直接 `adb install -r` 覆蓋安裝，記錄和設定都會保留。做法見下方〈固定簽章〉。沒設定 Secrets 時仍照舊（每次簽章不同，要先卸載）。
+- **閾值建議**（設定頁「偵測」區塊）：用你標記過的「誤判」和「有效」的峰值，算出較合適的閾值並可一鍵套用。至少要有效 10 筆、誤判 3 筆。**只能建議調高**（減少誤判）；漏判看不出來。校準錄製不參與。
+- **條件標籤**（預設開）：設定頁選「距離」（室內18米／室外30米／50米／70米／其他）和「弓種」（反曲／複合／其他），新記錄自動帶上；詳情頁可以事後修改。記錄列表會顯示標籤；跨次趨勢頁可切換「只看相同條件」（以最新一次記錄的條件為準）。
+- **偵測中觸控鎖**（預設開）：偵測中主畫面有「鎖定觸控」按鈕，鎖定後只顯示箭數，**長按螢幕約 2 秒**才解鎖，避免拉弓、放箭時誤碰「−」或「暫停」。只擋螢幕觸碰，擋不住實體按鍵。
+- **校準錄製**（設定頁 → 校準錄製）：引導依序錄「只拉弓不放箭」「正常射擊」「取箭走動」三段，每一段按「開始」和「結束」，起止時間標注在記錄裡，並強制錄原始資料。校準期間偵測照常運作、放箭也會記錄，但不計入主畫面箭數；這筆記錄標為「校準」，不計入跨次趨勢和閾值建議。把 `sessions` 資料夾交給 Claude 就能依你的實際資料調整參數。
+- **儲存空間管理**（設定頁「資料」區塊）：顯示記錄、原始資料、匯出檔各占多少空間；可「只刪除原始資料」（再確認一次），記錄本身保留，進行中的那一筆不動。
+- 版本號升到 1.5（versionCode 6）。
+
+### v1.4
 每個新功能都有對應的設定開關（詳見〈設定頁〉），不想用的都可以關掉。
 - **記錄頁管理模式**：按「管理」後，每筆記錄前面出現 ☐ / ☑，可以勾選多筆、全選，再按「刪除已選 N 筆」（會再確認一次）。進行中的記錄不能選。不用長按，也不用滑到詳情頁最底。
 - **分趟統計**（預設開）：詳情頁新增「逐趟」區塊（每趟的箭數、時間、平均晃動量、放箭後晃動量、環數合計）。每趟箭數預設 6，可設 1～12；兩箭間隔超過 60 秒也算新的一趟。分趟是從現有資料算出來的，舊記錄也有。
@@ -87,12 +96,31 @@ adb install app-release.apk
 ```
 看到 `Success` 就完成了。無線偵錯每次重新開啟，連接埠都會改變，要重新看手錶上的數字。
 
-**⚠ 更新版本前必須先解除安裝**
-每次 GitHub 編譯出來的 APK 簽章都不同，直接覆蓋安裝會失敗（`INSTALL_FAILED_UPDATE_INCOMPATIBLE`）。換新版前先執行：
+**⚠ 更新版本前是否要先解除安裝，取決於簽章**
+- **已設定固定簽章**（見下方〈固定簽章〉）：直接覆蓋安裝，記錄和設定都保留。
+  ```
+  adb install -r app-release.apk
+  ```
+- **沒有設定固定簽章**：每次 GitHub 編譯出來的 APK 簽章都不同，直接覆蓋安裝會失敗（`INSTALL_FAILED_UPDATE_INCOMPATIBLE`）。要先執行：
+  ```
+  adb uninstall com.example.archerycounter
+  ```
+  這會清除計數、設定和**手錶上的所有記錄**。如果有想保留的記錄，**先用下面〈取出資料〉的方法備份到電腦**。
+- **第一次換成固定簽章時**，因為簽章和之前的不同，**還是要最後一次** `adb uninstall`（先備份記錄）。之後就不用了。
+
+## 固定簽章（只要設定一次）
+
+1. 到你的 GitHub 倉庫：**Settings → Secrets and variables → Actions → New repository secret**。
+2. 依序新增四個 Secret（名稱要完全一樣）：`KEYSTORE_BASE64`、`KEYSTORE_PASSWORD`、`KEY_ALIAS`、`KEY_PASSWORD`。值在 Claude 另外給你的 `ArcheryCounter-signing-secrets.txt`（或你自己產生的金鑰）裡。`KEYSTORE_BASE64` 是很長的一整行，整串貼上，前後不要有空白或換行。
+3. 把本專案推上去（或在 Actions 頁面手動 Run workflow）。編譯記錄的 **Prepare signing key** 步驟會顯示「使用固定簽章金鑰」就代表生效。
+4. 這個金鑰檔**不要放進倉庫**（專案的 `.gitignore` 已經排除 `*.jks` 和 `ArcheryCounter-signing-secrets.txt`）。弄丟的話，重新產生一把、更新四個 Secret，並再做最後一次卸載重裝。
+
+自己產生金鑰（需要電腦裝有 Java 的 `keytool`）：
 ```
-adb uninstall com.example.archerycounter
+keytool -genkeypair -keystore release.jks -storetype PKCS12 -alias archery -keyalg RSA -keysize 2048 -validity 10000
+base64 -w0 release.jks      # 輸出的整串就是 KEYSTORE_BASE64（Windows 可用 certutil -encode）
 ```
-這會清除計數、設定和**手錶上的所有記錄**。如果有想保留的記錄，**先用下面〈取出資料〉的方法備份到電腦**。
+這把金鑰只適合自己使用的 App，不適合上架。
 
 ---
 
@@ -127,11 +155,17 @@ adb uninstall com.example.archerycounter
 | 滿趟震動 | 三連震 | 點一下切換樣式並立即試震：三連震 → 兩短一長 → 一次長震 → 關閉。 |
 | 跨次趨勢 | 開 | 記錄列表顯示平均晃動量，並提供跨次趨勢頁。只影響顯示，立即生效。 |
 | 匯出摘要 | 按鈕 | 手動按才會產生 `summary.csv` 和 `shots.csv`，不會自動執行。 |
+| 偵測中觸控鎖 | 開 | 偵測中主畫面有「鎖定觸控」按鈕；鎖定後長按約 2 秒解鎖。立即生效。 |
+| 閾值建議 | 按鈕 | 依你標記的誤判／有效峰值建議閾值，可一鍵套用。只能建議調高。 |
+| 條件標籤 | 開 | 新記錄自動帶上「距離」「弓種」。點一下切換選項，最後一個之後回到「未設定」。 |
+| 校準錄製 | 按鈕 | 進入校準頁，依序錄三段動作。偵測中不能進行。 |
+| 查看佔用空間 | 按鈕 | 顯示記錄、原始資料、匯出檔各占多少；可「只刪除原始資料」。 |
 
 ### 記錄頁
 - **列表**：最新的在最上面，每筆顯示「10/19 21:10」與「36 箭 · 12 分 5 秒」，以及平均晃動量（可在設定關閉）。未正常結束的會標示「中斷」，進行中的標示「進行中」。
 - **管理**：最上方的「管理」按鈕進入管理模式，點記錄是勾選（☑）而不是開啟；有「全選／取消全選」和「刪除已選 N 筆」（再確認一次）。按「完成」回到一般模式。
-- **跨次趨勢**：列表上方的按鈕（至少 2 次記錄才會出現），看最近 20 次的平均晃動量走向。跨次比較要看條件是否一致（視窗秒數、閾值、當天狀況）。
+- **條件標籤**：記錄列表每筆會顯示「室外70米 · 反曲」這類標籤；校準錄製標為「校準」。
+- **跨次趨勢**：列表上方的按鈕（至少 2 次記錄才會出現），看最近 20 次的平均晃動量走向。跨次比較要看條件是否一致（視窗秒數、閾值、當天狀況）；有標籤時可切換「只看相同條件」，校準錄製不算。
 - **詳情**（可上下滑動）：
   - 摘要：開始、結束、時長、偵測箭數、手動 +/−、最終箭數、閾值（偵測中調整過閾值的話會顯示範圍）、穩定度視窗。
   - 統計：峰值平均／最大／最小、平均間隔；加速度與角速度各自的平均、最穩與最不穩是第幾箭、前 1/3 與後 1/3 的平均（至少 6 箭才會顯示，用來看疲勞後是否變得更抖）。
@@ -184,7 +218,7 @@ adb pull /sdcard/Android/data/com.example.archerycounter/files/sessions ./sessio
 - `20261019_211003.csv`：原始資料（只有開啟「錄製原始資料」時才有）。
 
 **匯出的 CSV**（設定頁按「匯出摘要」後，與記錄放在同一個 `sessions` 資料夾）：
-- `summary.csv`：每次記錄一行。欄位 `id, start, duration_s, detected, cancelled, manual_plus, manual_minus, final_count, threshold_min, threshold_max, peak_avg, interval_avg_s, accel_rms_avg, gyro_rms_avg, follow_accel_avg, follow_gyro_avg, scored, score_avg`。
+- `summary.csv`：每次記錄一行。欄位 `id, start, duration_s, detected, cancelled, manual_plus, manual_minus, final_count, threshold_min, threshold_max, peak_avg, interval_avg_s, accel_rms_avg, gyro_rms_avg, follow_accel_avg, follow_gyro_avg, scored, score_avg, tags, calibration`（多個標籤以 `|` 分隔）。
 - `shots.csv`：每一箭一行。欄位 `session, no, time, rel_ms, peak, threshold, accel_rms, gyro_rms, follow_accel_rms, follow_gyro_rms, score, cancelled`。誤判的箭 `no` 留空、`cancelled` 為 1。沒有的數值留空。
 
 **檔案大小**：JSON 很小，每箭約 0.2 KB，加上單箭波形每箭再多約 0.5～1 KB。真正會讓檔案變大的只有 CSV：約 100 Hz 取樣，**每 30 分鐘約 10 MB 以上**。不需要原始資料時請關閉「錄製原始資料」。
@@ -201,6 +235,9 @@ adb pull /sdcard/Android/data/com.example.archerycounter/files/sessions ./sessio
 **JSON 結構**
 ```
 id, startMs, endMs（-1 表示沒有正常結束）, threshold, windowSec, hasGyro, rawCsv
+tags:  ["室外70米", "反曲"]                      條件標籤，沒有設定就不會出現
+cal:   true                                      校準錄製才有
+marks: [{ l, s, e }, ...]                        校準的各段動作：l = 名稱，s/e = 起訖毫秒（同 rel）
 shots:  [{ rel, peak, thr, acc, gyr, x, wf, fa, fg, sc }, ...]   rel = 距開始的毫秒數；acc/gyr 可能缺漏
         fa/fg = 放箭後 0.3～1 秒的加速度／角速度晃動量；sc = 環數（0～10）；都只有在有資料時才會出現
         x:1 = 已取消（誤判），沒有就是有效
@@ -226,25 +263,26 @@ manual: [{ rel, d }, ...]                     d = 實際加減的數量（+1 或
 | `Ends.kt` | 分趟統計與即時的滿趟判斷。純 Kotlin |
 | `Summary.kt` | 跨次趨勢、匯出 CSV。純 Kotlin |
 | `Vibration.kt` | 放箭與滿趟的震動節奏。純 Kotlin |
+| `Tags.kt`、`ThresholdAdvice.kt`、`Calibration.kt` | 條件標籤、閾值建議、校準三段動作。純 Kotlin |
 | `SessionModels.kt` | 記錄的資料結構與統計計算。純 Kotlin |
 | `SessionStore.kt` | 記錄的檔案讀寫（JSON），全部在背景執行緒 |
 | `SessionRecorder.kt` | 目前這一次記錄：收集每一箭、手動加減，寫入 CSV |
-| `AppSettings.kt` | 設定頁的十五個設定 |
+| `AppSettings.kt` | 設定頁的各項設定 |
 | `CounterViewModel.kt` | 讀取感測器、計數、記錄、唤醒鎖、震動 |
 | `MainActivity.kt` | 畫面導覽與保持亮屏 |
-| `MainScreen.kt`、`SettingsScreen.kt`、`HistoryScreen.kt`、`DetailScreen.kt`、`ShotScreen.kt`、`TrendScreen.kt` | 六個頁面 |
+| `MainScreen.kt`、`SettingsScreen.kt`、`HistoryScreen.kt`、`DetailScreen.kt`、`ShotScreen.kt`、`TrendScreen.kt`、`CalibrationScreen.kt` | 七個頁面 |
 | `Charts.kt` | 趨勢圖、單箭波形、即時波形（Canvas 繪製） |
 | `Components.kt`、`Fmt.kt` | 共用元件、格式化 |
 
 判定放箭的參數（靜止閾值、時間窗口、冷卻時間）在 `ShotDetector.kt` 的 `companion object` 裡。
-單元測試在 `app/src/test/`（偵測、穩定度、統計、記錄存取、波形、誤判取消、分趟、匯出等共 116 項，全部通過）。
+單元測試在 `app/src/test/`（偵測、穩定度、統計、記錄存取、波形、誤判取消、分趟、匯出、標籤、閾值建議、校準標注、占用空間等共 132 項，全部通過）。
 
 ---
 
 ## 已知限制與尚未驗證的部分
 
 - **手錶端程式（畫面、感測器、檔案存取、唤醒鎖）撰寫時無法在雲端環境編譯，也沒有在實機上測過。**
-  純邏輯（放箭偵測、穩定度計算、統計、記錄檔的存取、波形取樣、誤判取消、分趟、環數相關性、匯出、震動節奏）有跑過測試，全部通過。
+  純邏輯（放箭偵測、穩定度計算、統計、記錄檔的存取、波形取樣、誤判取消、分趟、環數相關性、匯出、震動節奏、標籤、閾值建議、校準標注、占用空間）有跑過測試，全部通過。
   第一次編譯如果失敗，請把 GitHub Actions 的錯誤訊息貼給 Claude。
 - 「保持亮屏」只能保持螢幕不因逾時休眠。用手掌蓋住螢幕、按實體按鍵等系統強制熄屏的情況擋不住；
   「CPU 喚醒鎖」只能讓 CPU 繼續運作，不能保證所有手錶在熄屏後感測器都繼續送資料。
@@ -258,3 +296,5 @@ manual: [{ rel, d }, ...]                     d = 實際加減的數量（+1 或
 - 「放箭後晃動量」是放箭後 0.3～1 秒內相對於該段平均值的抖動，反映手臂放箭後動得多大，不是動作好壞的判定。這段的取樣在放箭後 1 秒才完成，期間應用若被系統中斷則該箭沒有這項。
 - 環數和晃動量的相關係數只在有輸入環數的箭達 8 箭以上才會顯示，樣本少時容易受偶然影響。
 - 「瞄準階段分析」（自動分出拉弓、固定、放箭）尚未實作，等有原始資料後再設計。
+- 固定簽章依賴 GitHub Secrets 與 workflow 設定，我在雲端環境無法真的跑一次 GitHub Actions，所以第一次編譯請看 **Prepare signing key** 步驟有沒有顯示「使用固定簽章金鑰」。
+- 觸控鎖的「長按 2 秒」是自訂的手勢偵測，實機的手感（太長或太短）要試過才知道。

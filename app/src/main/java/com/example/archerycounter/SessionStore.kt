@@ -28,6 +28,10 @@ class SessionStore(baseDir: File) {
     /** 已排队、但还没写到磁盘的记录 id，避免同一秒内重复取到同一个 id。 */
     private val pendingIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
+    private companion object {
+        val EXPORT_FILES = setOf(ExportCsv.SUMMARY_FILE, ExportCsv.SHOTS_FILE)
+    }
+
     fun exists(id: String): Boolean = id in pendingIds || jsonFile(id).exists()
 
     /** 原始数据 CSV 的路径（会先确保目录存在）。 */
@@ -61,6 +65,37 @@ class SessionStore(baseDir: File) {
     }
 
     fun delete(id: String) = onIo(Unit) { deleteFiles(id) }
+
+    /** 记录占用的空间：记录本身（JSON）、原始资料（CSV）、匯出档。 */
+    fun usage(): StorageUsage = onIo(StorageUsage(0, 0L, 0, 0L, 0L)) {
+        val all = dir.listFiles().orEmpty().filter { it.isFile }
+        val json = all.filter { it.name.endsWith(".json") }
+        val raw = all.filter { isRawCsv(it) }
+        val export = all.filter { it.name in EXPORT_FILES }
+        StorageUsage(json.size, json.sumOf { it.length() }, raw.size, raw.sumOf { it.length() }, export.sumOf { it.length() })
+    }
+
+    /**
+     * 只删除原始资料 CSV，保留记录本身。[keepId]（进行中的那一笔）除外。
+     * 对应记录的「有原始资料」标记也会清掉，详情页就不会再说有 CSV。
+     */
+    fun deleteRawData(keepId: String?): RawDeleteResult = onIo(RawDeleteResult(0, 0L)) {
+        var count = 0
+        var bytes = 0L
+        for (f in dir.listFiles().orEmpty().filter { it.isFile && isRawCsv(it) }) {
+            val id = f.name.removeSuffix(".csv")
+            if (id == keepId) continue
+            bytes += f.length()
+            if (f.delete()) count++
+            val json = jsonFile(id)
+            if (json.isFile) {
+                readFile(json)?.takeIf { it.rawCsv }?.let { write(it.copy(rawCsv = false)) }
+            }
+        }
+        RawDeleteResult(count, bytes)
+    }
+
+    private fun isRawCsv(f: File) = f.name.endsWith(".csv") && f.name !in EXPORT_FILES
 
     /** 一次删除多笔（记录页的管理模式）。 */
     fun deleteMany(ids: Collection<String>) = onIo(Unit) { ids.forEach { deleteFiles(it) } }
@@ -136,6 +171,7 @@ class SessionStore(baseDir: File) {
  *
  * 结构：
  *   { "id", "startMs", "endMs"（-1 表示没有正常结束）, "threshold", "windowSec", "hasGyro", "rawCsv",
+ *     "tags"?: ["室外70米", "反曲"], "cal"?: true, "marks"?: [ { "l", "s", "e"? } ],
  *     "shots":  [ { "rel", "peak", "thr", "acc"?, "gyr"?, "x"?（1=誤判）, "wf"?（波形）,
  *                   "fa"?, "fg"?（放箭後跟隨晃動量）, "sc"?（環數） } ],
  *     "manual": [ { "rel", "d" } ] }
@@ -152,6 +188,21 @@ internal object SessionJson {
         append(",\"windowSec\":").append(s.windowSec)
         append(",\"hasGyro\":").append(s.hasGyro)
         append(",\"rawCsv\":").append(s.rawCsv)
+        if (s.tags.isNotEmpty()) {
+            append(",\"tags\":").append(s.tags.joinToString(",", "[", "]") { quote(it) })
+        }
+        if (s.calibration) append(",\"cal\":true")
+        if (s.marks.isNotEmpty()) {
+            append(",\"marks\":[")
+            s.marks.forEachIndexed { i, m ->
+                if (i > 0) append(',')
+                append("{\"l\":").append(quote(m.label))
+                append(",\"s\":").append(m.startRelMs)
+                if (m.endRelMs != null) append(",\"e\":").append(m.endRelMs)
+                append('}')
+            }
+            append(']')
+        }
 
         append(",\"shots\":[")
         s.shots.forEachIndexed { i, sh ->
@@ -223,6 +274,14 @@ internal object SessionJson {
                 rawCsv = root["rawCsv"] as? Boolean ?: false,
                 shots = shots,
                 manual = manual,
+                tags = (root["tags"] as? List<*>).orEmpty().mapNotNull { it as? String },
+                calibration = root["cal"] as? Boolean ?: false,
+                marks = (root["marks"] as? List<*>).orEmpty().mapNotNull { e ->
+                    val m = e as? Map<*, *> ?: return@mapNotNull null
+                    val label = m["l"] as? String ?: return@mapNotNull null
+                    val start = (m["s"] as? Number)?.toLong() ?: return@mapNotNull null
+                    Mark(label, start, (m["e"] as? Number)?.toLong())
+                },
             )
         } catch (e: RuntimeException) {
             null
@@ -401,3 +460,15 @@ internal object SessionJson {
         private fun fail(msg: String): Nothing = throw IllegalArgumentException(msg)
     }
 }
+
+/** 记录占用的空间。 */
+data class StorageUsage(
+    val sessionCount: Int,
+    val jsonBytes: Long,
+    val rawCount: Int,
+    val rawBytes: Long,
+    val exportBytes: Long,
+)
+
+/** 刪除原始资料的结果。 */
+data class RawDeleteResult(val count: Int, val bytes: Long)

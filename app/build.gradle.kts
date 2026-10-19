@@ -12,19 +12,38 @@ android {
         applicationId = "com.example.archerycounter"
         minSdk = 30
         targetSdk = 34
-        versionCode = 5
-        versionName = "1.4"
+        versionCode = 6
+        versionName = "1.5"
     }
 
+    // 固定簽章：GitHub 編譯時由 Secrets 提供金鑰（見 README），這樣每次編譯出來的 APK 簽章都一樣，
+    // 就能直接覆蓋安裝、保留手錶上的記錄。沒有提供金鑰時（例如在自己電腦上編譯）退回 debug 金鑰。
+    val keystorePath = System.getenv("KEYSTORE_FILE")
+    val hasFixedKey = !keystorePath.isNullOrEmpty() && file(keystorePath).exists()
+    if (hasFixedKey) {
+        signingConfigs {
+            create("fixed") {
+                storeFile = file(keystorePath!!)
+                storePassword = System.getenv("KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KEY_ALIAS")
+                keyPassword = System.getenv("KEY_PASSWORD")
+            }
+        }
+    }
+    val appSigning = if (hasFixedKey) signingConfigs.getByName("fixed") else signingConfigs.getByName("debug")
+
     buildTypes {
+        debug {
+            signingConfig = appSigning
+        }
         release {
             // 開啟速度主因：debug 版沒有最佳化。release 版用 R8 縮減，
             // 並自動帶入 Compose 內建的 baseline profile（預先編譯常用程式碼）。
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
-            // 個人使用：直接用 debug 金鑰簽名，這樣 release 版也能直接裝到手錶
-            signingConfig = signingConfigs.getByName("debug")
+            // 個人使用：有固定金鑰就用固定金鑰，否則用 debug 金鑰，這樣 release 版也能直接裝到手錶
+            signingConfig = appSigning
         }
     }
 

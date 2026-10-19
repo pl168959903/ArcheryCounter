@@ -1,11 +1,17 @@
 package com.example.archerycounter
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
@@ -28,6 +34,15 @@ fun MainScreen(
     val threshold by vm.threshold.collectAsStateWithLifecycle()
     val lastShot by vm.lastShot.collectAsStateWithLifecycle()
     val liveOn by vm.settings.liveWaveform.collectAsStateWithLifecycle()
+    val lockEnabled by vm.settings.touchLock.collectAsStateWithLifecycle()
+    val locked by vm.locked.collectAsStateWithLifecycle()
+    val calibrating by vm.calibrationActive.collectAsStateWithLifecycle()
+
+    // 鎖定時只顯示箭數；長按約 2 秒才解鎖。其他按鈕全部不在畫面上，所以不會被誤觸
+    if (locked && running) {
+        LockedScreen(count = count, onUnlock = { vm.unlockTouch() })
+        return
+    }
 
     ScalingLazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -63,6 +78,23 @@ fun MainScreen(
                     label = { Text(if (running) "暫停偵測" else "開始偵測", maxLines = 1) },
                     colors = if (running) ChipDefaults.secondaryChipColors()
                     else ChipDefaults.primaryChipColors(),
+                    modifier = Modifier.fillMaxWidth(0.85f),
+                )
+            }
+        }
+
+        if (calibrating) {
+            item { Note("校準錄製中：放箭只記錄，不計入箭數。請到 設定 → 校準錄製 操作") }
+        }
+
+        // 觸控鎖：只在偵測中、且設定頁開啟時出現
+        if (running && lockEnabled) {
+            item {
+                Chip(
+                    onClick = { vm.lockTouch() },
+                    label = { Text("鎖定觸控", maxLines = 1) },
+                    secondaryLabel = { Text("長按 2 秒解鎖", maxLines = 1) },
+                    colors = ChipDefaults.secondaryChipColors(),
                     modifier = Modifier.fillMaxWidth(0.85f),
                 )
             }
@@ -136,3 +168,36 @@ fun MainScreen(
         }
     }
 }
+
+/**
+ * 觸控鎖畫面：只顯示箭數。長按螢幕約 2 秒才解鎖，手掌或手臂短暫碰到不會有任何反應。
+ * 這只擋住螢幕觸碰，擋不住手錶的實體按鍵。
+ */
+@Composable
+private fun LockedScreen(count: Int, onUnlock: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    awaitFirstDown()
+                    // 2 秒內放開（或被取消）就什麼都不做；一直按著超過 2 秒才解鎖
+                    val up = withTimeoutOrNull(UNLOCK_HOLD_MS) { waitForUpOrCancellation() }
+                    if (up == null) onUnlock()
+                }
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("箭數", style = MaterialTheme.typography.caption1)
+            Text(
+                text = count.toString(),
+                style = MaterialTheme.typography.display1,
+                textAlign = TextAlign.Center,
+            )
+            Note("已鎖定　長按螢幕約 2 秒解鎖")
+        }
+    }
+}
+
+private const val UNLOCK_HOLD_MS = 2000L

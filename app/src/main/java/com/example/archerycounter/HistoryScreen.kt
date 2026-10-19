@@ -131,7 +131,7 @@ fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrend: (
                     isActive -> " · 進行中"
                     else -> " · 中斷"
                 }
-                val avg = if (showTrend) remember(s) { computeStats(s).accelAvg } else null
+                val avg = if (showTrend && !s.calibration) remember(s) { computeStats(s).accelAvg } else null
                 val isChosen = s.id in chosen
 
                 // 管理模式用文字符號表示勾選，不單靠顏色
@@ -141,7 +141,9 @@ fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrend: (
                     Fmt.dateTime(s.startMs)
                 }
                 val second = buildString {
+                    append(if (s.calibration) "校準 · " else "")
                     append("${s.finalCount()} 箭 · ${Fmt.duration(s.durationMs())}$tag")
+                    Tags.label(s.tags)?.let { append("\n").append(it) }
                     if (avg != null) append("\n平均晃動 ${Fmt.num(avg)}")
                 }
 
@@ -158,7 +160,7 @@ fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrend: (
                     secondaryLabel = {
                         Text(
                             if (manage && isActive) "進行中，無法選取" else second,
-                            maxLines = 2,
+                            maxLines = 3,
                         )
                     },
                     colors = if (manage && isChosen) ChipDefaults.primaryChipColors() else ChipDefaults.secondaryChipColors(),

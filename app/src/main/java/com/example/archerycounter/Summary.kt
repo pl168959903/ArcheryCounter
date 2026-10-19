@@ -8,10 +8,17 @@ import java.util.Locale
 data class SessionPoint(val startMs: Long, val value: Float)
 
 /**
- * 最近 [limit] 次记录的平均晃动量，由旧到新。没有数据（没有任何有效的箭有晃动量）的记录略过。
+ * 最近 [limit] 次记录的平均晃动量，由旧到新。校准录制不算。没有数据（没有任何有效的箭有晃动量）的记录略过。
  */
-fun sessionTrend(sessions: List<Session>, gyro: Boolean = false, limit: Int = 20): List<SessionPoint> =
+fun sessionTrend(
+    sessions: List<Session>,
+    gyro: Boolean = false,
+    limit: Int = 20,
+    /** 不为 null 时，只留条件标签和它相同的记录 */
+    tags: List<String>? = null,
+): List<SessionPoint> =
     sessions
+        .filter { !it.calibration && (tags == null || Tags.same(it.tags, tags)) }
         .mapNotNull { s ->
             val st = computeStats(s)
             val v = if (gyro) st.gyroAvg else st.accelAvg
@@ -42,7 +49,7 @@ object ExportCsv {
     fun summary(sessions: List<Session>): String = buildString {
         append("id,start,duration_s,detected,cancelled,manual_plus,manual_minus,final_count,")
         append("threshold_min,threshold_max,peak_avg,interval_avg_s,")
-        append("accel_rms_avg,gyro_rms_avg,follow_accel_avg,follow_gyro_avg,scored,score_avg\n")
+        append("accel_rms_avg,gyro_rms_avg,follow_accel_avg,follow_gyro_avg,scored,score_avg,tags,calibration\n")
         for (s in sessions.sortedBy { it.startMs }) {
             val st = computeStats(s)
             append(s.id).append(',')
@@ -62,7 +69,9 @@ object ExportCsv {
             append(f(st.followAvg)).append(',')
             append(f(st.followGyroAvg)).append(',')
             append(st.scoredCount).append(',')
-            append(f(st.scoreAvg, 2)).append('\n')
+            append(f(st.scoreAvg, 2)).append(',')
+            append(s.tags.joinToString("|")).append(',')
+            append(if (s.calibration) 1 else 0).append('\n')
         }
     }
 

@@ -29,7 +29,10 @@ class SessionRecorder(private val store: SessionStore) {
     private var windowSec = 2
     private var hasGyro = false
     private var rawCsv = false
+    private var tags: List<String> = emptyList()
+    private var calibration = false
 
+    private val marks = ArrayList<Mark>()
     private val shots = ArrayList<ShotEntry>()
     private val manual = ArrayList<ManualEntry>()
 
@@ -48,6 +51,8 @@ class SessionRecorder(private val store: SessionStore) {
         windowSec: Int,
         hasGyro: Boolean,
         rawCsv: Boolean,
+        tags: List<String> = emptyList(),
+        calibration: Boolean = false,
     ): String {
         finishLocked(null)
 
@@ -65,8 +70,11 @@ class SessionRecorder(private val store: SessionStore) {
         this.windowSec = windowSec
         this.hasGyro = hasGyro
         this.rawCsv = rawCsv
+        this.tags = tags
+        this.calibration = calibration
         shots.clear()
         manual.clear()
+        marks.clear()
         csvRows = 0
 
         if (rawCsv) {
@@ -134,6 +142,28 @@ class SessionRecorder(private val store: SessionStore) {
         return true
     }
 
+    /** 校准录制：一段动作开始。上一段若还没结束，先把它结束在同一时间。 */
+    @Synchronized
+    fun startMark(relMs: Long, label: String) {
+        if (id == null) return
+        closeOpenMark(relMs)
+        marks.add(Mark(label, relMs, null))
+        saveLocked(null)
+    }
+
+    /** 校准录制：目前这一段动作结束。 */
+    @Synchronized
+    fun endMark(relMs: Long) {
+        if (id == null) return
+        closeOpenMark(relMs)
+        saveLocked(null)
+    }
+
+    private fun closeOpenMark(relMs: Long) {
+        val i = marks.indexOfLast { it.endRelMs == null }
+        if (i >= 0) marks[i] = marks[i].copy(endRelMs = relMs)
+    }
+
     @Synchronized
     fun addManual(relMs: Long, delta: Int) {
         if (id == null) return
@@ -180,6 +210,7 @@ class SessionRecorder(private val store: SessionStore) {
         id = null
         shots.clear()
         manual.clear()
+        marks.clear()
     }
 
     private fun saveLocked(endMs: Long?) {
@@ -195,6 +226,9 @@ class SessionRecorder(private val store: SessionStore) {
                 rawCsv = rawCsv,
                 shots = shots.toList(),
                 manual = manual.toList(),
+                tags = tags,
+                calibration = calibration,
+                marks = marks.toList(),
             )
         )
     }

@@ -93,6 +93,21 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
     private val _activeId = MutableStateFlow<String?>(null)
     val activeSessionId: StateFlow<String?> = _activeId.asStateFlow()
 
+    private val _locked = MutableStateFlow(false)
+    /** 觸控鎖：鎖定時主畫面只顯示箭數，長按約 2 秒才解鎖 */
+    val locked: StateFlow<Boolean> = _locked.asStateFlow()
+
+    // 校準錄製：偵測照常運作、放箭也會記錄，但不計入主畫面箭數；另外在記錄裡標注每一段動作
+    @Volatile private var calibrating = false
+    private val _calibrationActive = MutableStateFlow(false)
+    val calibrationActive: StateFlow<Boolean> = _calibrationActive.asStateFlow()
+    private val _calStep = MutableStateFlow(0)
+    /** 校準進行到第幾段（0 起算）；等於 [Calibration.STEPS] 的長度代表三段都做完了 */
+    val calStep: StateFlow<Int> = _calStep.asStateFlow()
+    private val _calMarking = MutableStateFlow(false)
+    /** 目前這一段已經按了「開始」、還沒按「結束」 */
+    val calMarking: StateFlow<Boolean> = _calMarking.asStateFlow()
+
     // 本次记录的时间基准与窗口长度（开始时设定，传感器线程读取）
     @Volatile private var baseElapsedMs = 0L
     @Volatile private var windowMs = AppSettings.DEFAULT_WINDOW_SEC * 1000L
@@ -132,7 +147,12 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
 
     // ---- 侦测与记录 ----
 
-    fun start() {
+    fun start() = begin(calibration = false)
+
+    /** 開始校準錄製：強制錄原始資料，記錄標為「校準」。 */
+    fun startCalibration() = begin(calibration = true)
+
+    private fun begin(calibration: Boolean) {
         if (_running.value) return
         val sensor = linearSensor ?: accelSensor ?: return
 
@@ -154,8 +174,22 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
             threshold = _threshold.value,
             windowSec = windowSec,
             hasGyro = gyroSensor != null,
-            rawCsv = settings.recordRaw.value,
+            rawCsv = settings.recordRaw.value || calibration,
+            tags = if (!calibration && settings.tagsEnabled.value) {
+                Tags.build(
+                    settings.distanceTag.value.ifEmpty { null },
+                    settings.bowTag.value.ifEmpty { null },
+                )
+            } else {
+                emptyList()
+            },
+            calibration = calibration,
         )
+        calibrating = calibration
+        _calibrationActive.value = calibration
+        _calStep.value = 0
+        _calMarking.value = false
+        _locked.value = false
 
         _running.value = true
         sensorManager.registerListener(this, sensor, SAMPLING_PERIOD_US, sensorHandler)
@@ -167,6 +201,10 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         if (!_running.value) return
         _running.value = false // 之后到达的传感器事件会被丢弃
         sensorManager.unregisterListener(this)
+        _locked.value = false
+        calibrating = false
+        _calibrationActive.value = false
+        _calMarking.value = false
         synchronized(pendingFollow) { pendingFollow.clear() } // 還沒滿 1 秒的就不補了
         recorder.stop(System.currentTimeMillis())
         _activeId.value = null
@@ -201,6 +239,10 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         )
         if (index >= 0 && settings.followThrough.value) {
             synchronized(pendingFollow) { pendingFollow.add(PendingFollow(_activeId.value, index, triggerMs)) }
+        }
+        if (calibrating) {
+            buzzShot() // 校準中：只記錄，不計數、不分趟
+            return
         }
         _lastShot.value = LastShot(peak, st.accelRms, gyr)
         changeCount(+1)
@@ -249,6 +291,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
     // ---- 计数与阈值 ----
 
     fun adjustCount(delta: Int) {
+        if (calibrating) return
         // 按「−」時，如果這次記錄裡還有沒取消的箭，就把最近一筆標記為誤判（數據保留），
         // 不另外記一筆手動 −1，避免重複扣掉。沒有可取消的箭才當作一般的手動修正。
         if (delta < 0 && recorder.cancelLastShot()) {
@@ -283,6 +326,42 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         new - old
     }
 
+    /** 直接設定閾值（阈值建议套用）。範圍同 [adjustThreshold]。 */
+    fun setThreshold(value: Float) {
+        val v = value.coerceIn(MIN_THRESHOLD, MAX_THRESHOLD)
+        _threshold.value = v
+        detector.spikeThreshold = v
+        prefs.edit().putFloat(KEY_THRESHOLD, v).apply()
+    }
+
+    fun lockTouch() {
+        if (_running.value) _locked.value = true
+    }
+
+    fun unlockTouch() {
+        _locked.value = false
+    }
+
+    // ---- 校準錄製 ----
+
+    private fun relNow() = (SystemClock.elapsedRealtime() - baseElapsedMs).coerceAtLeast(0L)
+
+    /** 開始目前這一段動作。 */
+    fun calStartSegment() {
+        val step = _calStep.value
+        if (!calibrating || _calMarking.value || step >= Calibration.STEPS.size) return
+        recorder.startMark(relNow(), Calibration.STEPS[step].label)
+        _calMarking.value = true
+    }
+
+    /** 結束目前這一段動作，進入下一段。 */
+    fun calEndSegment() {
+        if (!calibrating || !_calMarking.value) return
+        recorder.endMark(relNow())
+        _calMarking.value = false
+        _calStep.value = _calStep.value + 1
+    }
+
     fun adjustThreshold(delta: Float) {
         val value = (_threshold.value + delta).coerceIn(MIN_THRESHOLD, MAX_THRESHOLD)
         _threshold.value = value
@@ -310,6 +389,20 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
      * 事后在記錄詳情裡標記／恢復誤判。進行中的記錄不能改（記錄器正在寫它）。
      * 回傳時存檔已經排進佇列，之後再讀取一定讀到新內容。
      */
+    /** 事後修改這次記錄的條件標籤。進行中的記錄不能改。 */
+    suspend fun setSessionTags(id: String, tags: List<String>): Unit =
+        updateSession(id) { it.copy(tags = tags) }
+
+    /** 記錄佔用的空間。 */
+    suspend fun storageUsage(): StorageUsage = withContext(Dispatchers.IO) { store.usage() }
+
+    /** 只刪除原始資料 CSV（進行中的那一筆除外），保留記錄。 */
+    suspend fun deleteRawData(): RawDeleteResult = withContext(Dispatchers.IO) {
+        val r = store.deleteRawData(keepId = _activeId.value)
+        _sessions.value = store.listSessions().sortedByDescending { it.startMs }
+        r
+    }
+
     suspend fun setShotCancelled(id: String, index: Int, cancelled: Boolean): Unit =
         updateShot(id, index) { it.copy(cancelled = cancelled) }
 
@@ -318,13 +411,21 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         updateShot(id, index) { it.copy(score = score?.coerceIn(0, 10)) }
 
     private suspend fun updateShot(id: String, index: Int, change: (ShotEntry) -> ShotEntry): Unit =
+        updateSession(id) { s ->
+            if (index !in s.shots.indices) {
+                s
+            } else {
+                val shots = s.shots.toMutableList()
+                shots[index] = change(shots[index])
+                s.copy(shots = shots)
+            }
+        }
+
+    private suspend fun updateSession(id: String, change: (Session) -> Session): Unit =
         withContext(Dispatchers.IO) {
             if (id == _activeId.value) return@withContext
             val s = store.load(id) ?: return@withContext
-            if (index !in s.shots.indices) return@withContext
-            val shots = s.shots.toMutableList()
-            shots[index] = change(shots[index])
-            store.saveAsync(s.copy(shots = shots))
+            store.saveAsync(change(s))
             _sessions.value = store.listSessions().sortedByDescending { it.startMs }
         }
 

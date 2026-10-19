@@ -37,6 +37,9 @@ data class ShotEntry(
     val score: Int? = null,
 )
 
+/** 校准录制里的一段动作（例如「只拉弓不放箭」），起止时间是距这次记录开始的毫秒数。 */
+data class Mark(val label: String, val startRelMs: Long, val endRelMs: Long?)
+
 /** 手动加减。[delta] 是实际改变的量（+1 或 −1）。 */
 data class ManualEntry(val relMs: Long, val delta: Int)
 
@@ -55,6 +58,12 @@ data class Session(
     val rawCsv: Boolean,
     val shots: List<ShotEntry>,
     val manual: List<ManualEntry>,
+    /** 条件标签（距离、弓种），见 [Tags] */
+    val tags: List<String> = emptyList(),
+    /** 校准录制：不计入主画面箭数、跨次趋势和阈值建议 */
+    val calibration: Boolean = false,
+    /** 校准录制里各段动作的起止 */
+    val marks: List<Mark> = emptyList(),
 ) {
     /** 有效的箭（没有被标记为误判的）。 */
     fun validShots(): List<ShotEntry> = shots.filter { !it.cancelled }

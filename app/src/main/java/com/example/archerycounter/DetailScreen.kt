@@ -9,6 +9,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,6 +20,7 @@ import androidx.wear.compose.material.Chip
 import androidx.wear.compose.material.ChipDefaults
 import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
+import kotlinx.coroutines.launch
 
 /** 從存檔讀記錄的結果。詳情頁和單箭頁共用。 */
 internal sealed interface SessionLoad {
@@ -110,6 +112,8 @@ private fun DetailContent(
     val accelSeries = remember(session) { metricSeries(session, gyro = false) }
     val gyroSeries = remember(session) { metricSeries(session, gyro = true) }
     var confirmDelete by remember { mutableStateOf(false) }
+    val tagsEnabled by vm.settings.tagsEnabled.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
 
     ScalingLazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -119,7 +123,54 @@ private fun DetailContent(
         item {
             Text(Fmt.dateTime(session.startMs), style = MaterialTheme.typography.title3)
         }
+        if (session.calibration) {
+            item { Body("校準錄製（不計入箭數與趨勢）") }
+            if (session.marks.isNotEmpty()) {
+                item {
+                    Body(
+                        session.marks.joinToString("\n") { m ->
+                            val end = m.endRelMs
+                            "${m.label}　${Fmt.duration(m.startRelMs)}～" + if (end == null) "（未結束）" else Fmt.duration(end)
+                        }
+                    )
+                }
+            }
+        }
         item { Body(summaryText(session, stats, isActive)) }
+
+        // 條件標籤：記錄時自動帶上，這裡可以事後修改（進行中的不能改）
+        if (!session.calibration && (tagsEnabled || session.tags.isNotEmpty())) {
+            item { SectionTitle("條件") }
+            if (isActive) {
+                item { Body(Tags.label(session.tags) ?: "未設定") }
+            } else {
+                item {
+                    Chip(
+                        onClick = {
+                            val tags = Tags.build(Tags.nextDistance(Tags.distanceOf(session.tags)), Tags.bowOf(session.tags))
+                            scope.launch { vm.setSessionTags(session.id, tags) }
+                        },
+                        label = { Text("距離", maxLines = 1) },
+                        secondaryLabel = { Text(Tags.distanceOf(session.tags) ?: "未設定", maxLines = 1) },
+                        colors = ChipDefaults.secondaryChipColors(),
+                        modifier = Modifier.fillMaxWidth(0.9f),
+                    )
+                }
+                item {
+                    Chip(
+                        onClick = {
+                            val tags = Tags.build(Tags.distanceOf(session.tags), Tags.nextBow(Tags.bowOf(session.tags)))
+                            scope.launch { vm.setSessionTags(session.id, tags) }
+                        },
+                        label = { Text("弓種", maxLines = 1) },
+                        secondaryLabel = { Text(Tags.bowOf(session.tags) ?: "未設定", maxLines = 1) },
+                        colors = ChipDefaults.secondaryChipColors(),
+                        modifier = Modifier.fillMaxWidth(0.9f),
+                    )
+                }
+                item { Note("點一下切換選項") }
+            }
+        }
 
         item { SectionTitle("統計") }
         item { Body(statsText(session, stats)) }

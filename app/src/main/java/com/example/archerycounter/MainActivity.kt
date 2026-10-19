@@ -27,6 +27,7 @@ private const val ROUTE_HISTORY = "history"
 private const val ROUTE_DETAIL = "detail"
 private const val ROUTE_SHOT = "shot"
 private const val ROUTE_TREND = "trend"
+private const val ROUTE_CALIBRATION = "calibration"
 
 @Composable
 fun ArcheryApp(vm: CounterViewModel = viewModel()) {
@@ -49,7 +50,7 @@ fun ArcheryApp(vm: CounterViewModel = viewModel()) {
                 )
             }
             composable(ROUTE_SETTINGS) {
-                SettingsScreen(vm = vm)
+                SettingsScreen(vm = vm, onOpenCalibration = { nav.navigate(ROUTE_CALIBRATION) })
             }
             composable(ROUTE_HISTORY) {
                 HistoryScreen(
@@ -76,6 +77,9 @@ fun ArcheryApp(vm: CounterViewModel = viewModel()) {
             }
             composable(ROUTE_TREND) {
                 TrendScreen(vm = vm)
+            }
+            composable(ROUTE_CALIBRATION) {
+                CalibrationScreen(vm = vm)
             }
         }
     }

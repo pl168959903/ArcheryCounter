@@ -2,14 +2,19 @@ package com.example.archerycounter
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
+import androidx.wear.compose.material.Chip
+import androidx.wear.compose.material.ChipDefaults
 import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
 
@@ -17,8 +22,15 @@ import androidx.wear.compose.material.Text
 @Composable
 fun TrendScreen(vm: CounterViewModel) {
     val sessions by vm.sessions.collectAsStateWithLifecycle()
-    val accel = remember(sessions) { sessionTrend(sessions, gyro = false) }
-    val gyro = remember(sessions) { sessionTrend(sessions, gyro = true) }
+    // 以最新一次（非校準）記錄的條件標籤為準，可切換成只看相同條件
+    val latestTags = remember(sessions) {
+        sessions.filter { !it.calibration }.maxByOrNull { it.startMs }?.tags.orEmpty()
+    }
+    var sameOnly by remember { mutableStateOf(false) }
+    val filter = if (sameOnly && latestTags.isNotEmpty()) latestTags else null
+
+    val accel = remember(sessions, filter) { sessionTrend(sessions, gyro = false, tags = filter) }
+    val gyro = remember(sessions, filter) { sessionTrend(sessions, gyro = true, tags = filter) }
 
     ScalingLazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -26,7 +38,19 @@ fun TrendScreen(vm: CounterViewModel) {
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         item { Text("跨次趨勢", style = MaterialTheme.typography.title3) }
-        item { Note("每個點是一次記錄的平均晃動量，越低越穩。由舊到新，最多 20 次") }
+        item { Note("每個點是一次記錄的平均晃動量，越低越穩。由舊到新，最多 20 次。校準錄製不算") }
+
+        if (latestTags.isNotEmpty()) {
+            item {
+                Chip(
+                    onClick = { sameOnly = !sameOnly },
+                    label = { Text("只看相同條件", maxLines = 1) },
+                    secondaryLabel = { Text(if (sameOnly) "開：${Tags.label(latestTags)}" else "關：全部記錄", maxLines = 2) },
+                    colors = if (sameOnly) ChipDefaults.primaryChipColors() else ChipDefaults.secondaryChipColors(),
+                    modifier = Modifier.fillMaxWidth(0.9f),
+                )
+            }
+        }
 
         if (accel.size >= 2) {
             item { TrendBlock("平均加速度晃動量", "m/s²", accel, decimals = 2) }
