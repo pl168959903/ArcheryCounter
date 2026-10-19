@@ -27,6 +27,7 @@ fun SettingsScreen(vm: CounterViewModel, onOpenCalibration: () -> Unit) {
     val s = vm.settings
     val scope = rememberCoroutineScope()
 
+    val splash by s.splash.collectAsStateWithLifecycle()
     val keepScreenOn by s.keepScreenOn.collectAsStateWithLifecycle()
     val wakeLock by s.wakeLock.collectAsStateWithLifecycle()
     val recordRaw by s.recordRaw.collectAsStateWithLifecycle()
@@ -86,6 +87,9 @@ fun SettingsScreen(vm: CounterViewModel, onOpenCalibration: () -> Unit) {
 
         item { ToggleChip("低電量提醒", lowBattery) { s.setLowBattery(it) } }
         item { Note("偵測中電量低於 15% 時震動一次，主畫面顯示「電量低」，只提醒不會自己動作。立即生效") }
+
+        item { ToggleChip("開啟動畫", splash) { s.setSplash(it) } }
+        item { Note("開啟應用時先播放約 1.5 秒的動畫（箭射向靶心，並顯示版本與作者）。下次開啟應用時生效") }
 
         item { ToggleChip("保持亮屏", keepScreenOn) { s.setKeepScreenOn(it) } }
         item { Note("應用開著時螢幕不休眠，立即生效") }
@@ -391,7 +395,10 @@ fun SettingsScreen(vm: CounterViewModel, onOpenCalibration: () -> Unit) {
 
         // ---- 關於與重設 ----
         item { SectionTitle("關於") }
-        item { Body("版本 ${vm.versionName}") }
+        item { Body("版本 ${vm.versionLabel}") }
+        item { Body("作者 ${AppInfo.AUTHOR}") }
+        item { Body("簽章 ${vm.signatureShort}") }
+        item { Note(AppInfo.signatureStatus(vm.signatureShort)) }
         item { Note("記錄資料夾（用 adb pull 取出）：\n${vm.dataPath}") }
         if (!confirmReset) {
             item {

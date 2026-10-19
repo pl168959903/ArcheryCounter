@@ -194,6 +194,9 @@ fun MainScreen(
                 modifier = Modifier.fillMaxWidth(0.85f),
             )
         }
+
+        // 版本與作者
+        item { Note("${vm.versionLabel}　作者 ${AppInfo.AUTHOR}") }
     }
 }
 

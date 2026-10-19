@@ -470,9 +470,33 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         settings.resetDefaults()
     }
 
+    /** 本應用的套件資訊（含簽章），給版本與簽章顯示用。讀不到時是 null。 */
+    private val packageInfo: android.content.pm.PackageInfo? = try {
+        appContext.packageManager.getPackageInfo(
+            appContext.packageName,
+            android.content.pm.PackageManager.GET_SIGNING_CERTIFICATES,
+        )
+    } catch (_: Exception) {
+        null
+    }
+
     /** 版本名稱，給「關於」顯示。 */
-    val versionName: String = try {
-        appContext.packageManager.getPackageInfo(appContext.packageName, 0).versionName ?: "?"
+    val versionName: String = packageInfo?.versionName ?: "?"
+
+    /** 版本號碼（versionCode），讀不到時是 -1。 */
+    val versionCode: Long = try {
+        packageInfo?.longVersionCode ?: -1L
+    } catch (_: Exception) {
+        -1L
+    }
+
+    /** 版本顯示文字，例如 v1.7（8） */
+    val versionLabel: String = AppInfo.versionLabel(versionName, versionCode)
+
+    /** 簽章指紋前 4 組（SHA-256），用來核對是不是同一把金鑰。讀不到時是「?」。 */
+    val signatureShort: String = try {
+        val signers = packageInfo?.signingInfo?.apkContentsSigners
+        if (signers.isNullOrEmpty()) "?" else AppInfo.fingerprintShort(signers[0].toByteArray())
     } catch (_: Exception) {
         "?"
     }

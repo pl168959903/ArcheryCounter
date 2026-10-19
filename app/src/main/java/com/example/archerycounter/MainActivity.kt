@@ -10,6 +10,10 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -65,48 +69,65 @@ fun ArcheryApp(vm: CounterViewModel = viewModel()) {
         }
     }
 
+    // 啟動動畫：只在剛開啟應用時播放一次（設定頁可關）。轉場、旋轉不會重播
+    val splashOn = remember { vm.settings.splash.value }
+    var showSplash by rememberSaveable { mutableStateOf(splashOn) }
+
     MaterialTheme {
-        val nav = rememberSwipeDismissableNavController()
-        SwipeDismissableNavHost(navController = nav, startDestination = ROUTE_MAIN) {
-            composable(ROUTE_MAIN) {
-                MainScreen(
-                    vm = vm,
-                    onOpenHistory = { nav.navigate(ROUTE_HISTORY) },
-                    onOpenSettings = { nav.navigate(ROUTE_SETTINGS) },
-                )
-            }
-            composable(ROUTE_SETTINGS) {
-                SettingsScreen(vm = vm, onOpenCalibration = { nav.navigate(ROUTE_CALIBRATION) })
-            }
-            composable(ROUTE_HISTORY) {
-                HistoryScreen(
-                    vm = vm,
-                    onOpen = { id ->
-                        vm.selectSession(id)
-                        nav.navigate(ROUTE_DETAIL)
-                    },
-                    onOpenTrend = { nav.navigate(ROUTE_TREND) },
-                )
-            }
-            composable(ROUTE_DETAIL) {
-                DetailScreen(
-                    vm = vm,
-                    onOpenShot = { index ->
-                        vm.selectShot(index)
-                        nav.navigate(ROUTE_SHOT)
-                    },
-                    onDeleted = { nav.popBackStack() },
-                )
-            }
-            composable(ROUTE_SHOT) {
-                ShotScreen(vm = vm)
-            }
-            composable(ROUTE_TREND) {
-                TrendScreen(vm = vm)
-            }
-            composable(ROUTE_CALIBRATION) {
-                CalibrationScreen(vm = vm)
-            }
+        if (showSplash) {
+            SplashScreen(
+                versionLabel = vm.versionLabel,
+                signature = vm.signatureShort,
+                onDone = { showSplash = false },
+            )
+        } else {
+            AppNav(vm)
+        }
+    }
+}
+
+@Composable
+private fun AppNav(vm: CounterViewModel) {
+    val nav = rememberSwipeDismissableNavController()
+    SwipeDismissableNavHost(navController = nav, startDestination = ROUTE_MAIN) {
+        composable(ROUTE_MAIN) {
+            MainScreen(
+                vm = vm,
+                onOpenHistory = { nav.navigate(ROUTE_HISTORY) },
+                onOpenSettings = { nav.navigate(ROUTE_SETTINGS) },
+            )
+        }
+        composable(ROUTE_SETTINGS) {
+            SettingsScreen(vm = vm, onOpenCalibration = { nav.navigate(ROUTE_CALIBRATION) })
+        }
+        composable(ROUTE_HISTORY) {
+            HistoryScreen(
+                vm = vm,
+                onOpen = { id ->
+                    vm.selectSession(id)
+                    nav.navigate(ROUTE_DETAIL)
+                },
+                onOpenTrend = { nav.navigate(ROUTE_TREND) },
+            )
+        }
+        composable(ROUTE_DETAIL) {
+            DetailScreen(
+                vm = vm,
+                onOpenShot = { index ->
+                    vm.selectShot(index)
+                    nav.navigate(ROUTE_SHOT)
+                },
+                onDeleted = { nav.popBackStack() },
+            )
+        }
+        composable(ROUTE_SHOT) {
+            ShotScreen(vm = vm)
+        }
+        composable(ROUTE_TREND) {
+            TrendScreen(vm = vm)
+        }
+        composable(ROUTE_CALIBRATION) {
+            CalibrationScreen(vm = vm)
         }
     }
 }
