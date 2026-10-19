@@ -125,8 +125,17 @@ class AppSettings(private val prefs: SharedPreferences) {
     val dimLevel: StateFlow<Int> = _dimLevel.asStateFlow()
 
     private val _splash = MutableStateFlow(prefs.getBoolean(KEY_SPLASH, true))
-    /** 開啟應用時先播放約 1.5 秒的啟動動畫（弓箭靶、版本、作者）。預設：開 */
+    /** 開啟應用時先播放約 3 秒的啟動動畫（圖示、版本、作者、簽章）。預設：開 */
     val splash: StateFlow<Boolean> = _splash.asStateFlow()
+
+    private val _splashTap = MutableStateFlow(prefs.getBoolean(KEY_SPLASH_TAP, true))
+    /** 啟動動畫播完後停在畫面上，點按螢幕才進入主畫面；關閉則約 3 秒後自動進入。預設：開 */
+    val splashTap: StateFlow<Boolean> = _splashTap.asStateFlow()
+
+    fun setSplashTap(v: Boolean) {
+        _splashTap.value = v
+        prefs.edit().putBoolean(KEY_SPLASH_TAP, v).apply()
+    }
 
     fun setSplash(v: Boolean) {
         _splash.value = v
@@ -274,6 +283,7 @@ class AppSettings(private val prefs: SharedPreferences) {
     /** 把設定頁的所有項目還原成預設值。不動記錄、主畫面的箭數和閾值。 */
     fun resetDefaults() {
         setSplash(true)
+        setSplashTap(true)
         setKeepScreenOn(true)
         setWakeLock(false)
         setRecordRaw(false)
@@ -320,6 +330,7 @@ class AppSettings(private val prefs: SharedPreferences) {
         const val DEFAULT_WINDOW_SEC = 2
 
         private const val KEY_SPLASH = "splash"
+        private const val KEY_SPLASH_TAP = "splash_tap"
         private const val KEY_KEEP_SCREEN_ON = "keep_screen_on"
         private const val KEY_WAKE_LOCK = "wake_lock"
         private const val KEY_RECORD_RAW = "record_raw"

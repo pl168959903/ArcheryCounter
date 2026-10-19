@@ -28,6 +28,7 @@ fun SettingsScreen(vm: CounterViewModel, onOpenCalibration: () -> Unit) {
     val scope = rememberCoroutineScope()
 
     val splash by s.splash.collectAsStateWithLifecycle()
+    val splashTap by s.splashTap.collectAsStateWithLifecycle()
     val keepScreenOn by s.keepScreenOn.collectAsStateWithLifecycle()
     val wakeLock by s.wakeLock.collectAsStateWithLifecycle()
     val recordRaw by s.recordRaw.collectAsStateWithLifecycle()
@@ -89,7 +90,11 @@ fun SettingsScreen(vm: CounterViewModel, onOpenCalibration: () -> Unit) {
         item { Note("偵測中電量低於 15% 時震動一次，主畫面顯示「電量低」，只提醒不會自己動作。立即生效") }
 
         item { ToggleChip("開啟動畫", splash) { s.setSplash(it) } }
-        item { Note("開啟應用時先播放約 1.5 秒的動畫（箭射向靶心，並顯示版本與作者）。下次開啟應用時生效") }
+        item { Note("開啟應用時先播放約 3 秒的動畫（圖示放大，並顯示版本、作者與簽章）。下次開啟應用時生效") }
+        if (splash) {
+            item { ToggleChip("點按後才進入", splashTap) { s.setSplashTap(it) } }
+            item { Note("開啟時動畫播完會停在畫面上，出現「點按螢幕進入」，點一下才進入主畫面（太久沒點會自己進入）。關閉則約 3 秒後自動進入。動畫中隨時點一下都會直接進入。下次開啟應用時生效") }
+        }
 
         item { ToggleChip("保持亮屏", keepScreenOn) { s.setKeepScreenOn(it) } }
         item { Note("應用開著時螢幕不休眠，立即生效") }

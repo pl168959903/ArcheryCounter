@@ -71,6 +71,7 @@ fun ArcheryApp(vm: CounterViewModel = viewModel()) {
 
     // 啟動動畫：只在剛開啟應用時播放一次（設定頁可關）。轉場、旋轉不會重播
     val splashOn = remember { vm.settings.splash.value }
+    val splashTap = remember { vm.settings.splashTap.value }
     var showSplash by rememberSaveable { mutableStateOf(splashOn) }
 
     MaterialTheme {
@@ -78,6 +79,7 @@ fun ArcheryApp(vm: CounterViewModel = viewModel()) {
             SplashScreen(
                 versionLabel = vm.versionLabel,
                 signature = vm.signatureShort,
+                waitForTap = splashTap,
                 onDone = { showSplash = false },
             )
         } else {

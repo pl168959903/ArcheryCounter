@@ -1,13 +1,17 @@
 package com.example.archerycounter
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -19,131 +23,110 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
 
 /**
- * 開啟應用時的短動畫：一支箭射向靶心，下方顯示應用名稱、版本、作者與簽章指紋，約 1.5 秒後自動結束。
+ * 開啟應用時的啟動畫面：圖示放大淡入，下方依序淡入應用名稱、版本、作者與簽章指紋。
+ * - [waitForTap] 為 true：動畫播完後停在畫面上，出現「點按螢幕進入」，點一下才進入（太久沒點會自己進入）。
+ * - [waitForTap] 為 false：約 3 秒後自動淡出進入。
+ * 兩種情況下，隨時點一下螢幕都會立刻進入。
  * 只用 withFrameNanos 逐幀推進時間，不依賴額外的動畫套件。
  */
 @Composable
-fun SplashScreen(versionLabel: String, signature: String, onDone: () -> Unit) {
+fun SplashScreen(
+    versionLabel: String,
+    signature: String,
+    waitForTap: Boolean,
+    onDone: () -> Unit,
+) {
     val done by rememberUpdatedState(onDone)
     var elapsedMs by remember { mutableLongStateOf(0L) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(waitForTap) {
         var start = -1L
         while (true) {
             val now = withFrameNanos { it }
             if (start < 0) start = now
             val t = (now - start) / 1_000_000L
-            if (t >= SplashTiming.TOTAL_MS) break
             elapsedMs = t
+            if (SplashTiming.isFinished(t, waitForTap)) break
         }
         done()
     }
 
     val t = elapsedMs
+    val lines = listOf(
+        "射箭計數" to MaterialTheme.typography.title3,
+        versionLabel to MaterialTheme.typography.caption1,
+        "作者 ${AppInfo.AUTHOR}" to MaterialTheme.typography.caption2,
+        "簽章 $signature" to MaterialTheme.typography.caption2,
+    )
+    val colors = listOf(Color.White, Color(0xFFCFD8DC), Color(0xFFCFD8DC), Color(0xFF90A4AE))
+
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF16261B))
-            .alpha(SplashTiming.overallAlpha(t)),
+            .background(Color(0xFF0F2227))
+            .alpha(SplashTiming.overallAlpha(t, waitForTap))
+            // 隨時點一下就進入
+            .pointerInput(Unit) { detectTapGestures(onTap = { done() }) },
         contentAlignment = Alignment.Center,
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            TargetAndArrow(progress = SplashTiming.flyProgress(t), hit = SplashTiming.hitProgress(t))
-            Column(
-                modifier = Modifier.alpha(SplashTiming.textAlpha(t)),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text(
-                    "射箭計數",
-                    style = MaterialTheme.typography.title3,
-                    color = Color.White,
-                    textAlign = TextAlign.Center,
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            // 圖示加一圈呼吸光圈
+            Box(modifier = Modifier.size(84.dp), contentAlignment = Alignment.Center) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    drawCircle(
+                        color = Color(0xFF9CCC3C).copy(alpha = SplashTiming.glowAlpha(t)),
+                        radius = size.minDimension / 2f - 1.5f,
+                        style = Stroke(width = 3f),
+                    )
+                }
+                Image(
+                    painter = painterResource(R.drawable.ic_launcher),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(74.dp)
+                        .clip(CircleShape)
+                        .graphicsLayer {
+                            val s = SplashTiming.iconScale(t)
+                            scaleX = s
+                            scaleY = s
+                            alpha = SplashTiming.iconAlpha(t)
+                        },
                 )
+            }
+            Spacer(Modifier.height(4.dp))
+            lines.forEachIndexed { i, (text, style) ->
                 Text(
-                    versionLabel,
-                    style = MaterialTheme.typography.caption1,
-                    color = Color(0xFFCFD8DC),
+                    text = text,
+                    style = style,
+                    color = colors[i],
                     textAlign = TextAlign.Center,
+                    modifier = Modifier.alpha(SplashTiming.lineAlpha(t, i)),
                 )
+            }
+            if (waitForTap) {
+                Spacer(Modifier.height(2.dp))
                 Text(
-                    "作者 ${AppInfo.AUTHOR}",
+                    text = "點按螢幕進入",
                     style = MaterialTheme.typography.caption2,
-                    color = Color(0xFFCFD8DC),
+                    color = Color(0xFF9CCC3C),
                     textAlign = TextAlign.Center,
-                )
-                Text(
-                    "簽章 $signature",
-                    style = MaterialTheme.typography.caption2,
-                    color = Color(0xFF90A4AE),
-                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .padding(top = 2.dp)
+                        .alpha(SplashTiming.hintAlpha(t)),
                 )
             }
         }
-    }
-}
-
-/** 靶在右邊，箭從左邊飛來；射中後靶外圈有一圈擴散的白光。 */
-@Composable
-private fun TargetAndArrow(progress: Float, hit: Float) {
-    Canvas(
-        modifier = Modifier
-            .fillMaxWidth(0.7f)
-            .height(64.dp),
-    ) {
-        val cy = size.height / 2f
-        val r = size.height * 0.46f
-        val cx = size.width - r - 2f
-
-        // 靶：由外到內 白、紅、白、金
-        drawCircle(Color(0xFFECEFF1), radius = r, center = Offset(cx, cy))
-        drawCircle(Color(0xFFD32F2F), radius = r * 0.77f, center = Offset(cx, cy))
-        drawCircle(Color(0xFFECEFF1), radius = r * 0.54f, center = Offset(cx, cy))
-        drawCircle(Color(0xFFFBC02D), radius = r * 0.31f, center = Offset(cx, cy))
-
-        // 射中後的擴散光圈
-        if (hit > 0f && hit < 1f) {
-            drawCircle(
-                color = Color.White.copy(alpha = 1f - hit),
-                radius = r * (1f + 0.5f * hit),
-                center = Offset(cx, cy),
-                style = Stroke(width = 3f),
-            )
-        }
-
-        // 箭：箭頭從左邊外面飛到靶心
-        val shaftLen = size.width * 0.38f
-        val startTipX = -shaftLen
-        val tipX = startTipX + (cx - startTipX) * progress
-        val tailX = tipX - shaftLen
-        val shaft = Color(0xFFCFD8DC)
-        drawLine(shaft, Offset(tailX, cy), Offset(tipX - 6f, cy), strokeWidth = 5f, cap = StrokeCap.Round)
-        // 箭羽
-        val feather = Color.White
-        drawLine(feather, Offset(tailX, cy), Offset(tailX - 8f, cy - 8f), strokeWidth = 3f, cap = StrokeCap.Round)
-        drawLine(feather, Offset(tailX, cy), Offset(tailX - 8f, cy + 8f), strokeWidth = 3f, cap = StrokeCap.Round)
-        drawLine(feather, Offset(tailX + 9f, cy), Offset(tailX + 1f, cy - 8f), strokeWidth = 3f, cap = StrokeCap.Round)
-        drawLine(feather, Offset(tailX + 9f, cy), Offset(tailX + 1f, cy + 8f), strokeWidth = 3f, cap = StrokeCap.Round)
-        // 箭頭
-        val head = Path().apply {
-            moveTo(tipX + 8f, cy)
-            lineTo(tipX - 8f, cy - 7f)
-            lineTo(tipX - 8f, cy + 7f)
-            close()
-        }
-        drawPath(head, shaft)
     }
 }

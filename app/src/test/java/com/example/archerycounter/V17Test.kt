@@ -52,44 +52,4 @@ class V17Test {
     fun authorNameKeepsExactCase() {
         assertEquals("ZGrCc", AppInfo.AUTHOR)
     }
-
-    @Test
-    fun splashFlyProgressStartsAtZeroAndEndsAtOne() {
-        assertEquals(0f, SplashTiming.flyProgress(0), 0.0001f)
-        assertEquals(1f, SplashTiming.flyProgress(SplashTiming.FLY_MS), 0.0001f)
-        assertEquals(1f, SplashTiming.flyProgress(SplashTiming.TOTAL_MS), 0.0001f)
-        // 先快後慢：一半時間時已經飛過一半以上
-        assertTrue(SplashTiming.flyProgress(SplashTiming.FLY_MS / 2) > 0.5f)
-        // 單調不減
-        var prev = -1f
-        for (t in 0..SplashTiming.TOTAL_MS step 50) {
-            val p = SplashTiming.flyProgress(t)
-            assertTrue(p >= prev)
-            prev = p
-        }
-    }
-
-    @Test
-    fun splashHitOnlyAfterArrowLands() {
-        assertEquals(0f, SplashTiming.hitProgress(0), 0.0001f)
-        assertEquals(0f, SplashTiming.hitProgress(SplashTiming.FLY_MS), 0.0001f)
-        assertEquals(1f, SplashTiming.hitProgress(SplashTiming.FLY_MS + 400), 0.0001f)
-    }
-
-    @Test
-    fun splashTextFadesInAndWholeScreenFadesOut() {
-        assertEquals(0f, SplashTiming.textAlpha(0), 0.0001f)
-        assertEquals(1f, SplashTiming.textAlpha(SplashTiming.FLY_MS / 2 + 400), 0.0001f)
-        assertEquals(1f, SplashTiming.overallAlpha(0), 0.0001f)
-        assertEquals(1f, SplashTiming.overallAlpha(SplashTiming.TOTAL_MS - SplashTiming.FADE_OUT_MS), 0.0001f)
-        assertEquals(0f, SplashTiming.overallAlpha(SplashTiming.TOTAL_MS), 0.0001f)
-        // 淡出一半
-        assertEquals(0.5f, SplashTiming.overallAlpha(SplashTiming.TOTAL_MS - SplashTiming.FADE_OUT_MS / 2), 0.0001f)
-    }
-
-    @Test
-    fun splashFitsInAboutOneAndHalfSeconds() {
-        assertTrue(SplashTiming.TOTAL_MS in 1000L..2000L)
-        assertTrue(SplashTiming.FLY_MS < SplashTiming.TOTAL_MS - SplashTiming.FADE_OUT_MS)
-    }
 }
