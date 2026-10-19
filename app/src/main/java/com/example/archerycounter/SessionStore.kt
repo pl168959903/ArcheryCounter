@@ -1,0 +1,342 @@
+package com.example.archerycounter
+
+import java.io.File
+import java.io.IOException
+import java.util.Locale
+import java.util.concurrent.Callable
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executors
+
+/**
+ * 记录的文件存取。全部文件操作都在同一条背景线程上按顺序执行，
+ * 所以「先存档、再读取」的顺序一定正确，也不会卡住画面。
+ *
+ *   <baseDir>/sessions/<id>.json   记录本身
+ *   <baseDir>/sessions/<id>.csv    原始传感器数据（只有开启「錄製原始資料」时才有）
+ *
+ * id 是开始时间，例如 20261019_211003。
+ * baseDir 在手表上是 /sdcard/Android/data/com.example.archerycounter/files/，可以用 adb pull 取出。
+ */
+class SessionStore(baseDir: File) {
+
+    private val dir = File(baseDir, "sessions")
+
+    private val io = Executors.newSingleThreadExecutor { r ->
+        Thread(r, "session-io").apply { isDaemon = true }
+    }
+
+    /** 已排队、但还没写到磁盘的记录 id，避免同一秒内重复取到同一个 id。 */
+    private val pendingIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
+
+    fun exists(id: String): Boolean = id in pendingIds || jsonFile(id).exists()
+
+    /** 原始数据 CSV 的路径（会先确保目录存在）。 */
+    fun csvFile(id: String): File {
+        dir.mkdirs()
+        return File(dir, "$id.csv")
+    }
+
+    /** 排队存档，立刻返回。同一笔记录可以重复存，后面的覆盖前面的。 */
+    fun saveAsync(session: Session) {
+        pendingIds.add(session.id)
+        io.execute {
+            try {
+                write(session)
+            } catch (e: IOException) {
+                // 存不下就算了，不要让应用崩溃
+            } finally {
+                pendingIds.remove(session.id)
+            }
+        }
+    }
+
+    /** 读取全部记录（会等前面排队的存档写完）。请不要在主线程呼叫。 */
+    fun listSessions(): List<Session> = onIo(emptyList()) {
+        val files = dir.listFiles { f -> f.isFile && f.name.endsWith(".json") }
+        files.orEmpty().mapNotNull { readFile(it) }.sortedByDescending { it.startMs }
+    }
+
+    fun load(id: String): Session? = onIo(null) {
+        if (!isSafeId(id)) null else jsonFile(id).takeIf { it.isFile }?.let { readFile(it) }
+    }
+
+    fun delete(id: String) = onIo(Unit) { deleteFiles(id) }
+
+    /** 删除全部记录，[keepId]（进行中的那一笔）除外。 */
+    fun deleteAll(keepId: String?) = onIo(Unit) {
+        val files = dir.listFiles { f -> f.isFile && f.name.endsWith(".json") }
+        for (f in files.orEmpty()) {
+            val id = f.name.removeSuffix(".json")
+            if (id != keepId) deleteFiles(id)
+        }
+    }
+
+    // ---- 以下都在 io 线程执行 ----
+
+    private fun write(session: Session) {
+        if (!isSafeId(session.id)) return
+        dir.mkdirs()
+        val target = jsonFile(session.id)
+        val tmp = File(dir, "${session.id}.json.tmp")
+        tmp.writeText(SessionJson.encode(session), Charsets.UTF_8)
+        // 先写临时文件再改名，这样就算写到一半被关掉，旧的记录也不会被写坏
+        if (!tmp.renameTo(target)) {
+            target.writeText(SessionJson.encode(session), Charsets.UTF_8)
+            tmp.delete()
+        }
+    }
+
+    private fun readFile(f: File): Session? = try {
+        SessionJson.decode(f.readText(Charsets.UTF_8), f.name.removeSuffix(".json"))
+    } catch (e: IOException) {
+        null
+    }
+
+    private fun deleteFiles(id: String) {
+        if (!isSafeId(id)) return
+        jsonFile(id).delete()
+        File(dir, "$id.json.tmp").delete()
+        File(dir, "$id.csv").delete()
+    }
+
+    private fun jsonFile(id: String) = File(dir, "$id.json")
+
+    private fun isSafeId(id: String) =
+        id.isNotEmpty() && id.all { it.isLetterOrDigit() || it == '_' }
+
+    private fun <T> onIo(fallback: T, block: () -> T): T = try {
+        io.submit(Callable { block() }).get()
+    } catch (e: Exception) {
+        fallback
+    }
+}
+
+/**
+ * 记录的 JSON 编码与解码。自己写而不用 org.json，这样可以在一般 JVM 上直接跑单元测试。
+ *
+ * 结构：
+ *   { "id", "startMs", "endMs"（-1 表示没有正常结束）, "threshold", "windowSec", "hasGyro", "rawCsv",
+ *     "shots":  [ { "rel", "peak", "thr", "acc"?, "gyr"? } ],
+ *     "manual": [ { "rel", "d" } ] }
+ */
+internal object SessionJson {
+
+    private const val DEFAULT_WINDOW_SEC = 2
+
+    fun encode(s: Session): String = buildString {
+        append("{\"id\":").append(quote(s.id))
+        append(",\"startMs\":").append(s.startMs)
+        append(",\"endMs\":").append(s.endMs ?: -1L)
+        append(",\"threshold\":").append(num(s.threshold))
+        append(",\"windowSec\":").append(s.windowSec)
+        append(",\"hasGyro\":").append(s.hasGyro)
+        append(",\"rawCsv\":").append(s.rawCsv)
+
+        append(",\"shots\":[")
+        s.shots.forEachIndexed { i, sh ->
+            if (i > 0) append(',')
+            append("{\"rel\":").append(sh.relMs)
+            append(",\"peak\":").append(num(sh.peak))
+            append(",\"thr\":").append(num(sh.threshold))
+            if (sh.accelRms != null && sh.accelRms.isFinite()) append(",\"acc\":").append(num(sh.accelRms))
+            if (sh.gyroRms != null && sh.gyroRms.isFinite()) append(",\"gyr\":").append(num(sh.gyroRms))
+            append('}')
+        }
+
+        append("],\"manual\":[")
+        s.manual.forEachIndexed { i, m ->
+            if (i > 0) append(',')
+            append("{\"rel\":").append(m.relMs).append(",\"d\":").append(m.delta).append('}')
+        }
+        append("]}")
+    }
+
+    /** 解析失败回传 null。[id] 用文件名，不信任内容里的 id。 */
+    fun decode(text: String, id: String): Session? {
+        return try {
+            val root = Parser(text).parseDocument() as? Map<*, *> ?: return null
+            val startMs = (root["startMs"] as? Number)?.toLong() ?: return null
+            val endRaw = (root["endMs"] as? Number)?.toLong() ?: -1L
+            val threshold = (root["threshold"] as? Number)?.toFloat() ?: 0f
+
+            val shots = (root["shots"] as? List<*>).orEmpty().mapNotNull { e ->
+                val m = e as? Map<*, *> ?: return@mapNotNull null
+                val rel = (m["rel"] as? Number)?.toLong() ?: return@mapNotNull null
+                val peak = (m["peak"] as? Number)?.toFloat() ?: return@mapNotNull null
+                ShotEntry(
+                    relMs = rel,
+                    peak = peak,
+                    threshold = (m["thr"] as? Number)?.toFloat() ?: threshold,
+                    accelRms = (m["acc"] as? Number)?.toFloat(),
+                    gyroRms = (m["gyr"] as? Number)?.toFloat(),
+                )
+            }
+            val manual = (root["manual"] as? List<*>).orEmpty().mapNotNull { e ->
+                val m = e as? Map<*, *> ?: return@mapNotNull null
+                val rel = (m["rel"] as? Number)?.toLong() ?: return@mapNotNull null
+                val d = (m["d"] as? Number)?.toInt() ?: return@mapNotNull null
+                ManualEntry(rel, d)
+            }
+
+            Session(
+                id = id,
+                startMs = startMs,
+                endMs = if (endRaw < 0) null else endRaw,
+                threshold = threshold,
+                windowSec = (root["windowSec"] as? Number)?.toInt() ?: DEFAULT_WINDOW_SEC,
+                hasGyro = root["hasGyro"] as? Boolean ?: false,
+                rawCsv = root["rawCsv"] as? Boolean ?: false,
+                shots = shots,
+                manual = manual,
+            )
+        } catch (e: RuntimeException) {
+            null
+        }
+    }
+
+    private fun num(v: Float): String =
+        if (v.isNaN() || v.isInfinite()) "0" else String.format(Locale.US, "%.4f", v)
+
+    private fun quote(s: String): String = buildString {
+        append('"')
+        for (c in s) {
+            when (c) {
+                '"' -> append("\\\"")
+                '\\' -> append("\\\\")
+                '\n' -> append("\\n")
+                '\r' -> append("\\r")
+                '\t' -> append("\\t")
+                else -> if (c < ' ') append(String.format("\\u%04x", c.code)) else append(c)
+            }
+        }
+        append('"')
+    }
+
+    /** 只支援我们自己写出的这种 JSON：对象、数组、数字、布尔、字符串、null。 */
+    private class Parser(private val s: String) {
+        private var i = 0
+
+        fun parseDocument(): Any? {
+            val v = parseValue()
+            skipWs()
+            if (i != s.length) fail("多余的内容")
+            return v
+        }
+
+        private fun parseValue(): Any? {
+            skipWs()
+            if (i >= s.length) fail("意外结束")
+            return when (s[i]) {
+                '{' -> parseObject()
+                '[' -> parseArray()
+                '"' -> parseString()
+                't' -> literal("true", true)
+                'f' -> literal("false", false)
+                'n' -> literal("null", null)
+                else -> parseNumber()
+            }
+        }
+
+        private fun parseObject(): Map<String, Any?> {
+            val map = LinkedHashMap<String, Any?>()
+            i++ // {
+            skipWs()
+            if (peek() == '}') {
+                i++
+                return map
+            }
+            while (true) {
+                skipWs()
+                val key = parseString()
+                skipWs()
+                expect(':')
+                map[key] = parseValue()
+                skipWs()
+                when (next()) {
+                    ',' -> continue
+                    '}' -> return map
+                    else -> fail("物件格式错误")
+                }
+            }
+        }
+
+        private fun parseArray(): List<Any?> {
+            val list = ArrayList<Any?>()
+            i++ // [
+            skipWs()
+            if (peek() == ']') {
+                i++
+                return list
+            }
+            while (true) {
+                list.add(parseValue())
+                skipWs()
+                when (next()) {
+                    ',' -> continue
+                    ']' -> return list
+                    else -> fail("数组格式错误")
+                }
+            }
+        }
+
+        private fun parseString(): String {
+            expect('"')
+            val sb = StringBuilder()
+            while (true) {
+                if (i >= s.length) fail("字符串没有结束")
+                val c = s[i++]
+                when (c) {
+                    '"' -> return sb.toString()
+                    '\\' -> {
+                        if (i >= s.length) fail("字符串没有结束")
+                        when (val e = s[i++]) {
+                            '"', '\\', '/' -> sb.append(e)
+                            'b' -> sb.append('\b')
+                            'f' -> sb.append('\u000C')
+                            'n' -> sb.append('\n')
+                            'r' -> sb.append('\r')
+                            't' -> sb.append('\t')
+                            'u' -> {
+                                if (i + 4 > s.length) fail("\\u 不完整")
+                                sb.append(s.substring(i, i + 4).toInt(16).toChar())
+                                i += 4
+                            }
+                            else -> fail("不认识的转义")
+                        }
+                    }
+                    else -> sb.append(c)
+                }
+            }
+        }
+
+        private fun parseNumber(): Double {
+            val start = i
+            while (i < s.length && s[i] in "+-0123456789.eE") i++
+            if (start == i) fail("预期是数字")
+            return s.substring(start, i).toDouble()
+        }
+
+        private fun literal(word: String, value: Any?): Any? {
+            if (!s.startsWith(word, i)) fail("预期是 $word")
+            i += word.length
+            return value
+        }
+
+        private fun skipWs() {
+            while (i < s.length && s[i].isWhitespace()) i++
+        }
+
+        private fun peek(): Char = if (i < s.length) s[i] else '\u0000'
+
+        private fun next(): Char {
+            if (i >= s.length) fail("意外结束")
+            return s[i++]
+        }
+
+        private fun expect(c: Char) {
+            if (next() != c) fail("预期是 $c")
+        }
+
+        private fun fail(msg: String): Nothing = throw IllegalArgumentException(msg)
+    }
+}

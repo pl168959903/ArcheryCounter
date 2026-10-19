@@ -6,6 +6,9 @@
     <!-- 侦测到放箭时震动提示 -->
     <uses-permission android:name="android.permission.VIBRATE" />
 
+    <!-- 設定頁的「CPU 喚醒鎖」開啟時，偵測中保持 CPU 運作 -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
     <application
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher"

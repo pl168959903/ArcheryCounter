@@ -12,13 +12,19 @@ android {
         applicationId = "com.example.archerycounter"
         minSdk = 30
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 3
+        versionName = "1.2"
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // 開啟速度主因：debug 版沒有最佳化。release 版用 R8 縮減，
+            // 並自動帶入 Compose 內建的 baseline profile（預先編譯常用程式碼）。
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))
+            // 個人使用：直接用 debug 金鑰簽名，這樣 release 版也能直接裝到手錶
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 
@@ -42,7 +48,9 @@ dependencies {
 
     implementation("androidx.wear.compose:compose-material:1.4.0")
     implementation("androidx.wear.compose:compose-foundation:1.4.0")
+    implementation("androidx.wear.compose:compose-navigation:1.4.0")
 
+    implementation("androidx.profileinstaller:profileinstaller:1.4.1")
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")

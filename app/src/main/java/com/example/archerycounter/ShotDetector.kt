@@ -13,13 +13,14 @@ import kotlin.math.sqrt
  *   2. 冲击之前约 0.5 秒手腕比较稳（拉满弓后的瞄准阶段），合力始终 < [stillThreshold]
  *   3. 距离上一次计数已超过 [COOLDOWN_MS]（避免一次放箭被算成多次）
  *
- * 触发后会再收集 [CAPTURE_MS] 毫秒数据，取得这次冲击的真正峰值，然后回调 [onShot]。
+ * 触发后会再收集 [CAPTURE_MS] 毫秒数据，取得这次冲击的真正峰值，然后回调 [onShot]
+ * 回调带两个值：峰值，以及冲击开始（触发）的时间戳，后者用来回头计算放箭前的稳定度。
  * 峰值会显示在手表上，用来帮你调整 [spikeThreshold]。
  */
 class ShotDetector(
-    var spikeThreshold: Float = DEFAULT_SPIKE_THRESHOLD,
-    var stillThreshold: Float = DEFAULT_STILL_THRESHOLD,
-    private val onShot: (peak: Float) -> Unit,
+    @Volatile var spikeThreshold: Float = DEFAULT_SPIKE_THRESHOLD,
+    @Volatile var stillThreshold: Float = DEFAULT_STILL_THRESHOLD,
+    private val onShot: (peak: Float, triggerMs: Long) -> Unit,
 ) {
     private class Sample(val timeMs: Long, val magnitude: Float)
 
@@ -47,8 +48,9 @@ class ShotDetector(
         if (captureStartMs != NOT_CAPTURING) {
             capturePeak = max(capturePeak, magnitude)
             if (timeMs - captureStartMs >= CAPTURE_MS) {
+                val triggerMs = captureStartMs
                 captureStartMs = NOT_CAPTURING
-                onShot(capturePeak)
+                onShot(capturePeak, triggerMs)
             }
             return
         }
@@ -76,7 +78,7 @@ class ShotDetector(
     }
 
     companion object {
-        const val DEFAULT_SPIKE_THRESHOLD = 15f   // m/s²，需要实测调整
+        const val DEFAULT_SPIKE_THRESHOLD = 16f   // m/s²，实测 16~17 比较稳
         const val DEFAULT_STILL_THRESHOLD = 5f    // m/s²
         const val STILL_WINDOW_MS = 500L
         const val GAP_MS = 100L

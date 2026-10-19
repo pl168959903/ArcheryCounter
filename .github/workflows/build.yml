@@ -19,10 +19,13 @@ jobs:
         with:
           gradle-version: 8.9
 
-      - name: Build debug APK
-        run: gradle :app:assembleDebug --no-daemon
+      # 同時編譯 release（較快，建議使用）和 debug（備用）
+      - name: Build APKs
+        run: gradle :app:assembleRelease :app:assembleDebug --no-daemon
 
       - uses: actions/upload-artifact@v4
         with:
-          name: ArcheryCounter-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: ArcheryCounter-apk
+          path: |
+            app/build/outputs/apk/release/app-release.apk
+            app/build/outputs/apk/debug/app-debug.apk
