@@ -1,11 +1,15 @@
 package com.example.archerycounter
 
 import android.app.Application
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.os.BatteryManager
 import android.os.Build
 import android.os.Handler
 import android.os.HandlerThread
@@ -17,9 +21,13 @@ import android.os.VibratorManager
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.math.sqrt
@@ -93,6 +101,40 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
     private val _activeId = MutableStateFlow<String?>(null)
     val activeSessionId: StateFlow<String?> = _activeId.asStateFlow()
 
+    // ---- v1.6：今日目標、趟回饋、電量、通知 ----
+
+    private val _todayDone = MutableStateFlow(0)   // 今天已結束的記錄合計
+    private val _activeCount = MutableStateFlow(0) // 進行中這一次目前的箭數
+    /** 今日箭數：今天已結束的記錄加上進行中的這一次（不含校準） */
+    val todayCount: StateFlow<Int> =
+        combine(_todayDone, _activeCount) { done, active -> done + active }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, 0)
+
+    private val _endFeedback = MutableStateFlow<EndFeedback?>(null)
+    /** 剛射完一趟的回饋，顯示約 5 秒後消失 */
+    val endFeedback: StateFlow<EndFeedback?> = _endFeedback.asStateFlow()
+
+    private val _batteryLow = MutableStateFlow(false)
+    val batteryLow: StateFlow<Boolean> = _batteryLow.asStateFlow()
+    private val _batteryPercent = MutableStateFlow(-1)
+    val batteryPercent: StateFlow<Int> = _batteryPercent.asStateFlow()
+
+    private val _notice = MutableStateFlow<String?>(null)
+    /** 主畫面上的一次性通知（例如「已自動暫停」），下次開始偵測時清掉 */
+    val notice: StateFlow<String?> = _notice.asStateFlow()
+
+    // 自動暫停：最後一次放箭（或開始偵測後第一筆資料）的傳感器時間；-1 = 還沒有
+    @Volatile private var lastActivityMs = -1L
+    @Volatile private var autoPausing = false
+    private var batteryWarned = false
+    private var batteryRegistered = false
+
+    private val batteryReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent != null) handleBattery(intent)
+        }
+    }
+
     private val _locked = MutableStateFlow(false)
     /** 觸控鎖：鎖定時主畫面只顯示箭數，長按約 2 秒才解鎖 */
     val locked: StateFlow<Boolean> = _locked.asStateFlow()
@@ -139,7 +181,10 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
     private var lastGz = 0f
 
     init {
-        viewModelScope.launch(Dispatchers.IO) { recorder.activeId } // 暖机，建立存储目录
+        viewModelScope.launch(Dispatchers.IO) {
+            recorder.activeId // 暖机，建立存储目录
+            publishSessions() // 讀入記錄，算出今日已完成的箭數
+        }
         viewModelScope.launch { settings.wakeLock.collect { updateWakeLock() } }
         viewModelScope.launch { settings.stillThreshold.collect { detector.stillThreshold = it.toFloat() } }
         viewModelScope.launch { settings.cooldownSec.collect { detector.cooldownMs = it * 1000L } }
@@ -190,6 +235,14 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         _calStep.value = 0
         _calMarking.value = false
         _locked.value = false
+        _activeCount.value = 0
+        _endFeedback.value = null
+        _notice.value = null
+        lastActivityMs = -1L
+        autoPausing = false
+        batteryWarned = false
+        _batteryLow.value = false
+        registerBattery()
 
         _running.value = true
         sensorManager.registerListener(this, sensor, SAMPLING_PERIOD_US, sensorHandler)
@@ -205,11 +258,18 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         calibrating = false
         _calibrationActive.value = false
         _calMarking.value = false
+        _endFeedback.value = null
+        _batteryLow.value = false
+        unregisterBattery()
         synchronized(pendingFollow) { pendingFollow.clear() } // 還沒滿 1 秒的就不補了
         recorder.stop(System.currentTimeMillis())
         _activeId.value = null
         updateWakeLock()
-        refreshSessions()
+        // 這一筆記錄存好後再併入「今日已完成」，並把進行中的計數歸零，避免今日箭數閃一下
+        viewModelScope.launch(Dispatchers.IO) {
+            publishSessions()
+            if (_activeId.value == null) _activeCount.value = 0 // 這段期間已經又開始新的記錄就不要歸零
+        }
     }
 
     /** 放箭侦测到时（传感器线程）。 */
@@ -240,6 +300,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         if (index >= 0 && settings.followThrough.value) {
             synchronized(pendingFollow) { pendingFollow.add(PendingFollow(_activeId.value, index, triggerMs)) }
         }
+        lastActivityMs = triggerMs
         if (calibrating) {
             buzzShot() // 校準中：只記錄，不計數、不分趟
             return
@@ -247,12 +308,30 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         _lastShot.value = LastShot(peak, st.accelRms, gyr)
         changeCount(+1)
 
-        // 滿一趟震動節奏不同的樣式（只震這個，不再先震一下短的）；否則就是一般的放箭震動
+        // 今日目標：這一箭讓今日合計跨過目標才算達標
+        val before = _todayDone.value + _activeCount.value
+        _activeCount.value = recorder.currentFinalCount()
+        val goalReached = Goal.reached(before, _todayDone.value + _activeCount.value, settings.dailyGoal.value)
+
         val endFull = settings.showEnds.value && endTracker.onShot(triggerMs, settings.arrowsPerEnd.value)
-        if (endFull && settings.endVibration.value != EndVibration.OFF) {
-            buzzEnd(settings.endVibration.value)
-        } else {
-            buzzShot()
+        if (endFull && settings.endFeedback.value) showEndFeedback()
+
+        // 震動優先順序：達標 > 滿一趟 > 一般放箭（只震最重要的那一種，不疊加）
+        when {
+            goalReached -> buzzEnd(EndVibration.LONG)
+            endFull && settings.endVibration.value != EndVibration.OFF -> buzzEnd(settings.endVibration.value)
+            else -> buzzShot()
+        }
+    }
+
+    /** 滿一趟：算出這一趟和上一趟、和本次平均的差，顯示約 5 秒。 */
+    private fun showEndFeedback() {
+        val snap = recorder.snapshot() ?: return
+        val fb = buildEndFeedback(snap, computeEnds(snap, settings.arrowsPerEnd.value)) ?: return
+        _endFeedback.value = fb
+        viewModelScope.launch {
+            delay(END_FEEDBACK_MS)
+            if (_endFeedback.value === fb) _endFeedback.value = null
         }
     }
 
@@ -296,6 +375,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         // 不另外記一筆手動 −1，避免重複扣掉。沒有可取消的箭才當作一般的手動修正。
         if (delta < 0 && recorder.cancelLastShot()) {
             endTracker.cancelLast()
+            _activeCount.value = recorder.currentFinalCount()
             changeCount(delta)
             _lastShot.value = null
             return
@@ -306,6 +386,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
                 relMs = (SystemClock.elapsedRealtime() - baseElapsedMs).coerceAtLeast(0L),
                 delta = applied,
             )
+            _activeCount.value = recorder.currentFinalCount()
         }
     }
 
@@ -373,9 +454,33 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
 
     fun refreshSessions() {
         viewModelScope.launch(Dispatchers.IO) {
-            _sessions.value = store.listSessions().sortedByDescending { it.startMs }
+            publishSessions()
         }
     }
+
+    /** 讀入全部記錄，更新列表和「今日已完成」的箭數。請在背景線程呼叫。 */
+    private fun publishSessions() {
+        val list = store.listSessions().sortedByDescending { it.startMs }
+        _sessions.value = list
+        _todayDone.value = todayDone(list, System.currentTimeMillis(), excludeId = _activeId.value)
+    }
+
+    /** 恢復預設設定：不動記錄、主畫面箭數和閾值。 */
+    fun resetSettings() {
+        settings.resetDefaults()
+    }
+
+    /** 版本名稱，給「關於」顯示。 */
+    val versionName: String = try {
+        appContext.packageManager.getPackageInfo(appContext.packageName, 0).versionName ?: "?"
+    } catch (_: Exception) {
+        "?"
+    }
+
+    /** 記錄資料夾在手錶上的完整路徑，用 adb pull 取出。 */
+    val dataPath: String =
+        ((appContext.getExternalFilesDir(null) ?: appContext.filesDir).absolutePath) + "/sessions"
+
 
     fun selectSession(id: String) {
         _selectedId.value = id
@@ -399,7 +504,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
     /** 只刪除原始資料 CSV（進行中的那一筆除外），保留記錄。 */
     suspend fun deleteRawData(): RawDeleteResult = withContext(Dispatchers.IO) {
         val r = store.deleteRawData(keepId = _activeId.value)
-        _sessions.value = store.listSessions().sortedByDescending { it.startMs }
+        publishSessions()
         r
     }
 
@@ -426,7 +531,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
             if (id == _activeId.value) return@withContext
             val s = store.load(id) ?: return@withContext
             store.saveAsync(change(s))
-            _sessions.value = store.listSessions().sortedByDescending { it.startMs }
+            publishSessions()
         }
 
     /** 記錄頁管理模式：一次刪除多筆（進行中的那一筆會被略過）。 */
@@ -436,7 +541,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         if (targets.isEmpty()) return
         viewModelScope.launch(Dispatchers.IO) {
             store.deleteMany(targets)
-            _sessions.value = store.listSessions().sortedByDescending { it.startMs }
+            publishSessions()
         }
     }
 
@@ -452,14 +557,14 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         if (id == _activeId.value) return
         viewModelScope.launch(Dispatchers.IO) {
             store.delete(id)
-            _sessions.value = store.listSessions().sortedByDescending { it.startMs }
+            publishSessions()
         }
     }
 
     fun deleteAllSessions() {
         viewModelScope.launch(Dispatchers.IO) {
             store.deleteAll(keepId = _activeId.value)
-            _sessions.value = store.listSessions().sortedByDescending { it.startMs }
+            publishSessions()
         }
     }
 
@@ -479,6 +584,55 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
     }
 
     /** 每一箭：一次很短的輕震。 */
+    private fun autoPauseNow() {
+        if (!_running.value) return
+        val min = settings.autoPauseMin.value
+        buzzEnd(EndVibration.LONG)
+        stop()
+        _notice.value = "已自動暫停：超過 $min 分鐘沒有放箭"
+    }
+
+    // ---- 電量 ----
+
+    private fun registerBattery() {
+        if (batteryRegistered) return
+        val filter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+        // ACTION_BATTERY_CHANGED 是黏性廣播：註冊的當下就會收到目前的電量
+        val sticky = if (Build.VERSION.SDK_INT >= 33) {
+            appContext.registerReceiver(batteryReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            appContext.registerReceiver(batteryReceiver, filter)
+        }
+        batteryRegistered = true
+        if (sticky != null) handleBattery(sticky)
+    }
+
+    private fun unregisterBattery() {
+        if (!batteryRegistered) return
+        try {
+            appContext.unregisterReceiver(batteryReceiver)
+        } catch (_: IllegalArgumentException) {
+        }
+        batteryRegistered = false
+    }
+
+    private fun handleBattery(intent: Intent) {
+        val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+        val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
+        val percent = if (level >= 0 && scale > 0) level * 100 / scale else -1
+        val charging = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0
+        _batteryPercent.value = percent
+
+        if (!settings.lowBattery.value) {
+            _batteryLow.value = false
+            return
+        }
+        val d = BatteryRule.decide(percent, charging, batteryWarned)
+        batteryWarned = d.warned
+        _batteryLow.value = d.warned
+        if (d.warnNow) buzzEnd(EndVibration.LONG)
+    }
+
     private fun buzzShot() {
         vibrator?.vibrate(VibrationEffect.createOneShot(EndVibration.SHOT_MS, VibrationEffect.DEFAULT_AMPLITUDE))
     }
@@ -526,6 +680,15 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
 
         tracker.addAccel(ax, ay, az, timeMs)
         finishFollowThrough(timeMs)
+
+        // 自動暫停：太久沒有放箭（校準錄製不適用）
+        if (lastActivityMs < 0) lastActivityMs = timeMs
+        if (!calibrating && !autoPausing && settings.autoPause.value &&
+            AutoPause.shouldPause(timeMs, lastActivityMs, settings.autoPauseMin.value)
+        ) {
+            autoPausing = true
+            viewModelScope.launch { autoPauseNow() }
+        }
         if (settings.liveWaveform.value) {
             live.add(timeMs, sqrt(ax * ax + ay * ay + az * az))
         }
@@ -537,6 +700,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
 
     override fun onCleared() {
         sensorManager.unregisterListener(this)
+        unregisterBattery()
         if (_running.value) {
             _running.value = false
             recorder.stop(System.currentTimeMillis())
@@ -546,6 +710,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
     }
 
     private companion object {
+        const val END_FEEDBACK_MS = 5000L
         const val KEY_COUNT = "count"
         const val KEY_THRESHOLD = "threshold"
         const val SAMPLING_PERIOD_US = 10_000      // 约 100Hz，系统可能给得更慢或更快

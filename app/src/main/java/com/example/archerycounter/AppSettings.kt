@@ -92,6 +92,38 @@ class AppSettings(private val prefs: SharedPreferences) {
     /** 目前的弓種條件；空字串 = 未設定 */
     val bowTag: StateFlow<String> = _bowTag.asStateFlow()
 
+    private val _autoPause = MutableStateFlow(prefs.getBoolean(KEY_AUTO_PAUSE, false))
+    /** 偵測中太久沒有放箭就自動暫停。預設：關 */
+    val autoPause: StateFlow<Boolean> = _autoPause.asStateFlow()
+
+    private val _autoPauseMin = MutableStateFlow(
+        prefs.getInt(KEY_AUTO_PAUSE_MIN, AutoPause.DEFAULT_MINUTES).coerceIn(AutoPause.MIN_MINUTES, AutoPause.MAX_MINUTES)
+    )
+    /** 幾分鐘沒有放箭就自動暫停。預設：10 */
+    val autoPauseMin: StateFlow<Int> = _autoPauseMin.asStateFlow()
+
+    private val _lowBattery = MutableStateFlow(prefs.getBoolean(KEY_LOW_BATTERY, true))
+    /** 電量低於 15% 時震動提醒一次。預設：開 */
+    val lowBattery: StateFlow<Boolean> = _lowBattery.asStateFlow()
+
+    private val _dailyGoal = MutableStateFlow(prefs.getInt(KEY_DAILY_GOAL, 0).coerceIn(0, Goal.MAX))
+    /** 今日目標箭數，0 = 關閉。預設：0 */
+    val dailyGoal: StateFlow<Int> = _dailyGoal.asStateFlow()
+
+    private val _endFeedback = MutableStateFlow(prefs.getBoolean(KEY_END_FEEDBACK, true))
+    /** 每趟射完在主畫面顯示這一趟的晃動量回饋。預設：開（需要分趟統計） */
+    val endFeedback: StateFlow<Boolean> = _endFeedback.asStateFlow()
+
+    private val _dimWhenRunning = MutableStateFlow(prefs.getBoolean(KEY_DIM, false))
+    /** 偵測中降低螢幕亮度。預設：關 */
+    val dimWhenRunning: StateFlow<Boolean> = _dimWhenRunning.asStateFlow()
+
+    private val _dimLevel = MutableStateFlow(
+        prefs.getInt(KEY_DIM_LEVEL, Brightness.DEFAULT_INDEX).coerceIn(0, Brightness.LEVELS.size - 1)
+    )
+    /** 降低亮度的檔位，見 [Brightness]。預設：中 */
+    val dimLevel: StateFlow<Int> = _dimLevel.asStateFlow()
+
     fun setKeepScreenOn(v: Boolean) {
         _keepScreenOn.value = v
         prefs.edit().putBoolean(KEY_KEEP_SCREEN_ON, v).apply()
@@ -192,6 +224,74 @@ class AppSettings(private val prefs: SharedPreferences) {
         prefs.edit().putString(KEY_BOW_TAG, v.orEmpty()).apply()
     }
 
+    fun setAutoPause(v: Boolean) {
+        _autoPause.value = v
+        prefs.edit().putBoolean(KEY_AUTO_PAUSE, v).apply()
+    }
+
+    fun setAutoPauseMin(v: Int) {
+        val value = v.coerceIn(AutoPause.MIN_MINUTES, AutoPause.MAX_MINUTES)
+        _autoPauseMin.value = value
+        prefs.edit().putInt(KEY_AUTO_PAUSE_MIN, value).apply()
+    }
+
+    fun setLowBattery(v: Boolean) {
+        _lowBattery.value = v
+        prefs.edit().putBoolean(KEY_LOW_BATTERY, v).apply()
+    }
+
+    fun setDailyGoal(v: Int) {
+        val value = v.coerceIn(0, Goal.MAX)
+        _dailyGoal.value = value
+        prefs.edit().putInt(KEY_DAILY_GOAL, value).apply()
+    }
+
+    fun setEndFeedback(v: Boolean) {
+        _endFeedback.value = v
+        prefs.edit().putBoolean(KEY_END_FEEDBACK, v).apply()
+    }
+
+    fun setDimWhenRunning(v: Boolean) {
+        _dimWhenRunning.value = v
+        prefs.edit().putBoolean(KEY_DIM, v).apply()
+    }
+
+    fun setDimLevel(v: Int) {
+        val value = v.coerceIn(0, Brightness.LEVELS.size - 1)
+        _dimLevel.value = value
+        prefs.edit().putInt(KEY_DIM_LEVEL, value).apply()
+    }
+
+    /** 把設定頁的所有項目還原成預設值。不動記錄、主畫面的箭數和閾值。 */
+    fun resetDefaults() {
+        setKeepScreenOn(true)
+        setWakeLock(false)
+        setRecordRaw(false)
+        setWindowSec(DEFAULT_WINDOW_SEC)
+        setShowTrendChart(true)
+        setRecordWaveform(true)
+        setLiveWaveform(false)
+        setShowEnds(true)
+        setArrowsPerEnd(DEFAULT_ARROWS_PER_END)
+        setEndVibration(EndVibration.DEFAULT)
+        setFollowThrough(true)
+        setShowSessionTrend(true)
+        setRecordScore(false)
+        setStillThreshold(DEFAULT_STILL_THRESHOLD)
+        setCooldownSec(DEFAULT_COOLDOWN_SEC)
+        setTouchLock(true)
+        setTagsEnabled(true)
+        setDistanceTag(null)
+        setBowTag(null)
+        setAutoPause(false)
+        setAutoPauseMin(AutoPause.DEFAULT_MINUTES)
+        setLowBattery(true)
+        setDailyGoal(0)
+        setEndFeedback(true)
+        setDimWhenRunning(false)
+        setDimLevel(Brightness.DEFAULT_INDEX)
+    }
+
     companion object {
         const val MIN_ARROWS_PER_END = 1
         const val MAX_ARROWS_PER_END = 12
@@ -217,6 +317,13 @@ class AppSettings(private val prefs: SharedPreferences) {
         private const val KEY_RECORD_WAVEFORM = "record_waveform"
         private const val KEY_LIVE_WAVEFORM = "live_waveform"
         private const val KEY_SHOW_ENDS = "show_ends"
+        private const val KEY_AUTO_PAUSE = "auto_pause"
+        private const val KEY_AUTO_PAUSE_MIN = "auto_pause_min"
+        private const val KEY_LOW_BATTERY = "low_battery"
+        private const val KEY_DAILY_GOAL = "daily_goal"
+        private const val KEY_END_FEEDBACK = "end_feedback"
+        private const val KEY_DIM = "dim_when_running"
+        private const val KEY_DIM_LEVEL = "dim_level"
         private const val KEY_TOUCH_LOCK = "touch_lock"
         private const val KEY_TAGS_ENABLED = "tags_enabled"
         private const val KEY_DISTANCE_TAG = "distance_tag"

@@ -1,11 +1,16 @@
 package com.example.archerycounter
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -37,6 +42,27 @@ fun ArcheryApp(vm: CounterViewModel = viewModel()) {
     DisposableEffect(keepScreenOn) {
         view.keepScreenOn = keepScreenOn
         onDispose { view.keepScreenOn = false }
+    }
+
+    // 偵測中降低亮度（設定頁可關）：只在偵測中且開啟時覆寫視窗亮度，其他時候交還給系統
+    val running by vm.running.collectAsStateWithLifecycle()
+    val dim by vm.settings.dimWhenRunning.collectAsStateWithLifecycle()
+    val dimLevel by vm.settings.dimLevel.collectAsStateWithLifecycle()
+    val activity = LocalContext.current.findActivity()
+    DisposableEffect(running, dim, dimLevel) {
+        val window = activity?.window
+        if (window != null && running && dim) {
+            val lp = window.attributes
+            lp.screenBrightness = Brightness.level(dimLevel)
+            window.attributes = lp
+        }
+        onDispose {
+            window?.let {
+                val lp = it.attributes
+                lp.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+                it.attributes = lp
+            }
+        }
     }
 
     MaterialTheme {
@@ -83,4 +109,10 @@ fun ArcheryApp(vm: CounterViewModel = viewModel()) {
             }
         }
     }
+}
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
 }

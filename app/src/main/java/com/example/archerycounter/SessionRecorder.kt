@@ -164,6 +164,22 @@ class SessionRecorder(private val store: SessionStore) {
         if (i >= 0) marks[i] = marks[i].copy(endRelMs = relMs)
     }
 
+    /** 目前這次記錄的最終箭數（有效的偵測箭數加手動加減，不小於 0）；沒有進行中的記錄為 0。 */
+    @Synchronized
+    fun currentFinalCount(): Int =
+        if (id == null) 0 else (shots.count { !it.cancelled } + manual.sumOf { it.delta }).coerceAtLeast(0)
+
+    /** 目前這次記錄的快照（給每趟回饋用）；沒有進行中的記錄為 null。 */
+    @Synchronized
+    fun snapshot(): Session? {
+        val sid = id ?: return null
+        return Session(
+            id = sid, startMs = startMs, endMs = null, threshold = threshold, windowSec = windowSec,
+            hasGyro = hasGyro, rawCsv = rawCsv, shots = shots.toList(), manual = manual.toList(),
+            tags = tags, calibration = calibration, marks = marks.toList(),
+        )
+    }
+
     @Synchronized
     fun addManual(relMs: Long, delta: Int) {
         if (id == null) return

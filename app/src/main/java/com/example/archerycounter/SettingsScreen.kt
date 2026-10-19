@@ -49,6 +49,14 @@ fun SettingsScreen(vm: CounterViewModel, onOpenCalibration: () -> Unit) {
     val sessions by vm.sessions.collectAsStateWithLifecycle()
     val threshold by vm.threshold.collectAsStateWithLifecycle()
     val running by vm.running.collectAsStateWithLifecycle()
+    val autoPause by s.autoPause.collectAsStateWithLifecycle()
+    val autoPauseMin by s.autoPauseMin.collectAsStateWithLifecycle()
+    val lowBattery by s.lowBattery.collectAsStateWithLifecycle()
+    val dailyGoal by s.dailyGoal.collectAsStateWithLifecycle()
+    val endFeedback by s.endFeedback.collectAsStateWithLifecycle()
+    val dimWhenRunning by s.dimWhenRunning.collectAsStateWithLifecycle()
+    val dimLevel by s.dimLevel.collectAsStateWithLifecycle()
+    var confirmReset by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) { vm.refreshSessions() }
 
@@ -76,6 +84,9 @@ fun SettingsScreen(vm: CounterViewModel, onOpenCalibration: () -> Unit) {
         item { ToggleChip("偵測中觸控鎖", touchLock) { s.setTouchLock(it) } }
         item { Note("開啟後，偵測中主畫面有「鎖定觸控」按鈕，鎖定時只顯示箭數，長按約 2 秒解鎖，避免拉弓、放箭時誤碰。立即生效") }
 
+        item { ToggleChip("低電量提醒", lowBattery) { s.setLowBattery(it) } }
+        item { Note("偵測中電量低於 15% 時震動一次，主畫面顯示「電量低」，只提醒不會自己動作。立即生效") }
+
         item { ToggleChip("保持亮屏", keepScreenOn) { s.setKeepScreenOn(it) } }
         item { Note("應用開著時螢幕不休眠，立即生效") }
 
@@ -102,6 +113,19 @@ fun SettingsScreen(vm: CounterViewModel, onOpenCalibration: () -> Unit) {
             )
         }
         item { Note("兩次計數之間至少間隔多久（預設 3 秒）。調短可能把一次放箭算成兩次；調長可能漏掉連續的兩箭。立即生效") }
+
+        item { ToggleChip("自動暫停", autoPause) { s.setAutoPause(it) } }
+        item { Note("偵測中太久沒有放箭就自動暫停並震動，避免忘了按暫停而白白耗電。校準錄製不適用。立即生效") }
+        if (autoPause) {
+            item {
+                StepRow(
+                    text = "$autoPauseMin 分鐘",
+                    onMinus = { s.setAutoPauseMin(autoPauseMin - AutoPause.STEP_MINUTES) },
+                    onPlus = { s.setAutoPauseMin(autoPauseMin + AutoPause.STEP_MINUTES) },
+                )
+            }
+            item { Note("超過這麼久沒有放箭就暫停（5～30 分鐘）。中間休息比較久的話請調長") }
+        }
 
         item {
             Chip(
@@ -226,6 +250,35 @@ fun SettingsScreen(vm: CounterViewModel, onOpenCalibration: () -> Unit) {
             item { Note("點一下切換樣式並試震：三連震 → 兩短一長 → 一次長震 → 關閉。平常每一箭只輕震一下") }
         }
 
+        // ---- 訓練 ----
+        item { SectionTitle("訓練") }
+        item {
+            StepRow(
+                text = if (dailyGoal == 0) "目標 關閉" else "目標 $dailyGoal 箭",
+                onMinus = { s.setDailyGoal(dailyGoal - Goal.STEP) },
+                onPlus = { s.setDailyGoal(dailyGoal + Goal.STEP) },
+            )
+        }
+        item { Note("今日目標箭數（每次加減 10，最多 300，0 = 關閉）。主畫面顯示「今日 36 / 120」，達標時長震一次。校準與誤判不計。立即生效") }
+
+        item { ToggleChip("每趟結束回饋", endFeedback) { s.setEndFeedback(it) } }
+        item { Note("滿一趟時在主畫面顯示約 5 秒：這一趟的平均晃動量，以及比上一趟、比本次平均較穩或較抖。需要開啟「分趟統計」。立即生效") }
+
+        item { ToggleChip("偵測中降低亮度", dimWhenRunning) { s.setDimWhenRunning(it) } }
+        item { Note("偵測中把螢幕亮度降低以省電，暫停後恢復。部分手錶可能不理會這個設定。立即生效") }
+        if (dimWhenRunning) {
+            item {
+                Chip(
+                    onClick = { s.setDimLevel(Brightness.next(dimLevel)) },
+                    label = { Text("亮度", maxLines = 1) },
+                    secondaryLabel = { Text(Brightness.label(dimLevel), maxLines = 1) },
+                    colors = ChipDefaults.primaryChipColors(),
+                    modifier = Modifier.fillMaxWidth(0.9f),
+                )
+            }
+            item { Note("點一下切換：低 20% → 中 40% → 高 60%") }
+        }
+
         // ---- 圖表與顯示 ----
         item { SectionTitle("圖表") }
         item { ToggleChip("趨勢圖", showTrend) { s.setShowTrendChart(it) } }
@@ -334,6 +387,43 @@ fun SettingsScreen(vm: CounterViewModel, onOpenCalibration: () -> Unit) {
 
         if (!vm.gyroAvailable) {
             item { Note("此手錶沒有陀螺儀，只會記錄加速度晃動量") }
+        }
+
+        // ---- 關於與重設 ----
+        item { SectionTitle("關於") }
+        item { Body("版本 ${vm.versionName}") }
+        item { Note("記錄資料夾（用 adb pull 取出）：\n${vm.dataPath}") }
+        if (!confirmReset) {
+            item {
+                Chip(
+                    onClick = { confirmReset = true },
+                    label = { Text("恢復預設設定", maxLines = 1) },
+                    colors = ChipDefaults.secondaryChipColors(),
+                    modifier = Modifier.fillMaxWidth(0.9f),
+                )
+            }
+            item { Note("把設定頁所有項目還原成預設值。不動記錄、主畫面的箭數和閾值") }
+        } else {
+            item { Note("確定要把所有設定還原成預設值嗎？") }
+            item {
+                Chip(
+                    onClick = {
+                        vm.resetSettings()
+                        confirmReset = false
+                    },
+                    label = { Text("確定還原", maxLines = 1) },
+                    colors = ChipDefaults.primaryChipColors(),
+                    modifier = Modifier.fillMaxWidth(0.9f),
+                )
+            }
+            item {
+                Chip(
+                    onClick = { confirmReset = false },
+                    label = { Text("取消", maxLines = 1) },
+                    colors = ChipDefaults.secondaryChipColors(),
+                    modifier = Modifier.fillMaxWidth(0.9f),
+                )
+            }
         }
     }
 }

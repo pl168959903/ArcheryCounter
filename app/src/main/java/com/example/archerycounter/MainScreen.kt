@@ -37,6 +37,12 @@ fun MainScreen(
     val lockEnabled by vm.settings.touchLock.collectAsStateWithLifecycle()
     val locked by vm.locked.collectAsStateWithLifecycle()
     val calibrating by vm.calibrationActive.collectAsStateWithLifecycle()
+    val today by vm.todayCount.collectAsStateWithLifecycle()
+    val goal by vm.settings.dailyGoal.collectAsStateWithLifecycle()
+    val feedback by vm.endFeedback.collectAsStateWithLifecycle()
+    val batteryLow by vm.batteryLow.collectAsStateWithLifecycle()
+    val batteryPercent by vm.batteryPercent.collectAsStateWithLifecycle()
+    val notice by vm.notice.collectAsStateWithLifecycle()
 
     // 鎖定時只顯示箭數；長按約 2 秒才解鎖。其他按鈕全部不在畫面上，所以不會被誤觸
     if (locked && running) {
@@ -67,6 +73,28 @@ fun MainScreen(
                 )
                 SmallRoundButton("+") { vm.adjustCount(1) }
             }
+        }
+
+        // 今日目標：今天所有記錄的箭數合計（含進行中的這一次，不含誤判與校準）
+        if (goal > 0) {
+            item { Body(if (today >= goal) "今日 $today / $goal　已達標" else "今日 $today / $goal") }
+        }
+
+        // 剛射完一趟的回饋，約 5 秒後消失
+        feedback?.let { fb ->
+            item {
+                Body(
+                    "第 ${fb.endNumber} 趟　平均晃動 ${Fmt.num(fb.accelAvg)} m/s²\n" +
+                        "比上一趟　${describeChange(fb.vsPrevPct)}\n" +
+                        "比本次平均　${describeChange(fb.vsSessionPct)}"
+                )
+            }
+        }
+
+        notice?.let { msg -> item { Note(msg) } }
+
+        if (running && batteryLow) {
+            item { Note(if (batteryPercent >= 0) "電量低（$batteryPercent%），請盡快充電" else "電量低，請盡快充電") }
         }
 
         item {
