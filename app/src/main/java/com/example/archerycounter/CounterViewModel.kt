@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.sqrt
 
 /** 最近一箭，显示在主画面上。 */
 data class LastShot(val peak: Float, val accelRms: Float?, val gyroRms: Float?)
@@ -62,6 +63,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
     private val store by lazy { SessionStore(appContext.getExternalFilesDir(null) ?: appContext.filesDir) }
     private val recorder by lazy { SessionRecorder(store) }
     private val tracker = StabilityTracker()
+    private val live = LiveBuffer() // 即时波形用，传感器线程写、画面读
 
     private val countLock = Any()
     private val _count = MutableStateFlow(prefs.getInt(KEY_COUNT, 0))
@@ -83,6 +85,10 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
 
     private val _selectedId = MutableStateFlow<String?>(null)
     val selectedId: StateFlow<String?> = _selectedId.asStateFlow()
+
+    private val _selectedShot = MutableStateFlow<Int?>(null)
+    /** 记录详情里被点开的那一箭（在 Session.shots 里的位置，包含被取消的）。 */
+    val selectedShot: StateFlow<Int?> = _selectedShot.asStateFlow()
 
     private val _activeId = MutableStateFlow<String?>(null)
     val activeSessionId: StateFlow<String?> = _activeId.asStateFlow()
@@ -119,6 +125,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
 
         detector.reset()
         tracker.reset()
+        live.clear()
         gravityReady = false
         lastGx = 0f
         lastGy = 0f
@@ -157,12 +164,24 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         val st = tracker.compute(endMs = triggerMs - ShotDetector.GAP_MS, windowMs = windowMs)
         val gyr = if (gyroSensor != null) st.gyroRms else null
 
+        // 單箭波形：放箭前（含避開的 GAP_MS）到放箭後 CAPTURE_MS。關掉設定就不存，記錄檔案最小。
+        val wave = if (settings.recordWaveform.value) {
+            tracker.waveform(
+                triggerMs = triggerMs,
+                preMs = windowMs + ShotDetector.GAP_MS,
+                postMs = ShotDetector.CAPTURE_MS,
+            )
+        } else {
+            null
+        }
+
         recorder.addShot(
             relMs = (triggerMs - baseElapsedMs).coerceAtLeast(0L),
             peak = peak,
             threshold = detector.spikeThreshold,
             accelRms = st.accelRms,
             gyroRms = gyr,
+            waveform = wave,
         )
         _lastShot.value = LastShot(peak, st.accelRms, gyr)
         changeCount(+1)
@@ -172,6 +191,13 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
     // ---- 计数与阈值 ----
 
     fun adjustCount(delta: Int) {
+        // 按「−」時，如果這次記錄裡還有沒取消的箭，就把最近一筆標記為誤判（數據保留），
+        // 不另外記一筆手動 −1，避免重複扣掉。沒有可取消的箭才當作一般的手動修正。
+        if (delta < 0 && recorder.cancelLastShot()) {
+            changeCount(delta)
+            _lastShot.value = null
+            return
+        }
         val applied = changeCount(delta)
         if (applied != 0 && _running.value) {
             recorder.addManual(
@@ -216,6 +242,28 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
     fun selectSession(id: String) {
         _selectedId.value = id
     }
+
+    fun selectShot(index: Int) {
+        _selectedShot.value = index
+    }
+
+    /**
+     * 事后在記錄詳情裡標記／恢復誤判。進行中的記錄不能改（記錄器正在寫它）。
+     * 回傳時存檔已經排進佇列，之後再讀取一定讀到新內容。
+     */
+    suspend fun setShotCancelled(id: String, index: Int, cancelled: Boolean): Unit =
+        withContext(Dispatchers.IO) {
+            if (id == _activeId.value) return@withContext
+            val s = store.load(id) ?: return@withContext
+            if (index !in s.shots.indices) return@withContext
+            val shots = s.shots.toMutableList()
+            shots[index] = shots[index].copy(cancelled = cancelled)
+            store.saveAsync(s.copy(shots = shots))
+            _sessions.value = store.listSessions().sortedByDescending { it.startMs }
+        }
+
+    /** 即時波形：最近幾秒的加速度合力大小（m/s²），由舊到新。 */
+    fun liveSnapshot(): FloatArray = live.snapshot()
 
     suspend fun loadSession(id: String): Session? = withContext(Dispatchers.IO) { store.load(id) }
 
@@ -289,6 +337,9 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         }
 
         tracker.addAccel(ax, ay, az, timeMs)
+        if (settings.liveWaveform.value) {
+            live.add(timeMs, sqrt(ax * ax + ay * ay + az * az))
+        }
         recorder.writeRaw(timeMs - baseElapsedMs, ax, ay, az, lastGx, lastGy, lastGz)
         detector.onSample(ax, ay, az, timeMs)
     }

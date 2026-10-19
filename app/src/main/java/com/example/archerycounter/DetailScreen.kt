@@ -20,49 +20,71 @@ import androidx.wear.compose.material.ChipDefaults
 import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
 
-private sealed interface Load {
-    object Loading : Load
-    object Missing : Load
-    class Ready(val session: Session) : Load
+/** 從存檔讀記錄的結果。詳情頁和單箭頁共用。 */
+internal sealed interface SessionLoad {
+    object Loading : SessionLoad
+    object Missing : SessionLoad
+    class Ready(val session: Session) : SessionLoad
 }
 
-/** 時間軸上的一列：一箭或一次手動加減。 */
+/** 時間軸上的一列：一箭（有效或誤判）或一次手動加減。 */
 private class TimelineRow(
     val relMs: Long,
-    val shotNo: Int,      // 第幾箭；手動加減為 0
-    val shot: ShotEntry?, // 手動加減為 null
+    val shotNo: Int,          // 有效的第幾箭；誤判或手動加減為 0
+    val shotIndex: Int,       // 在 Session.shots 裡的位置；手動加減為 -1
+    val shot: ShotEntry?,     // 手動加減為 null
+    val intervalSec: Float?,  // 距上一個有效的箭的秒數
     val delta: Int,
 )
 
 private fun buildTimeline(s: Session): List<TimelineRow> {
     val rows = ArrayList<TimelineRow>(s.shots.size + s.manual.size)
-    s.shots.forEachIndexed { i, sh -> rows.add(TimelineRow(sh.relMs, i + 1, sh, 0)) }
-    s.manual.forEach { m -> rows.add(TimelineRow(m.relMs, 0, null, m.delta)) }
+    var validCount = 0
+    var prevValidRel: Long? = null
+    s.shots.forEachIndexed { index, sh ->
+        if (sh.cancelled) {
+            rows.add(TimelineRow(sh.relMs, 0, index, sh, null, 0))
+        } else {
+            validCount++
+            val interval = prevValidRel?.let { (sh.relMs - it) / 1000f }
+            rows.add(TimelineRow(sh.relMs, validCount, index, sh, interval, 0))
+            prevValidRel = sh.relMs
+        }
+    }
+    s.manual.forEach { m -> rows.add(TimelineRow(m.relMs, 0, -1, null, null, m.delta)) }
     rows.sortBy { it.relMs }
     return rows
 }
 
 @Composable
-fun DetailScreen(vm: CounterViewModel, onDeleted: () -> Unit) {
+fun DetailScreen(vm: CounterViewModel, onOpenShot: (Int) -> Unit, onDeleted: () -> Unit) {
     val id by vm.selectedId.collectAsStateWithLifecycle()
     val activeId by vm.activeSessionId.collectAsStateWithLifecycle()
+    val sessions by vm.sessions.collectAsStateWithLifecycle()
 
-    val load by produceState<Load>(initialValue = Load.Loading, key1 = id) {
+    // 記錄列表有變動（例如在單箭頁標記了誤判）就重新讀一次
+    val load by produceState<SessionLoad>(
+        initialValue = SessionLoad.Loading,
+        key1 = id,
+        key2 = sessions,
+    ) {
         val sid = id
         val session = if (sid == null) null else vm.loadSession(sid)
-        value = if (session == null) Load.Missing else Load.Ready(session)
+        value = if (session == null) SessionLoad.Missing else SessionLoad.Ready(session)
     }
 
     when (val l = load) {
-        Load.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        SessionLoad.Loading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("載入中…")
         }
-        Load.Missing -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        SessionLoad.Missing -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("找不到這筆記錄")
         }
-        is Load.Ready -> DetailContent(
+        is SessionLoad.Ready -> DetailContent(
+            vm = vm,
             session = l.session,
             isActive = l.session.id == activeId,
+            onOpenShot = onOpenShot,
             onDelete = {
                 vm.deleteSession(l.session.id)
                 onDeleted()
@@ -72,9 +94,18 @@ fun DetailScreen(vm: CounterViewModel, onDeleted: () -> Unit) {
 }
 
 @Composable
-private fun DetailContent(session: Session, isActive: Boolean, onDelete: () -> Unit) {
+private fun DetailContent(
+    vm: CounterViewModel,
+    session: Session,
+    isActive: Boolean,
+    onOpenShot: (Int) -> Unit,
+    onDelete: () -> Unit,
+) {
+    val showTrend by vm.settings.showTrendChart.collectAsStateWithLifecycle()
     val stats = remember(session) { computeStats(session) }
     val timeline = remember(session) { buildTimeline(session) }
+    val accelSeries = remember(session) { metricSeries(session, gyro = false) }
+    val gyroSeries = remember(session) { metricSeries(session, gyro = true) }
     var confirmDelete by remember { mutableStateOf(false) }
 
     ScalingLazyColumn(
@@ -90,12 +121,57 @@ private fun DetailContent(session: Session, isActive: Boolean, onDelete: () -> U
         item { SectionTitle("統計") }
         item { Body(statsText(session, stats)) }
 
+        if (showTrend) {
+            item { SectionTitle("趨勢圖") }
+            if (accelSeries.size >= 2) {
+                item {
+                    TrendChart(
+                        title = "加速度晃動量",
+                        unit = "m/s²",
+                        series = accelSeries,
+                        steadiest = stats.accelSteadiest,
+                        shakiest = stats.accelShakiest,
+                        decimals = 2,
+                    )
+                }
+            }
+            if (session.hasGyro && gyroSeries.size >= 2) {
+                item {
+                    TrendChart(
+                        title = "角速度晃動量",
+                        unit = "°/s",
+                        series = gyroSeries,
+                        steadiest = stats.gyroSteadiest,
+                        shakiest = stats.gyroShakiest,
+                        decimals = 1,
+                    )
+                }
+            }
+            if (accelSeries.size < 2 && gyroSeries.size < 2) {
+                item { Note("至少要 2 箭有晃動量數據才畫得出趨勢圖") }
+            }
+        }
+
         item { SectionTitle("逐箭明細") }
         if (timeline.isEmpty()) {
             item { Note("這次沒有偵測到放箭") }
+        } else {
+            item { Note("點一箭可看波形，也可以標記為誤判") }
         }
         timeline.forEach { row ->
-            item { Body(rowText(session, row)) }
+            item {
+                val shot = row.shot
+                if (shot == null) {
+                    Body(manualText(session, row))
+                } else {
+                    Chip(
+                        onClick = { onOpenShot(row.shotIndex) },
+                        label = { Text(shotText(session, row, shot), style = MaterialTheme.typography.caption1, maxLines = 5) },
+                        colors = if (shot.cancelled) ChipDefaults.childChipColors() else ChipDefaults.secondaryChipColors(),
+                        modifier = Modifier.fillMaxWidth(0.95f),
+                    )
+                }
+            }
         }
 
         if (session.rawCsv) {
@@ -146,6 +222,7 @@ private fun summaryText(s: Session, st: SessionStats, isActive: Boolean): String
     }
     appendLine("時長 ${Fmt.duration(s.durationMs())}")
     appendLine("偵測 ${st.detected} 箭")
+    if (st.cancelled > 0) appendLine("誤判 ${st.cancelled} 筆（已排除）")
     appendLine("手動 +${st.manualPlus} / −${st.manualMinus}")
     appendLine("最終箭數 ${st.finalCount}")
     val thr = if (st.thresholdMin == st.thresholdMax) {
@@ -197,20 +274,20 @@ private fun StringBuilder.appendStability(
     }
 }
 
-private fun rowText(s: Session, row: TimelineRow): String {
+private fun manualText(s: Session, row: TimelineRow): String {
+    val sign = if (row.delta > 0) "+" else "−"
+    return "${Fmt.clock(s.startMs + row.relMs)} 手動 $sign${kotlin.math.abs(row.delta)}"
+}
+
+private fun shotText(s: Session, row: TimelineRow, shot: ShotEntry): String {
     val time = Fmt.clock(s.startMs + row.relMs)
-    val shot = row.shot
-    if (shot == null) {
-        val sign = if (row.delta > 0) "+" else "−"
-        return "$time 手動 $sign${kotlin.math.abs(row.delta)}"
+    if (shot.cancelled) {
+        return "$time 已取消（誤判）\n峰值 ${Fmt.num(shot.peak, 1)} m/s²"
     }
     return buildString {
         append("#${row.shotNo}  $time")
         append("\n峰值 ${Fmt.num(shot.peak, 1)}")
-        if (row.shotNo >= 2) {
-            val prev = s.shots[row.shotNo - 2]
-            append(" · 距上一箭 ${Fmt.num((shot.relMs - prev.relMs) / 1000f, 0)} 秒")
-        }
+        row.intervalSec?.let { append(" · 距上一箭 ${Fmt.num(it, 0)} 秒") }
         append("\n加速度晃動 ${Fmt.numOrDash(shot.accelRms)} m/s²")
         if (s.hasGyro) {
             append("\n角速度晃動 ${Fmt.numOrDash(shot.gyroRms, 1)} °/s")

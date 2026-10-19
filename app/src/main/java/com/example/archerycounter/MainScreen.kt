@@ -27,6 +27,7 @@ fun MainScreen(
     val running by vm.running.collectAsStateWithLifecycle()
     val threshold by vm.threshold.collectAsStateWithLifecycle()
     val lastShot by vm.lastShot.collectAsStateWithLifecycle()
+    val liveOn by vm.settings.liveWaveform.collectAsStateWithLifecycle()
 
     ScalingLazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -65,6 +66,11 @@ fun MainScreen(
                     modifier = Modifier.fillMaxWidth(0.85f),
                 )
             }
+        }
+
+        // 即時波形：只在偵測中、且設定頁開啟時才畫
+        if (running && liveOn) {
+            item { LiveWaveform(vm, threshold)}
         }
 
         // 歸零只在暫停時出現，避免射箭時誤觸

@@ -140,6 +140,8 @@ internal object SessionJson {
             append(",\"thr\":").append(num(sh.threshold))
             if (sh.accelRms != null && sh.accelRms.isFinite()) append(",\"acc\":").append(num(sh.accelRms))
             if (sh.gyroRms != null && sh.gyroRms.isFinite()) append(",\"gyr\":").append(num(sh.gyroRms))
+            if (sh.cancelled) append(",\"x\":1")
+            if (sh.waveform != null) append(",\"wf\":").append(encodeWave(sh.waveform))
             append('}')
         }
 
@@ -169,6 +171,12 @@ internal object SessionJson {
                     threshold = (m["thr"] as? Number)?.toFloat() ?: threshold,
                     accelRms = (m["acc"] as? Number)?.toFloat(),
                     gyroRms = (m["gyr"] as? Number)?.toFloat(),
+                    waveform = parseWave(m["wf"]),
+                    cancelled = when (val x = m["x"]) {
+                        is Boolean -> x
+                        is Number -> x.toInt() != 0
+                        else -> false
+                    },
                 )
             }
             val manual = (root["manual"] as? List<*>).orEmpty().mapNotNull { e ->
@@ -196,6 +204,32 @@ internal object SessionJson {
 
     private fun num(v: Float): String =
         if (v.isNaN() || v.isInfinite()) "0" else String.format(Locale.US, "%.4f", v)
+
+    /** 波形的数值只留一位小数，档案才不会太大。 */
+    private fun num1(v: Float): String =
+        if (v.isNaN() || v.isInfinite()) "0.0" else String.format(Locale.US, "%.1f", v)
+
+    private fun numList(values: List<Float>): String = values.joinToString(",", "[", "]") { num1(it) }
+
+    private fun encodeWave(w: Waveform): String = buildString {
+        append("{\"s\":").append(w.stepMs)
+        append(",\"i\":").append(w.impactIndex)
+        append(",\"a\":").append(numList(w.accel))
+        if (w.gyro.isNotEmpty()) append(",\"g\":").append(numList(w.gyro))
+        append('}')
+    }
+
+    private fun floats(raw: Any?): List<Float> =
+        (raw as? List<*>).orEmpty().mapNotNull { (it as? Number)?.toFloat() }
+
+    private fun parseWave(raw: Any?): Waveform? {
+        val m = raw as? Map<*, *> ?: return null
+        val step = (m["s"] as? Number)?.toInt() ?: return null
+        val impact = (m["i"] as? Number)?.toInt() ?: return null
+        val accel = floats(m["a"])
+        if (step <= 0 || accel.isEmpty()) return null
+        return Waveform(step, impact.coerceIn(0, accel.size - 1), accel, floats(m["g"]))
+    }
 
     private fun quote(s: String): String = buildString {
         append('"')

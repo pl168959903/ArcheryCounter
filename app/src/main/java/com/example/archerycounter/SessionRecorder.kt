@@ -85,10 +85,31 @@ class SessionRecorder(private val store: SessionStore) {
     }
 
     @Synchronized
-    fun addShot(relMs: Long, peak: Float, threshold: Float, accelRms: Float?, gyroRms: Float?) {
+    fun addShot(
+        relMs: Long,
+        peak: Float,
+        threshold: Float,
+        accelRms: Float?,
+        gyroRms: Float?,
+        waveform: Waveform? = null,
+    ) {
         if (id == null) return
-        shots.add(ShotEntry(relMs, peak, threshold, accelRms, gyroRms))
+        shots.add(ShotEntry(relMs, peak, threshold, accelRms, gyroRms, waveform))
         saveLocked(null)
+    }
+
+    /**
+     * 把这次记录里最近一笔「还没被取消」的箭标记为误判（数据保留）。
+     * 回传 true 表示确实取消了一笔；没有进行中的记录或没有可取消的箭则回传 false。
+     */
+    @Synchronized
+    fun cancelLastShot(): Boolean {
+        if (id == null) return false
+        val index = shots.indexOfLast { !it.cancelled }
+        if (index < 0) return false
+        shots[index] = shots[index].copy(cancelled = true)
+        saveLocked(null)
+        return true
     }
 
     @Synchronized

@@ -25,6 +25,7 @@ private const val ROUTE_MAIN = "main"
 private const val ROUTE_SETTINGS = "settings"
 private const val ROUTE_HISTORY = "history"
 private const val ROUTE_DETAIL = "detail"
+private const val ROUTE_SHOT = "shot"
 
 @Composable
 fun ArcheryApp(vm: CounterViewModel = viewModel()) {
@@ -59,7 +60,17 @@ fun ArcheryApp(vm: CounterViewModel = viewModel()) {
                 )
             }
             composable(ROUTE_DETAIL) {
-                DetailScreen(vm = vm, onDeleted = { nav.popBackStack() })
+                DetailScreen(
+                    vm = vm,
+                    onOpenShot = { index ->
+                        vm.selectShot(index)
+                        nav.navigate(ROUTE_SHOT)
+                    },
+                    onDeleted = { nav.popBackStack() },
+                )
+            }
+            composable(ROUTE_SHOT) {
+                ShotScreen(vm = vm)
             }
         }
     }

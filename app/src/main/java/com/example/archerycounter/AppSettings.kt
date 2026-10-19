@@ -5,7 +5,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-/** 设定页里的四个设定，存在手表本机。 */
+/** 设定页里的设定，存在手表本机。 */
 class AppSettings(private val prefs: SharedPreferences) {
 
     private val _keepScreenOn = MutableStateFlow(prefs.getBoolean(KEY_KEEP_SCREEN_ON, true))
@@ -23,6 +23,18 @@ class AppSettings(private val prefs: SharedPreferences) {
     private val _windowSec = MutableStateFlow(prefs.getInt(KEY_WINDOW_SEC, DEFAULT_WINDOW_SEC).coerceIn(MIN_WINDOW_SEC, MAX_WINDOW_SEC))
     /** 稳定度分析窗口（秒）。预设：2 */
     val windowSec: StateFlow<Int> = _windowSec.asStateFlow()
+
+    private val _showTrendChart = MutableStateFlow(prefs.getBoolean(KEY_SHOW_TREND, true))
+    /** 记录详情页显示趋势图。只影响显示，不影响档案大小。预设：开 */
+    val showTrendChart: StateFlow<Boolean> = _showTrendChart.asStateFlow()
+
+    private val _recordWaveform = MutableStateFlow(prefs.getBoolean(KEY_RECORD_WAVEFORM, true))
+    /** 每一箭把放箭前后的波形存进记录（每箭约 1 KB）。关掉记录档案最小。预设：开 */
+    val recordWaveform: StateFlow<Boolean> = _recordWaveform.asStateFlow()
+
+    private val _liveWaveform = MutableStateFlow(prefs.getBoolean(KEY_LIVE_WAVEFORM, false))
+    /** 主画面显示即时波形。只影响显示，但最耗电。预设：关 */
+    val liveWaveform: StateFlow<Boolean> = _liveWaveform.asStateFlow()
 
     fun setKeepScreenOn(v: Boolean) {
         _keepScreenOn.value = v
@@ -45,6 +57,21 @@ class AppSettings(private val prefs: SharedPreferences) {
         prefs.edit().putInt(KEY_WINDOW_SEC, value).apply()
     }
 
+    fun setShowTrendChart(v: Boolean) {
+        _showTrendChart.value = v
+        prefs.edit().putBoolean(KEY_SHOW_TREND, v).apply()
+    }
+
+    fun setRecordWaveform(v: Boolean) {
+        _recordWaveform.value = v
+        prefs.edit().putBoolean(KEY_RECORD_WAVEFORM, v).apply()
+    }
+
+    fun setLiveWaveform(v: Boolean) {
+        _liveWaveform.value = v
+        prefs.edit().putBoolean(KEY_LIVE_WAVEFORM, v).apply()
+    }
+
     companion object {
         const val MIN_WINDOW_SEC = 1
         const val MAX_WINDOW_SEC = 3
@@ -54,5 +81,8 @@ class AppSettings(private val prefs: SharedPreferences) {
         private const val KEY_WAKE_LOCK = "wake_lock"
         private const val KEY_RECORD_RAW = "record_raw"
         private const val KEY_WINDOW_SEC = "window_sec"
+        private const val KEY_SHOW_TREND = "show_trend_chart"
+        private const val KEY_RECORD_WAVEFORM = "record_waveform"
+        private const val KEY_LIVE_WAVEFORM = "live_waveform"
     }
 }

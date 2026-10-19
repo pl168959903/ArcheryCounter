@@ -1,5 +1,19 @@
 package com.example.archerycounter
 
+/**
+ * 一箭放箭前后的一小段降采样波形。每个点是该时间段（[stepMs]）内合力大小的最大值，
+ * 这样放箭冲击这种很短的尖峰不会被平均掉。
+ */
+data class Waveform(
+    val stepMs: Int,
+    /** 放箭冲击开始的位置（第几个点，从 0 开始），画图时用来标竖线 */
+    val impactIndex: Int,
+    /** 线性加速度合力大小，m/s² */
+    val accel: List<Float>,
+    /** 角速度合力大小，°/s；没有陀螺仪时为空 */
+    val gyro: List<Float>,
+)
+
 /** 一箭的记录。[relMs] 是距这次记录开始的毫秒数。 */
 data class ShotEntry(
     val relMs: Long,
@@ -11,6 +25,10 @@ data class ShotEntry(
     val accelRms: Float?,
     /** 放箭前窗口内的角速度晃动量，°/s；没有陀螺仪或数据不足时为 null */
     val gyroRms: Float?,
+    /** 放箭前后的波形；没开「單箭波形」记录或数据不足时为 null */
+    val waveform: Waveform? = null,
+    /** 被标记为误判。数据保留，但不计入箭数、统计和图表。 */
+    val cancelled: Boolean = false,
 )
 
 /** 手动加减。[delta] 是实际改变的量（+1 或 −1）。 */
@@ -32,6 +50,9 @@ data class Session(
     val shots: List<ShotEntry>,
     val manual: List<ManualEntry>,
 ) {
+    /** 有效的箭（没有被标记为误判的）。 */
+    fun validShots(): List<ShotEntry> = shots.filter { !it.cancelled }
+
     /** 正常结束：结束时间 − 开始时间。没有结束：用最后一个事件的时间。 */
     fun durationMs(): Long {
         val end = endMs
@@ -41,18 +62,21 @@ data class Session(
         return maxOf(lastShot, lastManual)
     }
 
-    /** 最终箭数 = 偵測箭數 + 手動加減，不小於 0。 */
-    fun finalCount(): Int = (shots.size + manual.sumOf { it.delta }).coerceAtLeast(0)
+    /** 最终箭数 = 有效的偵測箭数 + 手動加減，不小於 0。 */
+    fun finalCount(): Int = (shots.count { !it.cancelled } + manual.sumOf { it.delta }).coerceAtLeast(0)
 }
 
-/** 某个指标里「第几箭」是最稳／最不稳。[number] 从 1 开始。 */
+/** 某个指标里「第几箭」是最稳／最不稳。[number] 从 1 开始，只算有效的箭。 */
 data class ShotRank(val number: Int, val value: Float)
 
 /** 前 1/3 与后 1/3 的平均，用来看疲劳之后是不是变得更抖。 */
 data class Trend(val first: Float, val last: Float)
 
 data class SessionStats(
+    /** 有效的偵測箭数（不含误判） */
     val detected: Int,
+    /** 被标记为误判的笔数 */
+    val cancelled: Int,
     val manualPlus: Int,
     val manualMinus: Int,
     val finalCount: Int,
@@ -82,23 +106,33 @@ private class MetricStats(
 /** 趋势至少要这么多箭（有数值的）才算，太少没有意义。 */
 private const val MIN_SHOTS_FOR_TREND = 6
 
+/**
+ * 有效的箭里，某个指标的（第几箭，数值）序列，趋势图和统计都用它。
+ * 编号只算有效的箭；没有数值的箭略过，但不影响编号。
+ */
+fun metricSeries(s: Session, gyro: Boolean): List<ShotRank> =
+    s.validShots().mapIndexedNotNull { i, sh ->
+        (if (gyro) sh.gyroRms else sh.accelRms)?.let { ShotRank(i + 1, it) }
+    }
+
 fun computeStats(s: Session): SessionStats {
-    val peaks = s.shots.map { it.peak }
-    val intervals = s.shots.zipWithNext { a, b -> (b.relMs - a.relMs) / 1000f }
+    val valid = s.validShots()
+    val peaks = valid.map { it.peak }
+    val intervals = valid.zipWithNext { a, b -> (b.relMs - a.relMs) / 1000f }
 
-    // 编号是「实际第几箭」，所以没有数值的箭要略过但不能影响编号
-    val accel = metric(s.shots.mapIndexedNotNull { i, sh -> sh.accelRms?.let { ShotRank(i + 1, it) } })
-    val gyro = metric(s.shots.mapIndexedNotNull { i, sh -> sh.gyroRms?.let { ShotRank(i + 1, it) } })
+    val accel = metric(metricSeries(s, gyro = false))
+    val gyro = metric(metricSeries(s, gyro = true))
 
-    val thresholds = s.shots.map { it.threshold } + s.threshold
+    val thresholds = valid.map { it.threshold } + s.threshold
     val plus = s.manual.filter { it.delta > 0 }.sumOf { it.delta }
     val minus = s.manual.filter { it.delta < 0 }.sumOf { -it.delta }
 
     return SessionStats(
-        detected = s.shots.size,
+        detected = valid.size,
+        cancelled = s.shots.size - valid.size,
         manualPlus = plus,
         manualMinus = minus,
-        finalCount = (s.shots.size + plus - minus).coerceAtLeast(0),
+        finalCount = (valid.size + plus - minus).coerceAtLeast(0),
         thresholdMin = thresholds.min(),
         thresholdMax = thresholds.max(),
         peakAvg = if (peaks.isEmpty()) null else peaks.average().toFloat(),

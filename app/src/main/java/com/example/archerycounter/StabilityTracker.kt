@@ -49,6 +49,24 @@ class StabilityTracker(capacity: Int = DEFAULT_CAPACITY) {
             gyroRms = gyro.shake(endMs, windowMs),
         )
 
+    /**
+     * 取一箭放箭前后的降采样波形：窗口 (triggerMs − preMs, triggerMs + postMs]，
+     * 每 [binMs] 毫秒一个点，取这段内合力大小的最大值（所以放箭的尖峰不会被平均掉）。
+     * 加速度样本太少时回传 null；没有陀螺仪数据时 gyro 为空。
+     */
+    fun waveform(triggerMs: Long, preMs: Long, postMs: Long, binMs: Int = DEFAULT_BIN_MS): Waveform? {
+        val startMs = triggerMs - preMs
+        val endMs = triggerMs + postMs
+        val a = accel.binMax(startMs, endMs, binMs) ?: return null
+        val g = gyro.binMax(startMs, endMs, binMs)
+        return Waveform(
+            stepMs = binMs,
+            impactIndex = (preMs / binMs).toInt().coerceIn(0, a.size - 1),
+            accel = a.toList(),
+            gyro = g?.toList() ?: emptyList(),
+        )
+    }
+
     private class Ring(private val capacity: Int) {
         private val t = LongArray(capacity)
         private val x = FloatArray(capacity)
@@ -73,6 +91,33 @@ class StabilityTracker(capacity: Int = DEFAULT_CAPACITY) {
             z[next] = vz
             next = (next + 1) % capacity
             if (size < capacity) size++
+        }
+
+        /** 窗口内每 [binMs] 一格，取合力大小的最大值。空格沿用前一格（开头的空格用第一个有值的）。 */
+        fun binMax(startMs: Long, endMs: Long, binMs: Int): FloatArray? {
+            val span = endMs - startMs
+            if (span <= 0 || binMs <= 0) return null
+            val bins = ((span + binMs - 1) / binMs).toInt()
+            val out = FloatArray(bins) { Float.NaN }
+            val oldest = if (size < capacity) 0 else next
+
+            var n = 0
+            for (k in 0 until size) {
+                val i = (oldest + k) % capacity
+                val ti = t[i]
+                if (ti <= startMs || ti > endMs) continue
+                val b = ((ti - startMs - 1) / binMs).toInt().coerceIn(0, bins - 1)
+                val m = sqrt(x[i] * x[i] + y[i] * y[i] + z[i] * z[i])
+                if (out[b].isNaN() || m > out[b]) out[b] = m
+                n++
+            }
+            if (n < MIN_SAMPLES) return null
+
+            var prev = out.first { !it.isNaN() }
+            for (j in 0 until bins) {
+                if (out[j].isNaN()) out[j] = prev else prev = out[j]
+            }
+            return out
         }
 
         fun shake(endMs: Long, windowMs: Long): Float? {
@@ -120,5 +165,7 @@ class StabilityTracker(capacity: Int = DEFAULT_CAPACITY) {
         /** 100Hz 下约 10 秒；比最长的 3 秒窗口加冲击收集时间绰绰有余 */
         const val DEFAULT_CAPACITY = 1024
         const val MIN_SAMPLES = 10
+        /** 单箭波形每个点代表 40ms（25Hz） */
+        const val DEFAULT_BIN_MS = 40
     }
 }
