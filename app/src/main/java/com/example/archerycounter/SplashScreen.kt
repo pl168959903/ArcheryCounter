@@ -65,7 +65,7 @@ fun SplashScreen(
 
     val t = elapsedMs
     val lines = listOf(
-        "射箭計數" to MaterialTheme.typography.title3,
+        "Archery Assistant" to MaterialTheme.typography.title3,
         versionLabel to MaterialTheme.typography.caption1,
         "作者 ${AppInfo.AUTHOR}" to MaterialTheme.typography.caption2,
         "簽章 $signature" to MaterialTheme.typography.caption2,

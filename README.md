@@ -1,17 +1,24 @@
-# 射箭計數（ArcheryCounter）— Wear OS
+# Archery Assistant（ArcheryCounter）— Wear OS
+
+應用名稱原為「射箭計數」，v1.8.1 起改為 **Archery Assistant**（手錶桌面與啟動動畫都顯示這個名稱）。
 
 作者：**ZGrCc**
 
 戴在手腕上，自動偵測每次放箭並計數；偵測到時手錶會震動一下，也可以用 − / + 手動修正。
 每次偵測都會自動存成一筆「記錄」，並分析每一箭放箭前**手臂的穩定度**，方便你比較每次射擊之間的差異。
 
-目前版本：**v1.8**。
+目前版本：**v1.8.1**。
 
 ---
 
 ## 版本記錄
 
-### v1.8（本版）
+### v1.8.1（本版）
+- **應用名稱改為 Archery Assistant**（原為「射箭計數」）：手錶桌面上的名稱與啟動動畫的標題都改了。套件名稱 `com.example.archerycounter` 沒有變，所以可以直接 `adb install -r` 覆蓋安裝，記錄和設定都保留。
+- 名稱較長，圓形螢幕的桌面上可能被截斷成「Archery Assis…」；若要改短，改 `app/src/main/res/values/strings.xml` 的 `app_name`。
+- 版本號升到 1.8.1（versionCode 10）。
+
+### v1.8
 - **圖示換成你提供的圓形圖**：放在 `app/src/main/res/drawable-nodpi/ic_launcher.png`（512×512，圓形以外是透明）。之前畫的向量圖示已移除。**想換圖示，只要替換這個 PNG（同樣的檔名）**，建議用正方形、圓形貼滿畫面的圖，手錶桌面會裁成圓形。
 - **啟動動畫改版**（設定頁「開啟動畫」開關仍在，預設開）：
   - 圖示從 80% 放大到 100% 並淡入，外圈有呼吸光圈；下方依序淡入應用名稱、版本、作者與簽章指紋。總長約 3 秒。
@@ -116,6 +123,24 @@
    - `app-release.apk`：開啟較快，**建議使用這個**。
    - `app-debug.apk`：備用。
 5. 如果出現紅色叉叉（編譯失敗），點進去把紅色的錯誤訊息複製下來，貼給 Claude 協助修正。
+
+### 自動發布 Release（選用）
+
+推送 `v` 開頭的標籤時，編譯完成後會自動在倉庫的 **Releases** 建立發布並附上 APK，不用再手動下載、上傳。平常 push 只編譯，不發布。
+
+```
+git tag v1.8.1
+git push origin v1.8.1
+```
+
+- 標籤要和 `app/build.gradle.kts` 的 `versionName` 一致：`versionName = "1.8.1"` 就要打 `v1.8.1`。**不一致會直接失敗**，並說明原因。
+- 必須已經設定好固定簽章（見下方〈固定簽章〉的四個 Secrets）。沒設定就**不會發布**並失敗，避免發布出簽章不對的 APK。
+- 附上的檔案是 `ArcheryAssistant-v版本號.apk`（只放 release 版），更新說明自動由 commit 產生。
+- 同一個標籤重跑時，會覆蓋已存在的 Release 裡的同名檔案。
+- 標籤打錯想刪掉：`git tag -d v1.8.1`，再 `git push origin :refs/tags/v1.8.1`；到 Releases 頁手動刪除已建立的發布。
+- 編譯超過 20 分鐘會自動失敗，不用手動取消。
+- 倉庫如果是公開的，Release 的 APK 任何人都能下載；金鑰和 Secrets 不會跟著發布。
+- 我無法在雲端環境真的跑一次 GitHub Actions，所以第一次打標籤後，請確認 Actions 成功、Releases 有出現；失敗的話把紅色日誌貼給 Claude。
 
 ## 安裝到手錶（adb）
 

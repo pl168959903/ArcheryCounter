@@ -2,13 +2,39 @@ name: Build APK
 
 on:
   push:
+    branches: ['**']
+    # 推送 v 開頭的標籤（例如 v1.8.1）時，編譯完成後自動建立 Release 並附上 APK
+    tags: ['v*']
   workflow_dispatch:
+
+# 建立 Release 需要寫入權限
+permissions:
+  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    # 編譯卡住時 20 分鐘後自動失敗，不用手動取消
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+
+      # 標籤版本號必須和 app/build.gradle.kts 的 versionName 一致（標籤 v1.8.1 對應 versionName "1.8.1"），
+      # 不一致就直接失敗，避免標錯版本號
+      - name: Check tag matches versionName
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          APP_VERSION=$(sed -n 's/.*versionName = "\(.*\)".*/\1/p' app/build.gradle.kts | head -n 1)
+          echo "標籤版本：$TAG_VERSION，versionName：$APP_VERSION"
+          if [ -z "$APP_VERSION" ]; then
+            echo "::error::讀不到 app/build.gradle.kts 的 versionName"
+            exit 1
+          fi
+          if [ "$TAG_VERSION" != "$APP_VERSION" ]; then
+            echo "::error::標籤 $GITHUB_REF_NAME 和 versionName $APP_VERSION 不一致。請刪掉這個標籤，改成 v$APP_VERSION，或先修改 versionName。"
+            exit 1
+          fi
 
       - uses: actions/setup-java@v4
         with:
@@ -32,6 +58,15 @@ jobs:
             echo "沒有設定 KEYSTORE_BASE64，使用 debug 金鑰（每次編譯的簽章都不同）"
           fi
 
+      # 發布 Release 時一定要用固定金鑰，否則使用者之後更新會遇到簽章不符（INSTALL_FAILED_UPDATE_INCOMPATIBLE）
+      - name: Require fixed signing key for release
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          if [ -z "$KEYSTORE_FILE" ]; then
+            echo "::error::沒有設定固定簽章金鑰（Secrets 裡缺 KEYSTORE_BASE64），不發布 Release。請先設定四個 Secrets，再重新打標籤。"
+            exit 1
+          fi
+
       # 同時編譯 release（較快，建議使用）和 debug（備用）
       - name: Build APKs
         env:
@@ -46,3 +81,20 @@ jobs:
           path: |
             app/build/outputs/apk/release/app-release.apk
             app/build/outputs/apk/debug/app-debug.apk
+
+      # 只有推送 v 開頭的標籤時才發布。只附 release 版，檔名帶版本號。
+      # 同一個標籤重跑時，會覆蓋已存在的 Release 裡的同名檔案。
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          FILE="ArcheryAssistant-v${VERSION}.apk"
+          cp app/build/outputs/apk/release/app-release.apk "$FILE"
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "$FILE" --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" "$FILE" --title "$GITHUB_REF_NAME" --generate-notes
+          fi
+          echo "已發布 $GITHUB_REF_NAME：$FILE"
