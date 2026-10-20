@@ -114,7 +114,23 @@ private fun AppNav(vm: CounterViewModel) {
             )
         }
         composable(ROUTE_SETTINGS) {
-            SettingsScreen(vm = vm, onOpenCalibration = { nav.navigate(ROUTE_CALIBRATION) })
+            SettingsScreen(
+                vm = vm,
+                category = -1,
+                onOpenCategory = { nav.navigate(SettingsCategories.route(it)) },
+                onOpenCalibration = { nav.navigate(ROUTE_CALIBRATION) },
+            )
+        }
+        // 設定的各個分類頁（settings_0 … settings_7）
+        for (c in 0 until SettingsCategories.COUNT) {
+            composable(SettingsCategories.route(c)) {
+                SettingsScreen(
+                    vm = vm,
+                    category = c,
+                    onOpenCategory = {},
+                    onOpenCalibration = { nav.navigate(ROUTE_CALIBRATION) },
+                )
+            }
         }
         composable(ROUTE_HISTORY) {
             HistoryScreen(
