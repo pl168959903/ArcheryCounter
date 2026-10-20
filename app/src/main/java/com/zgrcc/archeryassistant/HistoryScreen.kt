@@ -36,6 +36,9 @@ fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrend: (
     var manage by remember { mutableStateOf(false) }
     var selected by remember { mutableStateOf(emptySet<String>()) }
     var confirmDelete by remember { mutableStateOf(false) }
+    val entries = remember(sessions, manage, showTrend, matchCompare, groupCompare, overviewOn) {
+        ScreenRules.historyEntries(sessions, manage, showTrend, matchCompare, groupCompare, overviewOn)
+    }
 
     LaunchedEffect(Unit) { vm.refreshSessions() }
 
@@ -112,7 +115,7 @@ fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrend: (
                     )
                 }
             }
-        } else if (showTrend && sessions.size >= 2) {
+        } else if (entries.trend) {
             item {
                 Chip(
                     onClick = onOpenTrend,
@@ -125,7 +128,7 @@ fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrend: (
         }
 
         val matchCount = sessions.count { !it.calibration && it.comp != null && it.endMs != null }
-        if (!manage && matchCompare && matchCount >= 1) {
+        if (entries.matchCompare) {
             item {
                 Chip(
                     onClick = onOpenMatchCompare,
@@ -137,7 +140,7 @@ fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrend: (
             }
         }
 
-        if (!manage && groupCompare && GroupCompare.groups(sessions).isNotEmpty()) {
+        if (entries.groups) {
             item {
                 Chip(
                     onClick = onOpenGroups,
@@ -148,7 +151,7 @@ fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrend: (
                 )
             }
         }
-        if (!manage && overviewOn && sessions.any { !it.calibration }) {
+        if (entries.overview) {
             item {
                 Chip(
                     onClick = onOpenOverview,

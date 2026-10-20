@@ -125,7 +125,7 @@ private fun ShotContent(vm: CounterViewModel, session: Session, index: Int, shot
         }
 
         // 自評：設定頁開啟，或這一箭已經有自評時才顯示；誤判的箭不用評
-        if ((shotFeel || shot.feel != null) && !shot.cancelled) {
+        if (ScreenRules.showFeelRow(shotFeel, shot)) {
             item { SectionTitle(tr("自評", "Self-rating")) }
             item {
                 FeelRow(shot.feel) { v -> scope.launch { vm.setShotFeel(session.id, index, v) } }

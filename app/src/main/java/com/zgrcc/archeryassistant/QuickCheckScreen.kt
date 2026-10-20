@@ -102,7 +102,7 @@ private fun QuickCheckContent(vm: CounterViewModel, session: Session, isActive: 
             } else if (recordTrace) {
                 item { Note(tr("這一箭沒有 2D 軌跡", "No 2D trace for this shot")) }
             }
-            if (shotFeel && !shot.cancelled) {
+            if (ScreenRules.showFeelRowInQuickCheck(shotFeel, shot)) {
                 item {
                     FeelRow(shot.feel) { v -> scope.launch { vm.setShotFeel(session.id, index, v) } }
                 }

@@ -153,7 +153,7 @@ private fun DetailContent(
         if (matchStars.isNotEmpty()) {
             item { Body(matchStars.joinToString("\n")) }
         }
-        if (session.calibration && calAdvice && session.rawCsv && !isActive && session.endMs != null) {
+        if (ScreenRules.showCalibrationAdvice(calAdvice, session, isActive)) {
             item { CalibrationAdviceBlock(vm, session.id) }
         }
 

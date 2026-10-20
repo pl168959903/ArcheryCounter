@@ -12,8 +12,8 @@ android {
         applicationId = "com.zgrcc.archeryassistant"
         minSdk = 30
         targetSdk = 35
-        versionCode = 22
-        versionName = "1.14.2"
+        versionCode = 23
+        versionName = "1.15"
     }
 
     // 固定簽章：GitHub 編譯時由 Secrets 提供金鑰（見 README），這樣每次編譯出來的 APK 簽章都一樣，
