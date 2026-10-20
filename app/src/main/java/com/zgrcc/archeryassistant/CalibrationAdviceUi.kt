@@ -71,8 +71,8 @@ fun CalibrationAdviceBlock(vm: CounterViewModel, sessionId: String) {
                 CalibKind.OK -> {
                     Body(
                         tr(
-                            "拉弓與走動的動作上限約 ${Fmt.num(a.nonShotCeil, 1)}，正常射擊最小的放箭峰值 ${Fmt.num(a.shotLow, 1)}（共 ${a.shotCount} 箭）",
-                            "Draw and walk movements top out around ${Fmt.num(a.nonShotCeil, 1)}; the smallest release peak while shooting is ${Fmt.num(a.shotLow, 1)} (${a.shotCount} arrows)",
+                            "拉弓與走動的動作上限約 ${Fmt.numOrDash(a.nonShotCeil, 1)}，正常射擊最小的放箭峰值 ${Fmt.numOrDash(a.shotLow, 1)}（共 ${a.shotCount} 箭）",
+                            "Draw and walk movements top out around ${Fmt.numOrDash(a.nonShotCeil, 1)}; the smallest release peak while shooting is ${Fmt.numOrDash(a.shotLow, 1)} (${a.shotCount} arrows)",
                         )
                     )
                     val th = a.threshold
