@@ -385,7 +385,7 @@ internal object SessionJson {
                 when (next()) {
                     ',' -> continue
                     '}' -> return map
-                    else -> fail("物件格式错误")
+                    else -> fail("物件格式錯誤")
                 }
             }
         }
@@ -404,7 +404,7 @@ internal object SessionJson {
                 when (next()) {
                     ',' -> continue
                     ']' -> return list
-                    else -> fail("数组格式错误")
+                    else -> fail("陣列格式錯誤")
                 }
             }
         }
@@ -431,7 +431,7 @@ internal object SessionJson {
                                 sb.append(s.substring(i, i + 4).toInt(16).toChar())
                                 i += 4
                             }
-                            else -> fail("不认识的转义")
+                            else -> fail("不認識的跳脫字元")
                         }
                     }
                     else -> sb.append(c)
@@ -442,7 +442,7 @@ internal object SessionJson {
         private fun parseNumber(): Double {
             val start = i
             while (i < s.length && s[i] in "+-0123456789.eE") i++
-            if (start == i) fail("预期是数字")
+            if (start == i) fail("預期是數字")
             return s.substring(start, i).toDouble()
         }
 

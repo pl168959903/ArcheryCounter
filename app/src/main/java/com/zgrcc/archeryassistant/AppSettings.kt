@@ -303,7 +303,7 @@ class AppSettings(private val prefs: SharedPreferences) {
     }
 
     private val _soundStyle = MutableStateFlow(prefs.getInt(KEY_SOUND_STYLE, MatchSound.DEFAULT_STYLE).coerceIn(0, MatchSound.STYLE_COUNT - 1))
-    /** 比賽聲音音色。預設：哔声 */
+    /** 比賽聲音音色。預設：嗶聲 */
     val soundStyle: StateFlow<Int> = _soundStyle.asStateFlow()
 
     fun setSoundStyle(v: Int) {

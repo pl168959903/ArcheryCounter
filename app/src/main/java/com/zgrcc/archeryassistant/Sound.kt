@@ -26,7 +26,7 @@ object MatchSound {
     fun styleLabel(style: Int): String = when (style) {
         1 -> tr("短促", "Short")
         2 -> tr("高音", "High")
-        else -> tr("哔声", "Beep")
+        else -> tr("嗶聲", "Beep")
     }
 
     /** 各事件的聲音：幾聲、每聲多長。 */
