@@ -20,10 +20,11 @@ import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
 
 @Composable
-fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrend: () -> Unit) {
+fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrend: () -> Unit, onOpenMatchCompare: () -> Unit) {
     val sessions by vm.sessions.collectAsStateWithLifecycle()
     val activeId by vm.activeSessionId.collectAsStateWithLifecycle()
     val showTrend by vm.settings.showSessionTrend.collectAsStateWithLifecycle()
+    val matchCompare by vm.settings.matchCompare.collectAsStateWithLifecycle()
 
     var confirmClear by remember { mutableStateOf(false) }
 
@@ -113,6 +114,19 @@ fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrend: (
                     onClick = onOpenTrend,
                     label = { Text(tr("跨次趨勢", "Trend across sessions"), maxLines = 1) },
                     secondaryLabel = { Text(tr("最近 ${minOf(sessions.size, 20)} 次的晃動量", "Shake over the last ${minOf(sessions.size, 20)} sessions"), maxLines = 1) },
+                    colors = ChipDefaults.secondaryChipColors(),
+                    modifier = Modifier.fillMaxWidth(0.9f),
+                )
+            }
+        }
+
+        val matchCount = sessions.count { !it.calibration && it.comp != null && it.endMs != null }
+        if (!manage && matchCompare && matchCount >= 1) {
+            item {
+                Chip(
+                    onClick = onOpenMatchCompare,
+                    label = { Text(tr("比賽對比", "Match comparison"), maxLines = 1) },
+                    secondaryLabel = { Text(tr("$matchCount 場比賽", "$matchCount matches"), maxLines = 1) },
                     colors = ChipDefaults.secondaryChipColors(),
                     modifier = Modifier.fillMaxWidth(0.9f),
                 )

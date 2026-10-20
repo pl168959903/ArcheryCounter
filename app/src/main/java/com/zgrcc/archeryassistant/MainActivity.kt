@@ -3,12 +3,14 @@ package com.zgrcc.archeryassistant
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import android.content.Intent
 import android.os.Bundle
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -25,9 +27,26 @@ import androidx.wear.compose.navigation.composable
 import androidx.wear.compose.navigation.rememberSwipeDismissableNavController
 
 class MainActivity : ComponentActivity() {
+    /** 磁貼帶來的啟動動作（見 [TileInfo]）；處理完設回 null */
+    private var launchAction by mutableStateOf<String?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { ArcheryApp() }
+        // 只在全新啟動時認磁貼參數，轉螢幕、被系統重建時不要再觸發一次
+        if (savedInstanceState == null) takeLaunch(intent)
+        setContent { ArcheryApp(launch = launchAction, onLaunchHandled = { launchAction = null }) }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        takeLaunch(intent)
+    }
+
+    private fun takeLaunch(intent: Intent?) {
+        val value = TileInfo.parse(intent?.getStringExtra(TileInfo.EXTRA_LAUNCH))
+        intent?.removeExtra(TileInfo.EXTRA_LAUNCH)
+        if (value != null) launchAction = value
     }
 }
 
@@ -39,9 +58,11 @@ private const val ROUTE_SHOT = "shot"
 private const val ROUTE_TREND = "trend"
 private const val ROUTE_CALIBRATION = "calibration"
 private const val ROUTE_COMPETITION = "competition"
+private const val ROUTE_MATCH_COMPARE = "match_compare"
+private const val ROUTE_QUICK_CHECK = "quick_check"
 
 @Composable
-fun ArcheryApp(vm: CounterViewModel = viewModel()) {
+fun ArcheryApp(vm: CounterViewModel = viewModel(), launch: String? = null, onLaunchHandled: () -> Unit = {}) {
     // 只要應用開著就保持亮屏（可在設定頁關閉），不論有沒有在偵測
     val keepScreenOnSetting by vm.settings.keepScreenOn.collectAsStateWithLifecycle()
     val compState by vm.comp.collectAsStateWithLifecycle()
@@ -95,15 +116,31 @@ fun ArcheryApp(vm: CounterViewModel = viewModel()) {
                     onDone = { showSplash = false },
                 )
             } else {
-                AppNav(vm)
+                AppNav(vm, launch, onLaunchHandled)
             }
         }
     }
 }
 
 @Composable
-private fun AppNav(vm: CounterViewModel) {
+private fun AppNav(vm: CounterViewModel, launch: String?, onLaunchHandled: () -> Unit) {
     val nav = rememberSwipeDismissableNavController()
+
+    // 從磁貼進來：依「磁貼快捷啟動」設定直接開始偵測或比賽；沒在偵測才會動作，處理完就清掉
+    LaunchedEffect(launch) {
+        if (launch != null) {
+            if (vm.settings.tileLaunch.value && !vm.running.value) {
+                when (launch) {
+                    TileInfo.LAUNCH_DETECT -> vm.start()
+                    TileInfo.LAUNCH_MATCH -> {
+                        vm.startCompetition()
+                        if (vm.running.value) nav.navigate(ROUTE_COMPETITION)
+                    }
+                }
+            }
+            onLaunchHandled()
+        }
+    }
     SwipeDismissableNavHost(navController = nav, startDestination = ROUTE_MAIN) {
         composable(ROUTE_MAIN) {
             MainScreen(
@@ -140,6 +177,7 @@ private fun AppNav(vm: CounterViewModel) {
                     nav.navigate(ROUTE_DETAIL)
                 },
                 onOpenTrend = { nav.navigate(ROUTE_TREND) },
+                onOpenMatchCompare = { nav.navigate(ROUTE_MATCH_COMPARE) },
             )
         }
         composable(ROUTE_DETAIL) {
@@ -150,10 +188,23 @@ private fun AppNav(vm: CounterViewModel) {
                     nav.navigate(ROUTE_SHOT)
                 },
                 onDeleted = { nav.popBackStack() },
+                onOpenQuickCheck = { nav.navigate(ROUTE_QUICK_CHECK) },
             )
         }
         composable(ROUTE_SHOT) {
             ShotScreen(vm = vm)
+        }
+        composable(ROUTE_MATCH_COMPARE) {
+            MatchCompareScreen(
+                vm = vm,
+                onOpen = { id ->
+                    vm.selectSession(id)
+                    nav.navigate(ROUTE_DETAIL)
+                },
+            )
+        }
+        composable(ROUTE_QUICK_CHECK) {
+            QuickCheckScreen(vm = vm)
         }
         composable(ROUTE_TREND) {
             TrendScreen(vm = vm)

@@ -59,7 +59,7 @@ private fun buildTimeline(s: Session): List<TimelineRow> {
 }
 
 @Composable
-fun DetailScreen(vm: CounterViewModel, onOpenShot: (Int) -> Unit, onDeleted: () -> Unit) {
+fun DetailScreen(vm: CounterViewModel, onOpenShot: (Int) -> Unit, onDeleted: () -> Unit, onOpenQuickCheck: () -> Unit) {
     val id by vm.selectedId.collectAsStateWithLifecycle()
     val activeId by vm.activeSessionId.collectAsStateWithLifecycle()
     val sessions by vm.sessions.collectAsStateWithLifecycle()
@@ -87,6 +87,7 @@ fun DetailScreen(vm: CounterViewModel, onOpenShot: (Int) -> Unit, onDeleted: () 
             session = l.session,
             isActive = l.session.id == activeId,
             onOpenShot = onOpenShot,
+            onOpenQuickCheck = onOpenQuickCheck,
             onDelete = {
                 vm.deleteSession(l.session.id)
                 onDeleted()
@@ -101,10 +102,12 @@ private fun DetailContent(
     session: Session,
     isActive: Boolean,
     onOpenShot: (Int) -> Unit,
+    onOpenQuickCheck: () -> Unit,
     onDelete: () -> Unit,
 ) {
     val showTrend by vm.settings.showTrendChart.collectAsStateWithLifecycle()
     val showEnds by vm.settings.showEnds.collectAsStateWithLifecycle()
+    val quickCheck by vm.settings.quickCheck.collectAsStateWithLifecycle()
     val arrowsPerEnd by vm.settings.arrowsPerEnd.collectAsStateWithLifecycle()
     val stats = remember(session) { computeStats(session) }
     val timeline = remember(session) { buildTimeline(session) }
@@ -225,6 +228,17 @@ private fun DetailContent(
             item { Note(tr("這次沒有偵測到放箭", "No release detected this time")) }
         } else {
             item { Note(tr("點一箭可看波形，也可以標記為誤判", "Tap a shot to see its waveform or mark it as a false detection")) }
+            if (quickCheck && !isActive && !session.calibration) {
+                item {
+                    Chip(
+                        onClick = onOpenQuickCheck,
+                        label = { Text(tr("快速檢查", "Quick check"), maxLines = 1) },
+                        secondaryLabel = { Text(tr("逐箭滑動，一鍵標記誤判", "Step through shots, one-tap marking"), maxLines = 2) },
+                        colors = ChipDefaults.primaryChipColors(),
+                        modifier = Modifier.fillMaxWidth(0.9f),
+                    )
+                }
+            }
         }
         timeline.forEach { row ->
             item {

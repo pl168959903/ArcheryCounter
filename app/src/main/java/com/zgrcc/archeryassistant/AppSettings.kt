@@ -352,6 +352,42 @@ class AppSettings(private val prefs: SharedPreferences) {
         prefs.edit().putBoolean(KEY_SOUND_END, value).apply()
     }
 
+    private val _matchCompare = MutableStateFlow(prefs.getBoolean(KEY_MATCH_COMPARE, true))
+    /** 記錄頁顯示「比賽對比」入口。預設：開 */
+    val matchCompare: StateFlow<Boolean> = _matchCompare.asStateFlow()
+
+    fun setMatchCompare(v: Boolean) {
+        _matchCompare.value = v
+        prefs.edit().putBoolean(KEY_MATCH_COMPARE, v).apply()
+    }
+
+    private val _sensitivityAdvice = MutableStateFlow(prefs.getBoolean(KEY_SENSITIVITY_ADVICE, true))
+    /** 閾值建議裡同時顯示「靜止條件」與「冷卻」的建議。預設：開 */
+    val sensitivityAdvice: StateFlow<Boolean> = _sensitivityAdvice.asStateFlow()
+
+    fun setSensitivityAdvice(v: Boolean) {
+        _sensitivityAdvice.value = v
+        prefs.edit().putBoolean(KEY_SENSITIVITY_ADVICE, v).apply()
+    }
+
+    private val _quickCheck = MutableStateFlow(prefs.getBoolean(KEY_QUICK_CHECK, true))
+    /** 記錄詳情顯示「快速檢查」入口（逐箭滑動、一鍵標記誤判）。預設：開 */
+    val quickCheck: StateFlow<Boolean> = _quickCheck.asStateFlow()
+
+    fun setQuickCheck(v: Boolean) {
+        _quickCheck.value = v
+        prefs.edit().putBoolean(KEY_QUICK_CHECK, v).apply()
+    }
+
+    private val _tileLaunch = MutableStateFlow(prefs.getBoolean(KEY_TILE_LAUNCH, true))
+    /** 從磁貼的按鈕進入時直接開始偵測／比賽；關閉時磁貼只會打開應用。預設：開 */
+    val tileLaunch: StateFlow<Boolean> = _tileLaunch.asStateFlow()
+
+    fun setTileLaunch(v: Boolean) {
+        _tileLaunch.value = v
+        prefs.edit().putBoolean(KEY_TILE_LAUNCH, v).apply()
+    }
+
     private val _compScoreEntry = MutableStateFlow(prefs.getBoolean(KEY_COMP_SCORE_ENTRY, true))
     /** 比賽休息時可輸入該趟各箭環數。預設：開 */
     val compScoreEntry: StateFlow<Boolean> = _compScoreEntry.asStateFlow()
@@ -592,6 +628,10 @@ class AppSettings(private val prefs: SharedPreferences) {
         setSoundWarn(true)
         setSoundEnd(true)
         setCompScoreEntry(true)
+        setMatchCompare(true)
+        setSensitivityAdvice(true)
+        setQuickCheck(true)
+        setTileLaunch(true)
         setCompArrowTimer(false)
         setCompArrowSec(CompLimits.DEFAULT_ARROW_SEC)
     }
@@ -636,6 +676,10 @@ class AppSettings(private val prefs: SharedPreferences) {
         private const val KEY_SOUND_WARN = "sound_warn"
         private const val KEY_SOUND_END = "sound_end"
         private const val KEY_COMP_SCORE_ENTRY = "comp_score_entry"
+        private const val KEY_MATCH_COMPARE = "match_compare"
+        private const val KEY_SENSITIVITY_ADVICE = "sensitivity_advice"
+        private const val KEY_QUICK_CHECK = "quick_check"
+        private const val KEY_TILE_LAUNCH = "tile_launch"
         private const val KEY_COMP_ARROW_TIMER = "comp_arrow_timer"
         private const val KEY_COMP_ARROW_SEC = "comp_arrow_sec"
         private const val KEY_COMP_SAVED = "comp_saved"

@@ -86,6 +86,10 @@ fun SettingsScreen(
     val savedFormats = SavedFormats.decode(compSavedText)
     var confirmDeleteFormat by remember { mutableStateOf(false) }
     val compColors by s.compColors.collectAsStateWithLifecycle()
+    val matchCompare by s.matchCompare.collectAsStateWithLifecycle()
+    val sensitivityAdvice by s.sensitivityAdvice.collectAsStateWithLifecycle()
+    val quickCheck by s.quickCheck.collectAsStateWithLifecycle()
+    val tileLaunch by s.tileLaunch.collectAsStateWithLifecycle()
     val soundEnabled by s.soundEnabled.collectAsStateWithLifecycle()
     val soundVolume by s.soundVolume.collectAsStateWithLifecycle()
     val soundStyle by s.soundStyle.collectAsStateWithLifecycle()
@@ -103,6 +107,8 @@ fun SettingsScreen(
     // 阈值建议：按下才計算；套用後顯示已套用
     var showAdvice by remember { mutableStateOf(false) }
     var adviceApplied by remember { mutableStateOf(false) }
+    var stillApplied by remember { mutableStateOf(false) }
+    var cooldownApplied by remember { mutableStateOf(false) }
 
     // 儲存空間：按下才查；刪除原始資料要再確認一次
     var usage by remember { mutableStateOf<StorageUsage?>(null) }
@@ -146,6 +152,9 @@ fun SettingsScreen(
 
                 item { ToggleChip(tr("低電量提醒", "Low battery alert"), lowBattery) { s.setLowBattery(it) } }
                 item { Note(tr("偵測中電量低於 15% 時震動一次，主畫面顯示「電量低」，只提醒不會自己動作。立即生效", "Vibrates once when the battery drops below 15% while detecting and shows Battery low on the main screen. Only a reminder. Takes effect immediately")) }
+
+                item { ToggleChip(tr("磁貼快捷啟動", "Tile quick start"), tileLaunch) { s.setTileLaunch(it) } }
+                item { Note(tr("在手錶的磁貼列表加入「射箭助手」磁貼後，可直接從磁貼開始偵測或開始比賽。關閉時點磁貼只會打開應用。立即生效", "After adding the Archery Assistant tile to your watch, you can start detection or a match straight from it. When off, tapping the tile only opens the app. Takes effect immediately")) }
 
                 item { ToggleChip(tr("開啟動畫", "Startup animation"), splash) { s.setSplash(it) } }
                 item { Note(tr("開啟應用時先播放約 3 秒的動畫（圖示放大，並顯示版本、作者與簽章）。下次開啟應用時生效", "Plays a short animation when the app opens (icon, version, author and signature). Takes effect next launch")) }
@@ -230,11 +239,16 @@ fun SettingsScreen(
                     item { Note(tr("超過這麼久沒有放箭就暫停（5～30 分鐘）。中間休息比較久的話請調長", "Pause after this long without an arrow (5-30 min). Use a longer time if you rest for long")) }
                 }
 
+                item { ToggleChip(tr("靈敏度建議", "Sensitivity advice"), sensitivityAdvice) { s.setSensitivityAdvice(it) } }
+                item { Note(tr("開啟後，下方「閾值建議」也會一併給「靜止」和「冷卻」的建議（需要標記過誤判的記錄）。只建議，由你決定要不要套用。立即生效", "When on, Threshold advice below also covers Still and Cooldown (needs records with marked false detections). Advice only; you decide whether to apply. Takes effect immediately")) }
+
                 item {
                     Chip(
                         onClick = {
                             showAdvice = !showAdvice
                             adviceApplied = false
+                            stillApplied = false
+                            cooldownApplied = false
                         },
                         label = { Text(tr("閾值建議", "Threshold advice"), maxLines = 1) },
                         secondaryLabel = { Text(tr("目前閾值 ${threshold.toInt()}", "Current threshold ${threshold.toInt()}"), maxLines = 1) },
@@ -275,6 +289,65 @@ fun SettingsScreen(
                         }
                     }
                     item { Note(tr("只能建議調高來減少誤判；漏判（該算卻沒算到）看不出來，沒辦法建議調低。校準錄製不參與", "It can only suggest raising the threshold to cut false detections; missed arrows cannot be seen, so it never suggests lowering. Calibration is excluded")) }
+
+                    if (sensitivityAdvice) {
+                        val still = adviseStill(sessions, stillThreshold)
+                        item { SectionTitle(tr("靜止條件", "Still")) }
+                        item {
+                            Body(
+                                when (still.kind) {
+                                    AdviceKind.NOT_ENOUGH ->
+                                        tr("資料還不夠。有放箭前晃動量的有效箭 ${still.validCount} 筆、誤判 ${still.cancelledCount} 筆，至少要 $ADVICE_MIN_VALID 與 $ADVICE_MIN_CANCELLED 筆", "Not enough data. ${still.validCount} valid and ${still.cancelledCount} false detections with shake data; need at least $ADVICE_MIN_VALID and $ADVICE_MIN_CANCELLED")
+                                    AdviceKind.SUGGEST ->
+                                        tr("建議靜止 ${still.suggested}（目前 $stillThreshold）：可擋掉約 ${(still.cancelledExcluded * 100).toInt()}% 的誤判，保留約 ${(still.validKept * 100).toInt()}% 的有效箭", "Suggested Still ${still.suggested} (now $stillThreshold): blocks about ${(still.cancelledExcluded * 100).toInt()}% of false detections, keeps about ${(still.validKept * 100).toInt()}% of valid arrows")
+                                    AdviceKind.NOT_SEPARABLE ->
+                                        tr("誤判和有效的放箭前晃動量混在一起，調靜止條件幫不上", "False and valid arrows shake alike before release, so Still cannot help")
+                                }
+                            )
+                        }
+                        if (still.kind == AdviceKind.SUGGEST && still.suggested != null) {
+                            item {
+                                Chip(
+                                    onClick = {
+                                        s.setStillThreshold(still.suggested)
+                                        stillApplied = true
+                                    },
+                                    label = { Text(if (stillApplied) tr("已套用 ${still.suggested}", "Applied ${still.suggested}") else tr("套用 ${still.suggested}", "Apply ${still.suggested}"), maxLines = 1) },
+                                    colors = if (stillApplied) ChipDefaults.secondaryChipColors() else ChipDefaults.primaryChipColors(),
+                                    modifier = Modifier.fillMaxWidth(0.9f),
+                                )
+                            }
+                        }
+
+                        val cool = adviseCooldown(sessions, cooldownSec)
+                        item { SectionTitle(tr("冷卻", "Cooldown")) }
+                        item {
+                            Body(
+                                when (cool.kind) {
+                                    AdviceKind.NOT_ENOUGH ->
+                                        tr("資料還不夠。相鄰有效箭間隔 ${cool.validCount} 筆、誤判 ${cool.cancelledCount} 筆，至少要 $ADVICE_MIN_VALID 與 $ADVICE_MIN_CANCELLED 筆", "Not enough data. ${cool.validCount} valid-arrow gaps and ${cool.cancelledCount} false detections; need at least $ADVICE_MIN_VALID and $ADVICE_MIN_CANCELLED")
+                                    AdviceKind.SUGGEST ->
+                                        tr("建議冷卻 ${cool.suggested} 秒（目前 $cooldownSec 秒）：可擋掉約 ${(cool.cancelledExcluded * 100).toInt()}% 離前一筆太近的誤判，不影響約 ${(cool.validKept * 100).toInt()}% 的連續兩箭", "Suggested Cooldown ${cool.suggested} s (now $cooldownSec s): blocks about ${(cool.cancelledExcluded * 100).toInt()}% of false detections too close to the previous one, without affecting about ${(cool.validKept * 100).toInt()}% of back-to-back arrows")
+                                    AdviceKind.NOT_SEPARABLE ->
+                                        tr("誤判不是離前一筆太近造成的，調冷卻幫不上", "False detections are not caused by being too close to the previous one, so Cooldown cannot help")
+                                }
+                            )
+                        }
+                        if (cool.kind == AdviceKind.SUGGEST && cool.suggested != null) {
+                            item {
+                                Chip(
+                                    onClick = {
+                                        s.setCooldownSec(cool.suggested)
+                                        cooldownApplied = true
+                                    },
+                                    label = { Text(if (cooldownApplied) tr("已套用 ${cool.suggested} 秒", "Applied ${cool.suggested} s") else tr("套用 ${cool.suggested} 秒", "Apply ${cool.suggested} s"), maxLines = 1) },
+                                    colors = if (cooldownApplied) ChipDefaults.secondaryChipColors() else ChipDefaults.primaryChipColors(),
+                                    modifier = Modifier.fillMaxWidth(0.9f),
+                                )
+                            }
+                        }
+                        item { Note(tr("靜止的晃動量是整個分析視窗的值，和即時的靜止判斷不完全相同，僅供參考。兩項都只會建議更嚴格（靜止調小、冷卻調長）", "Shake is measured over the whole analysis window, not the instant check, so treat it as a rough guide. Both only suggest stricter settings (lower Still, longer Cooldown)")) }
+                    }
                 }
 
 
@@ -292,6 +365,9 @@ fun SettingsScreen(
             }
 
             if (category == 2) {
+                item { ToggleChip(tr("快速檢查", "Quick check"), quickCheck) { s.setQuickCheck(it) } }
+                item { Note(tr("記錄詳情多一個「快速檢查」，逐箭滑動看波形，一鍵標記誤判或恢復。只影響顯示，立即生效", "Adds Quick check to record details: step through shots with waveforms and mark or restore false detections in one tap. Display only. Takes effect immediately")) }
+
                 item { ToggleChip(tr("錄製原始資料", "Record raw data"), recordRaw) { s.setRecordRaw(it) } }
                 item { Note(tr("每次記錄另存一份 CSV（加速度與角速度）。每 30 分鐘約 10 MB 以上，從下一次記錄開始", "Saves a CSV of accel and gyro for each record. 10 MB or more per 30 min. Starts with the next record")) }
 
@@ -565,6 +641,9 @@ fun SettingsScreen(
 
                 item { ToggleChip(tr("跨次趨勢", "Trend across sessions"), showSessionTrend) { s.setShowSessionTrend(it) } }
                 item { Note(tr("記錄列表顯示每次的平均晃動量，並提供最近 20 次的趨勢圖。只影響顯示，立即生效", "Shows each session's average shake in the list and a trend chart of the last 20. Display only. Takes effect immediately")) }
+
+                item { ToggleChip(tr("比賽對比", "Match comparison"), matchCompare) { s.setMatchCompare(it) } }
+                item { Note(tr("記錄列表多一個「比賽對比」，把比賽紀錄的日期、總環數、平均晃動、時間到的趟數放在一起比，並畫趨勢圖。只影響顯示，立即生效", "Adds Match comparison to the records list: date, total score, average shake and timed-out ends side by side, with trend charts. Display only. Takes effect immediately")) }
 
                 item { ToggleChip(tr("即時波形", "Live waveform"), liveWaveform) { s.setLiveWaveform(it) } }
                 item { Note(tr("偵測中在主畫面顯示即時加速度波形。只影響顯示，但最耗電，立即生效", "Shows a live accel waveform on the main screen while detecting. Display only, but uses the most battery. Takes effect immediately")) }
