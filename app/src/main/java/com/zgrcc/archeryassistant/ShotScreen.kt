@@ -65,6 +65,7 @@ private fun ShotContent(vm: CounterViewModel, session: Session, index: Int, shot
     val scope = rememberCoroutineScope()
     val recordScore by vm.settings.recordScore.collectAsStateWithLifecycle()
     val recordTrace by vm.settings.recordTrace.collectAsStateWithLifecycle()
+    val discSize by vm.settings.discSize.collectAsStateWithLifecycle()
 
     // 有效的第幾箭（不含誤判）
     val validNo = if (shot.cancelled) 0 else session.shots.take(index + 1).count { !it.cancelled }
@@ -116,7 +117,7 @@ private fun ShotContent(vm: CounterViewModel, session: Session, index: Int, shot
             item { SectionTitle(tr("2D 軌跡", "2D trace")) }
             val trace = shot.trace
             if (trace != null) {
-                item { ShotTrace(trace) }
+                item { ShotTrace(trace, DiscSize.dp(discSize)) }
             } else {
                 item { Note(tr("這一箭沒有 2D 軌跡：記錄時「單箭 2D 軌跡」是關閉的，或當時資料不足", "No 2D trace for this shot: Per-shot 2D trace was off, or there was not enough data")) }
             }

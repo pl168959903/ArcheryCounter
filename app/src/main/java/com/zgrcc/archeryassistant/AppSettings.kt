@@ -352,6 +352,25 @@ class AppSettings(private val prefs: SharedPreferences) {
         prefs.edit().putBoolean(KEY_SOUND_END, value).apply()
     }
 
+    private val _discSize = MutableStateFlow(DiscSize.valid(prefs.getInt(KEY_DISC_SIZE, DiscSize.DEFAULT)))
+    /** 圓盤大小（0 小、1 中、2 大）。預設：大 */
+    val discSize: StateFlow<Int> = _discSize.asStateFlow()
+
+    fun setDiscSize(v: Int) {
+        val value = DiscSize.valid(v)
+        _discSize.value = value
+        prefs.edit().putInt(KEY_DISC_SIZE, value).apply()
+    }
+
+    private val _discFullscreen = MutableStateFlow(prefs.getBoolean(KEY_DISC_FULLSCREEN, true))
+    /** 點一下主畫面的即時圓盤，放大成全屏。預設：開 */
+    val discFullscreen: StateFlow<Boolean> = _discFullscreen.asStateFlow()
+
+    fun setDiscFullscreen(v: Boolean) {
+        _discFullscreen.value = v
+        prefs.edit().putBoolean(KEY_DISC_FULLSCREEN, v).apply()
+    }
+
     private val _live2d = MutableStateFlow(prefs.getBoolean(KEY_LIVE_2D, false))
     /** 偵測中主畫面顯示即時晃動圓盤（取代即時波形）。預設：關 */
     val live2d: StateFlow<Boolean> = _live2d.asStateFlow()
@@ -667,6 +686,8 @@ class AppSettings(private val prefs: SharedPreferences) {
         setMatchCompare(true)
         setChipKinds(true)
         setLive2d(false)
+        setDiscSize(DiscSize.DEFAULT)
+        setDiscFullscreen(true)
         setRecordTrace(false)
         setTraceGyro(false)
         setSensitivityAdvice(true)
@@ -719,6 +740,8 @@ class AppSettings(private val prefs: SharedPreferences) {
         private const val KEY_MATCH_COMPARE = "match_compare"
         private const val KEY_CHIP_KINDS = "chip_kinds"
         private const val KEY_LIVE_2D = "live_2d"
+        private const val KEY_DISC_SIZE = "disc_size"
+        private const val KEY_DISC_FULLSCREEN = "disc_fullscreen"
         private const val KEY_RECORD_TRACE = "record_trace"
         private const val KEY_TRACE_GYRO = "trace_gyro"
         private const val KEY_SENSITIVITY_ADVICE = "sensitivity_advice"

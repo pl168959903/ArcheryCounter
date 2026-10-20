@@ -89,6 +89,8 @@ fun SettingsScreen(
     val matchCompare by s.matchCompare.collectAsStateWithLifecycle()
     val chipKinds by s.chipKinds.collectAsStateWithLifecycle()
     val live2d by s.live2d.collectAsStateWithLifecycle()
+    val discSize by s.discSize.collectAsStateWithLifecycle()
+    val discFullscreen by s.discFullscreen.collectAsStateWithLifecycle()
     val recordTrace by s.recordTrace.collectAsStateWithLifecycle()
     val traceGyro by s.traceGyro.collectAsStateWithLifecycle()
     val sensitivityAdvice by s.sensitivityAdvice.collectAsStateWithLifecycle()
@@ -665,6 +667,20 @@ fun SettingsScreen(
                     )
                 }
                 item { Note(tr("即時圓盤和單箭 2D 軌跡用的數據：加速度看手腕晃動，角速度看瞄準的轉動（需要陀螺儀）。單箭軌跡只對切換之後的新記錄生效，舊記錄維持原來的類型", "Data used by the live disc and the per-shot 2D trace: accel shows wrist shake, gyro shows aim rotation (needs a gyroscope). Per-shot traces follow the setting at the time of recording; old records keep their type")) }
+
+                item {
+                    Chip(
+                        onClick = { s.setDiscSize(DiscSize.next(discSize)) },
+                        label = { Text(tr("圓盤大小", "Disc size"), maxLines = 1) },
+                        secondaryLabel = { Text("${DiscSize.label(discSize)}（${DiscSize.dp(discSize)} dp）", maxLines = 1) },
+                        colors = kindColors(ChipKind.NORMAL, ChipDefaults.primaryChipColors()),
+                        modifier = Modifier.fillMaxWidth(0.9f),
+                    )
+                }
+                item { Note(tr("即時圓盤、單箭頁和快速檢查裡的圓盤大小：小 100、中 130、大 160 dp，預設大。圓盤越大，下面的內容要多滑一點才看得到。立即生效", "Disc size in the live disc, shot page and Quick check: Small 100, Medium 130, Large 160 dp, default Large. A bigger disc means more scrolling to reach what is below. Takes effect immediately")) }
+
+                item { ToggleChip(tr("點圓盤全屏", "Tap disc for full screen"), discFullscreen) { s.setDiscFullscreen(it) } }
+                item { Note(tr("偵測中點一下主畫面的即時圓盤，放大成全屏；再點一下或往右滑返回。偵測照常運行。觸控鎖定時點不到。立即生效", "While detecting, tap the live disc on the main screen to go full screen; tap again or swipe right to return. Detection keeps running. Not tappable while touch-locked. Takes effect immediately")) }
 
                 item { ToggleChip(tr("按鈕分色", "Colored buttons"), chipKinds) { s.setChipKinds(it) } }
                 item { Note(tr("按鈕依用途上色：綠＝開始／確認，藍＝點進去是另一頁（標籤尾巴有 ›），黃＝清單裡的每一項（每筆記錄、每場比賽、每一箭），紅＝刪除或結束，灰＝一般操作。關閉則全部維持原本配色。立即生效", "Buttons are colored by purpose: green = start/confirm, blue = opens another page (label ends with ›), yellow = each item in a list (record, match, shot), red = delete or end, gray = ordinary actions. Off keeps the original look. Takes effect immediately")) }

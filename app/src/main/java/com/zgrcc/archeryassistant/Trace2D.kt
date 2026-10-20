@@ -139,3 +139,26 @@ class LiveTrace(private val binMs: Int = 40, private val capacity: Int = 50) {
         const val NO_BIN = Long.MIN_VALUE
     }
 }
+
+/** 圓盤大小（v1.12.1）：0 小、1 中、2 大。 */
+object DiscSize {
+    const val COUNT = 3
+    const val DEFAULT = 2
+
+    fun valid(level: Int): Int = if (level in 0 until COUNT) level else DEFAULT
+
+    /** 圓盤邊長（dp） */
+    fun dp(level: Int): Int = when (valid(level)) {
+        0 -> 100
+        1 -> 130
+        else -> 160
+    }
+
+    fun next(level: Int): Int = (valid(level) + 1) % COUNT
+
+    fun label(level: Int): String = when (valid(level)) {
+        0 -> tr("小", "Small")
+        1 -> tr("中", "Medium")
+        else -> tr("大", "Large")
+    }
+}

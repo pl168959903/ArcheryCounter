@@ -29,6 +29,7 @@ fun MainScreen(
     onOpenHistory: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenCompetition: () -> Unit,
+    onOpenDisc: () -> Unit,
 ) {
     val count by vm.count.collectAsStateWithLifecycle()
     val running by vm.running.collectAsStateWithLifecycle()
@@ -37,6 +38,8 @@ fun MainScreen(
     val liveOn by vm.settings.liveWaveform.collectAsStateWithLifecycle()
     val live2dOn by vm.settings.live2d.collectAsStateWithLifecycle()
     val traceGyro by vm.settings.traceGyro.collectAsStateWithLifecycle()
+    val discSize by vm.settings.discSize.collectAsStateWithLifecycle()
+    val discFullscreen by vm.settings.discFullscreen.collectAsStateWithLifecycle()
     val lockEnabled by vm.settings.touchLock.collectAsStateWithLifecycle()
     val locked by vm.locked.collectAsStateWithLifecycle()
     val calibrating by vm.calibrationActive.collectAsStateWithLifecycle()
@@ -178,7 +181,7 @@ fun MainScreen(
 
         // 即時晃動圓盤（開啟時取代即時波形），或即時波形：只在偵測中、且設定頁開啟時才畫
         if (running && live2dOn) {
-            item { LiveDisc(vm, gyro = traceGyro) }
+            item { LiveDisc(vm, gyro = traceGyro, sizeDp = DiscSize.dp(discSize), onClick = if (discFullscreen) onOpenDisc else null) }
         } else if (running && liveOn) {
             item { LiveWaveform(vm, threshold)}
         }

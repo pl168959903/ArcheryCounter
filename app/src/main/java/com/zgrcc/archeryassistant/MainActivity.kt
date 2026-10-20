@@ -61,6 +61,7 @@ private const val ROUTE_CALIBRATION = "calibration"
 private const val ROUTE_COMPETITION = "competition"
 private const val ROUTE_MATCH_COMPARE = "match_compare"
 private const val ROUTE_QUICK_CHECK = "quick_check"
+private const val ROUTE_DISC = "disc"
 
 @Composable
 fun ArcheryApp(vm: CounterViewModel = viewModel(), launch: String? = null, onLaunchHandled: () -> Unit = {}) {
@@ -153,7 +154,12 @@ private fun AppNav(vm: CounterViewModel, launch: String?, onLaunchHandled: () ->
                 onOpenHistory = { nav.navigate(ROUTE_HISTORY) },
                 onOpenSettings = { nav.navigate(ROUTE_SETTINGS) },
                 onOpenCompetition = { nav.navigate(ROUTE_COMPETITION) },
+                onOpenDisc = { nav.navigate(ROUTE_DISC) },
             )
+        }
+        composable(ROUTE_DISC) {
+            val gyro by vm.settings.traceGyro.collectAsStateWithLifecycle()
+            DiscFullScreen(vm = vm, gyro = gyro, onBack = { nav.popBackStack() })
         }
         composable(ROUTE_SETTINGS) {
             SettingsScreen(

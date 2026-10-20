@@ -153,4 +153,20 @@ class V112Test {
         rec.stop(2_000_000L)
         dir.deleteRecursively()
     }
+
+    // ---------- 圓盤大小（v1.12.1） ----------
+    @Test
+    fun discSizeLevels() {
+        I18n.english = false
+        assertEquals(100, DiscSize.dp(0))
+        assertEquals(130, DiscSize.dp(1))
+        assertEquals(160, DiscSize.dp(2))
+        assertEquals(160, DiscSize.dp(9))              // 不合法回到預設（大）
+        assertEquals(DiscSize.DEFAULT, DiscSize.valid(-1))
+        assertEquals(1, DiscSize.next(0))
+        assertEquals(2, DiscSize.next(1))
+        assertEquals(0, DiscSize.next(2))
+        assertEquals("大", DiscSize.label(2))
+        assertEquals("小", DiscSize.label(0))
+    }
 }
