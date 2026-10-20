@@ -73,6 +73,14 @@ fun SettingsScreen(vm: CounterViewModel, onOpenCalibration: () -> Unit) {
     val compRemind30 by s.compRemind30.collectAsStateWithLifecycle()
     val compRemind10 by s.compRemind10.collectAsStateWithLifecycle()
     val compAutoNext by s.compAutoNext.collectAsStateWithLifecycle()
+    val compColors by s.compColors.collectAsStateWithLifecycle()
+    val soundEnabled by s.soundEnabled.collectAsStateWithLifecycle()
+    val soundVolume by s.soundVolume.collectAsStateWithLifecycle()
+    val soundStyle by s.soundStyle.collectAsStateWithLifecycle()
+    val soundCount by s.soundCount.collectAsStateWithLifecycle()
+    val soundGo by s.soundGo.collectAsStateWithLifecycle()
+    val soundWarn by s.soundWarn.collectAsStateWithLifecycle()
+    val soundEnd by s.soundEnd.collectAsStateWithLifecycle()
     var confirmReset by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) { vm.refreshSessions() }
@@ -414,6 +422,35 @@ fun SettingsScreen(vm: CounterViewModel, onOpenCalibration: () -> Unit) {
                     colors = ChipDefaults.primaryChipColors(),
                     modifier = Modifier.fillMaxWidth(0.9f),
                 )
+            }
+            item { ToggleChip(tr("比賽畫面配色", "Match colors"), compColors) { s.setCompColors(it) } }
+            item { Note(tr("準備階段紅底白字、射擊階段綠底黑字。關閉則維持一般深色畫面。立即生效", "Red background with white text while getting ready; green with black text while shooting. Off keeps the normal dark screen. Takes effect immediately")) }
+            item { ToggleChip(tr("比賽聲音", "Match sounds"), soundEnabled) { s.setSoundEnabled(it) } }
+            item { Note(tr("用手錶喇叭（或已連接的藍牙耳機）播放提示音，和震動各自獨立。沒有喇叭的手錶聽不到；手錶處於勿擾或靜音時可能被系統壓低。立即生效", "Plays tones through the watch speaker (or connected Bluetooth headphones), independent of vibration. Watches without a speaker are silent; Do Not Disturb or silent mode may mute it. Takes effect immediately")) }
+            if (soundEnabled) {
+                item {
+                    Chip(
+                        onClick = { s.setSoundVolume(MatchSound.nextVolume(soundVolume)); vm.previewSound() },
+                        label = { Text(tr("音量", "Volume"), maxLines = 1) },
+                        secondaryLabel = { Text(MatchSound.volumeLabel(soundVolume), maxLines = 1) },
+                        colors = ChipDefaults.primaryChipColors(),
+                        modifier = Modifier.fillMaxWidth(0.9f),
+                    )
+                }
+                item {
+                    Chip(
+                        onClick = { s.setSoundStyle(MatchSound.nextStyle(soundStyle)); vm.previewSound() },
+                        label = { Text(tr("音色", "Tone"), maxLines = 1) },
+                        secondaryLabel = { Text(MatchSound.styleLabel(soundStyle), maxLines = 1) },
+                        colors = ChipDefaults.primaryChipColors(),
+                        modifier = Modifier.fillMaxWidth(0.9f),
+                    )
+                }
+                item { Note(tr("點一下切換音量或音色，並試播兩聲", "Tap to change volume or tone; plays two beeps as a preview")) }
+                item { ToggleChip(tr("倒數最後 3 秒", "Last 3 s of prepare"), soundCount) { s.setSoundCount(it) } }
+                item { ToggleChip(tr("開始射擊", "Shooting starts"), soundGo) { s.setSoundGo(it) } }
+                item { ToggleChip(tr("剩 30／10 秒", "30 s / 10 s left"), soundWarn) { s.setSoundWarn(it) } }
+                item { ToggleChip(tr("時間到／射滿", "Time up / end full"), soundEnd) { s.setSoundEnd(it) } }
             }
             item { Note(tr("取箭休息後如何開始下一趟：手動按鈕，或休息一段時間後自動開始", "How the next end starts after the break: with a button, or automatically after a rest time")) }
         }

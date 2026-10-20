@@ -57,6 +57,8 @@ enum class CompPhase { PREPARE, SHOOTING, REST, DONE }
 enum class CompEvent {
     /** 準備倒數結束，開始射擊 */
     GO,
+    /** 準備倒數最後 3 秒，每秒一次（只用來發出聲音） */
+    COUNT_TICK,
     REMIND_30,
     REMIND_10,
     /** 時間到，這一趟結束 */
@@ -101,6 +103,7 @@ class CompetitionRound(
     private var shootStartMs = 0L
     private var sent30 = false
     private var sent10 = false
+    private var lastTickSec = Int.MAX_VALUE
     private val _results = ArrayList<CompEndResult>()
     val results: List<CompEndResult> get() = _results
 
@@ -119,6 +122,7 @@ class CompetitionRound(
         arrowsInEnd = 0
         sent30 = false
         sent10 = false
+        lastTickSec = Int.MAX_VALUE
         phaseStartMs = nowMs
         return if (prepareSec > 0) {
             phase = CompPhase.PREPARE
@@ -148,6 +152,12 @@ class CompetitionRound(
         when (phase) {
             CompPhase.PREPARE -> {
                 if (nowMs - phaseStartMs >= prepareSec * 1000L) return enterShooting(nowMs)
+                // 最後 3 秒：每個整數秒發一次 COUNT_TICK（3、2、1）
+                val secLeft = ((prepareSec * 1000L - (nowMs - phaseStartMs) + 999L) / 1000L).toInt()
+                if (secLeft in 1..3 && secLeft < lastTickSec) {
+                    lastTickSec = secLeft
+                    return listOf(CompEvent.COUNT_TICK)
+                }
             }
             CompPhase.SHOOTING -> {
                 val total = format.secondsPerEnd * 1000L

@@ -272,6 +272,86 @@ class AppSettings(private val prefs: SharedPreferences) {
         prefs.edit().putInt(KEY_COMP_AUTO_NEXT, value).apply()
     }
 
+    private val _compColors = MutableStateFlow(prefs.getBoolean(KEY_COMP_COLORS, true))
+    /** 比賽畫面配色：準備紅底白字、射擊綠底黑字。預設：開 */
+    val compColors: StateFlow<Boolean> = _compColors.asStateFlow()
+
+    fun setCompColors(v: Boolean) {
+        val value = v
+        _compColors.value = value
+        prefs.edit().putBoolean(KEY_COMP_COLORS, value).apply()
+    }
+
+    private val _soundEnabled = MutableStateFlow(prefs.getBoolean(KEY_SOUND_ENABLED, true))
+    /** 比賽模式聲音總開關。預設：開 */
+    val soundEnabled: StateFlow<Boolean> = _soundEnabled.asStateFlow()
+
+    fun setSoundEnabled(v: Boolean) {
+        val value = v
+        _soundEnabled.value = value
+        prefs.edit().putBoolean(KEY_SOUND_ENABLED, value).apply()
+    }
+
+    private val _soundVolume = MutableStateFlow(prefs.getInt(KEY_SOUND_VOLUME, MatchSound.DEFAULT_VOLUME_INDEX).coerceIn(0, MatchSound.VOLUMES.size - 1))
+    /** 比賽聲音音量檔位。預設：高（75%） */
+    val soundVolume: StateFlow<Int> = _soundVolume.asStateFlow()
+
+    fun setSoundVolume(v: Int) {
+        val value = v.coerceIn(0, MatchSound.VOLUMES.size - 1)
+        _soundVolume.value = value
+        prefs.edit().putInt(KEY_SOUND_VOLUME, value).apply()
+    }
+
+    private val _soundStyle = MutableStateFlow(prefs.getInt(KEY_SOUND_STYLE, MatchSound.DEFAULT_STYLE).coerceIn(0, MatchSound.STYLE_COUNT - 1))
+    /** 比賽聲音音色。預設：哔声 */
+    val soundStyle: StateFlow<Int> = _soundStyle.asStateFlow()
+
+    fun setSoundStyle(v: Int) {
+        val value = v.coerceIn(0, MatchSound.STYLE_COUNT - 1)
+        _soundStyle.value = value
+        prefs.edit().putInt(KEY_SOUND_STYLE, value).apply()
+    }
+
+    private val _soundCount = MutableStateFlow(prefs.getBoolean(KEY_SOUND_COUNT, true))
+    /** 準備倒數最後 3 秒的聲音。預設：開 */
+    val soundCount: StateFlow<Boolean> = _soundCount.asStateFlow()
+
+    fun setSoundCount(v: Boolean) {
+        val value = v
+        _soundCount.value = value
+        prefs.edit().putBoolean(KEY_SOUND_COUNT, value).apply()
+    }
+
+    private val _soundGo = MutableStateFlow(prefs.getBoolean(KEY_SOUND_GO, true))
+    /** 開始射擊的聲音。預設：開 */
+    val soundGo: StateFlow<Boolean> = _soundGo.asStateFlow()
+
+    fun setSoundGo(v: Boolean) {
+        val value = v
+        _soundGo.value = value
+        prefs.edit().putBoolean(KEY_SOUND_GO, value).apply()
+    }
+
+    private val _soundWarn = MutableStateFlow(prefs.getBoolean(KEY_SOUND_WARN, true))
+    /** 剩 30、10 秒提醒的聲音。預設：開 */
+    val soundWarn: StateFlow<Boolean> = _soundWarn.asStateFlow()
+
+    fun setSoundWarn(v: Boolean) {
+        val value = v
+        _soundWarn.value = value
+        prefs.edit().putBoolean(KEY_SOUND_WARN, value).apply()
+    }
+
+    private val _soundEnd = MutableStateFlow(prefs.getBoolean(KEY_SOUND_END, true))
+    /** 時間到、射滿箭數的聲音。預設：開 */
+    val soundEnd: StateFlow<Boolean> = _soundEnd.asStateFlow()
+
+    fun setSoundEnd(v: Boolean) {
+        val value = v
+        _soundEnd.value = value
+        prefs.edit().putBoolean(KEY_SOUND_END, value).apply()
+    }
+
     fun setSplashTap(v: Boolean) {
         _splashTap.value = v
         prefs.edit().putBoolean(KEY_SPLASH_TAP, v).apply()
@@ -464,6 +544,14 @@ class AppSettings(private val prefs: SharedPreferences) {
         setCompRemind30(true)
         setCompRemind10(true)
         setCompAutoNext(CompLimits.DEFAULT_AUTO_NEXT)
+        setCompColors(true)
+        setSoundEnabled(true)
+        setSoundVolume(MatchSound.DEFAULT_VOLUME_INDEX)
+        setSoundStyle(MatchSound.DEFAULT_STYLE)
+        setSoundCount(true)
+        setSoundGo(true)
+        setSoundWarn(true)
+        setSoundEnd(true)
     }
 
     companion object {
@@ -497,6 +585,14 @@ class AppSettings(private val prefs: SharedPreferences) {
         private const val KEY_COMP_R30 = "comp_r30"
         private const val KEY_COMP_R10 = "comp_r10"
         private const val KEY_COMP_AUTO_NEXT = "comp_auto_next"
+        private const val KEY_COMP_COLORS = "comp_colors"
+        private const val KEY_SOUND_ENABLED = "sound_enabled"
+        private const val KEY_SOUND_VOLUME = "sound_volume"
+        private const val KEY_SOUND_STYLE = "sound_style"
+        private const val KEY_SOUND_COUNT = "sound_count"
+        private const val KEY_SOUND_GO = "sound_go"
+        private const val KEY_SOUND_WARN = "sound_warn"
+        private const val KEY_SOUND_END = "sound_end"
         private const val KEY_SPLASH = "splash"
         private const val KEY_SPLASH_TAP = "splash_tap"
         private const val KEY_KEEP_SCREEN_ON = "keep_screen_on"

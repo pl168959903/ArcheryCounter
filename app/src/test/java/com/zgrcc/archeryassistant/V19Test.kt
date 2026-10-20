@@ -115,7 +115,8 @@ class V19Test {
         assertTrue(r.start(0).isEmpty())
         assertEquals(CompPhase.PREPARE, r.phase)
         assertEquals(4000L, r.remainingMs(6000))
-        assertTrue(r.tick(9_999).isEmpty())
+        assertTrue(r.tick(6_000).isEmpty())
+        assertEquals(listOf(CompEvent.COUNT_TICK), r.tick(9_999)) // 最後 3 秒內
         assertEquals(listOf(CompEvent.GO), r.tick(10_000))
         assertEquals(CompPhase.SHOOTING, r.phase)
         assertEquals(120_000L, r.remainingMs(10_000))

@@ -1,5 +1,6 @@
 package com.zgrcc.archeryassistant
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
@@ -43,6 +44,7 @@ fun CompetitionScreen(vm: CounterViewModel, onOpenRecord: (String) -> Unit) {
     val running by vm.running.collectAsStateWithLifecycle()
     val locked by vm.locked.collectAsStateWithLifecycle()
     val finishedId by vm.compFinishedId.collectAsStateWithLifecycle()
+    val useColors by vm.settings.compColors.collectAsStateWithLifecycle()
 
     val c = ui
     if (c == null) {
@@ -53,36 +55,41 @@ fun CompetitionScreen(vm: CounterViewModel, onOpenRecord: (String) -> Unit) {
     }
 
     val busy = c.phase == CompPhase.PREPARE || c.phase == CompPhase.SHOOTING
+    // 準備＝紅底白字、射擊＝綠底黑字（設定可關）；其他階段用一般配色
+    val scheme = if (useColors) MatchPalette.forPhase(c.phase) else null
+    val bg = scheme?.let { Color(it.background) } ?: MaterialTheme.colors.background
+    val fg = scheme?.let { Color(it.text) }
     if (locked && running && busy) {
-        LockedMatch(c) { vm.unlockTouch() }
+        LockedMatch(c, bg, fg) { vm.unlockTouch() }
         return
     }
 
     ScalingLazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().background(bg),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         when (c.phase) {
             CompPhase.PREPARE -> {
-                item { Text(endTitle(c), style = MaterialTheme.typography.caption1) }
-                item { Text(tr("準備", "Get ready"), style = MaterialTheme.typography.title3) }
+                item { Text(endTitle(c), style = MaterialTheme.typography.caption1, color = fg ?: Color.Unspecified) }
+                item { Text(tr("準備", "Get ready"), style = MaterialTheme.typography.title3, color = fg ?: Color.Unspecified) }
                 item {
                     Text(
                         text = clockText(c.remainingMs),
                         style = MaterialTheme.typography.display1,
+                        color = fg ?: Color.Unspecified,
                         textAlign = TextAlign.Center,
                     )
                 }
-                item { Note(tr("倒數結束會長震一下，開始計時射擊", "A long buzz marks the start of the shooting time")) }
+                item { MatchNote(tr("倒數結束會長震一下，開始計時射擊", "A long buzz marks the start of the shooting time"), fg) }
             }
             CompPhase.SHOOTING -> {
-                item { Text(endTitle(c), style = MaterialTheme.typography.caption1) }
+                item { Text(endTitle(c), style = MaterialTheme.typography.caption1, color = fg ?: Color.Unspecified) }
                 item {
                     Text(
                         text = clockText(c.remainingMs),
                         style = MaterialTheme.typography.display1,
-                        color = timeColor(c.remainingMs),
+                        color = fg ?: timeColor(c.remainingMs),
                         textAlign = TextAlign.Center,
                     )
                 }
@@ -90,9 +97,10 @@ fun CompetitionScreen(vm: CounterViewModel, onOpenRecord: (String) -> Unit) {
                     Text(
                         tr("箭 ${c.arrows} / ${c.arrowsPerEnd}", "Arrows ${c.arrows} / ${c.arrowsPerEnd}"),
                         style = MaterialTheme.typography.title3,
+                        color = fg ?: Color.Unspecified,
                     )
                 }
-                item { Note(tr("射滿箭數或時間到，這一趟自動結束", "The end finishes when the arrows are used or time runs out")) }
+                item { MatchNote(tr("射滿箭數或時間到，這一趟自動結束", "The end finishes when the arrows are used or time runs out"), fg) }
             }
             CompPhase.REST -> {
                 val last = c.lastEnd
@@ -162,10 +170,11 @@ private fun timeColor(remainingMs: Long): Color = when {
 
 /** 鎖定中的比賽畫面：只有時間和箭數，長按約 2 秒解鎖。 */
 @Composable
-private fun LockedMatch(c: CompUi, onUnlock: () -> Unit) {
+private fun LockedMatch(c: CompUi, bg: Color, fg: Color?, onUnlock: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .background(bg)
             .pointerInput(Unit) {
                 awaitEachGesture {
                     awaitFirstDown()
@@ -176,22 +185,39 @@ private fun LockedMatch(c: CompUi, onUnlock: () -> Unit) {
         contentAlignment = Alignment.Center,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(endTitle(c), style = MaterialTheme.typography.caption1)
+            Text(endTitle(c), style = MaterialTheme.typography.caption1, color = fg ?: Color.Unspecified)
             Text(
                 text = clockText(c.remainingMs),
                 style = MaterialTheme.typography.display1,
-                color = if (c.phase == CompPhase.SHOOTING) timeColor(c.remainingMs) else MaterialTheme.colors.onBackground,
+                color = fg ?: if (c.phase == CompPhase.SHOOTING) timeColor(c.remainingMs) else MaterialTheme.colors.onBackground,
                 textAlign = TextAlign.Center,
             )
             if (c.phase == CompPhase.SHOOTING) {
                 Text(
                     tr("箭 ${c.arrows} / ${c.arrowsPerEnd}", "Arrows ${c.arrows} / ${c.arrowsPerEnd}"),
                     style = MaterialTheme.typography.title3,
+                    color = fg ?: Color.Unspecified,
                 )
             } else {
-                Text(tr("準備", "Get ready"), style = MaterialTheme.typography.title3)
+                Text(tr("準備", "Get ready"), style = MaterialTheme.typography.title3, color = fg ?: Color.Unspecified)
             }
-            Note(tr("已鎖定　長按螢幕約 2 秒解鎖", "Locked  hold the screen 2 s to unlock"))
+            MatchNote(tr("已鎖定　長按螢幕約 2 秒解鎖", "Locked  hold the screen 2 s to unlock"), fg)
         }
+    }
+}
+
+/** 小字說明：有專用配色時用配色的文字色（淺灰在紅、綠底上不好讀），否則用一般的說明文字樣式。 */
+@Composable
+private fun MatchNote(text: String, fg: Color?) {
+    if (fg == null) {
+        Note(text)
+    } else {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.caption2,
+            color = fg,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(0.85f),
+        )
     }
 }

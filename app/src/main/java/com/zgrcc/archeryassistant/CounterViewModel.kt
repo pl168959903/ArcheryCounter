@@ -284,17 +284,27 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         val r = round ?: return
         for (e in events) {
             when (e) {
+                CompEvent.COUNT_TICK -> playCue(SoundCue.COUNT)
                 CompEvent.GO -> {
+                    playCue(SoundCue.GO)
                     buzzPattern(EndVibration.COMP_GO)
                     _locked.value = settings.touchLock.value // 開始射擊：鎖定觸控
                 }
-                CompEvent.REMIND_30 -> buzzPattern(EndVibration.COMP_30)
-                CompEvent.REMIND_10 -> buzzPattern(EndVibration.COMP_10)
+                CompEvent.REMIND_30 -> {
+                    playCue(SoundCue.WARN30)
+                    buzzPattern(EndVibration.COMP_30)
+                }
+                CompEvent.REMIND_10 -> {
+                    playCue(SoundCue.WARN10)
+                    buzzPattern(EndVibration.COMP_10)
+                }
                 CompEvent.TIME_UP -> {
+                    playCue(SoundCue.TIME_UP)
                     buzzPattern(EndVibration.COMP_TIME_UP)
                     _locked.value = false // 這一趟結束：解鎖，方便按「下一趟」
                 }
                 CompEvent.END_FULL -> {
+                    playCue(SoundCue.END_FULL)
                     _locked.value = false
                     if (settings.endVibration.value != EndVibration.OFF) buzzEnd(settings.endVibration.value) else buzzShot()
                 }
@@ -319,6 +329,52 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
                 (res.endMs - baseElapsedMs).coerceAtLeast(0L),
             )
             compMarksWritten++
+        }
+    }
+
+    // ---- 比賽聲音（ToneGenerator，不需要權限；沒有喇叭的手錶會沒有聲音） ----
+    private var tone: android.media.ToneGenerator? = null
+    private var toneVolume = -1
+    private var soundJob: kotlinx.coroutines.Job? = null
+
+    private fun toneType(style: Int): Int = when (style) {
+        1 -> android.media.ToneGenerator.TONE_DTMF_1
+        2 -> android.media.ToneGenerator.TONE_DTMF_D
+        else -> android.media.ToneGenerator.TONE_PROP_BEEP
+    }
+
+    /** 依設定播放比賽事件的聲音；總開關或該事件關閉時什麼都不做。 */
+    private fun playCue(cue: SoundCue) {
+        val s = settings
+        if (!s.soundEnabled.value) return
+        if (!MatchSound.cueEnabled(cue, s.soundCount.value, s.soundGo.value, s.soundWarn.value, s.soundEnd.value)) return
+        playPlan(MatchSound.plan(cue))
+    }
+
+    /** 設定頁選音量、音色時試播（用「開始射擊」的長音，不受事件開關影響）。 */
+    fun previewSound() {
+        if (!settings.soundEnabled.value) return
+        playPlan(MatchSound.plan(SoundCue.WARN10))
+    }
+
+    private fun playPlan(steps: List<BeepStep>) {
+        val volume = MatchSound.volume(settings.soundVolume.value)
+        val type = toneType(settings.soundStyle.value)
+        soundJob?.cancel()
+        soundJob = viewModelScope.launch {
+            try {
+                if (tone == null || toneVolume != volume) {
+                    tone?.release()
+                    tone = android.media.ToneGenerator(android.media.AudioManager.STREAM_MUSIC, volume)
+                    toneVolume = volume
+                }
+                for (step in steps) {
+                    tone?.startTone(type, step.durationMs)
+                    delay((step.durationMs + step.gapMs).toLong())
+                }
+            } catch (_: RuntimeException) {
+                // 沒有可用的音訊輸出或系統拒絕：靜默略過，震動照常
+            }
         }
     }
 
@@ -921,6 +977,8 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
             recorder.stop(System.currentTimeMillis())
         }
         wakeLock?.let { if (it.isHeld) it.release() }
+        tone?.release()
+        tone = null
         sensorThread.quitSafely()
     }
 
