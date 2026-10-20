@@ -103,9 +103,10 @@ class SessionRecorder(private val store: SessionStore) {
         accelRms: Float?,
         gyroRms: Float?,
         waveform: Waveform? = null,
+        trace: Trace2D? = null,
     ): Int {
         if (id == null) return -1
-        shots.add(ShotEntry(relMs, peak, threshold, accelRms, gyroRms, waveform))
+        shots.add(ShotEntry(relMs, peak, threshold, accelRms, gyroRms, waveform, trace = trace))
         saveLocked(null)
         return shots.size - 1
     }

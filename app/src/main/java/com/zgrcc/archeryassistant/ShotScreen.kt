@@ -64,6 +64,7 @@ fun ShotScreen(vm: CounterViewModel) {
 private fun ShotContent(vm: CounterViewModel, session: Session, index: Int, shot: ShotEntry, isActive: Boolean) {
     val scope = rememberCoroutineScope()
     val recordScore by vm.settings.recordScore.collectAsStateWithLifecycle()
+    val recordTrace by vm.settings.recordTrace.collectAsStateWithLifecycle()
 
     // 有效的第幾箭（不含誤判）
     val validNo = if (shot.cancelled) 0 else session.shots.take(index + 1).count { !it.cancelled }
@@ -108,6 +109,17 @@ private fun ShotContent(vm: CounterViewModel, session: Session, index: Int, shot
             item { ShotWaveform(wave) }
         } else {
             item { Note(tr("這一箭沒有波形：記錄時「單箭波形」是關閉的，或當時資料不足", "No waveform for this shot: Per-shot waveform was off, or there was not enough data")) }
+        }
+
+        // 2D 軌跡：設定頁開啟，或這一箭已經有軌跡時才顯示
+        if (recordTrace || shot.trace != null) {
+            item { SectionTitle(tr("2D 軌跡", "2D trace")) }
+            val trace = shot.trace
+            if (trace != null) {
+                item { ShotTrace(trace) }
+            } else {
+                item { Note(tr("這一箭沒有 2D 軌跡：記錄時「單箭 2D 軌跡」是關閉的，或當時資料不足", "No 2D trace for this shot: Per-shot 2D trace was off, or there was not enough data")) }
+            }
         }
 
         // 環數：設定頁開啟，或這一箭已經有環數時才顯示；誤判的箭不用輸入

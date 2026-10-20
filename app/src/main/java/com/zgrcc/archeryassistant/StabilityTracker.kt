@@ -79,6 +79,16 @@ class StabilityTracker(capacity: Int = DEFAULT_CAPACITY) {
         )
     }
 
+    /**
+     * 取窗口 (endMs − windowMs, endMs] 的二維軌跡：每 [binMs] 毫秒一個點，取 x、y 的平均。
+     * [gyro] 為 true 用角速度，否則用加速度。樣本太少回傳 null。
+     */
+    fun trace(endMs: Long, windowMs: Long, gyro: Boolean, binMs: Int = DEFAULT_BIN_MS): Trace2D? {
+        val ring = if (gyro) this.gyro else accel
+        val xy = ring.binMeanXY(endMs - windowMs, endMs, binMs) ?: return null
+        return Trace2D(binMs, gyro, xy.first.toList(), xy.second.toList())
+    }
+
     private class Ring(private val capacity: Int) {
         private val t = LongArray(capacity)
         private val x = FloatArray(capacity)
@@ -133,6 +143,46 @@ class StabilityTracker(capacity: Int = DEFAULT_CAPACITY) {
                 if (out[j].isNaN()) out[j] = prev else prev = out[j]
             }
             return out
+        }
+
+        /** 窗口內每 [binMs] 一格，取 x、y 的平均。空格沿用前一格（開頭的空格用第一個有值的）。 */
+        fun binMeanXY(startMs: Long, endMs: Long, binMs: Int): Pair<FloatArray, FloatArray>? {
+            val span = endMs - startMs
+            if (span <= 0 || binMs <= 0) return null
+            val bins = ((span + binMs - 1) / binMs).toInt()
+            val sumX = FloatArray(bins)
+            val sumY = FloatArray(bins)
+            val cnt = IntArray(bins)
+            val oldest = if (size < capacity) 0 else next
+
+            var n = 0
+            for (k in 0 until size) {
+                val i = (oldest + k) % capacity
+                val ti = t[i]
+                if (ti <= startMs || ti > endMs) continue
+                val b = ((ti - startMs - 1) / binMs).toInt().coerceIn(0, bins - 1)
+                sumX[b] += x[i]
+                sumY[b] += y[i]
+                cnt[b]++
+                n++
+            }
+            if (n < MIN_SAMPLES) return null
+
+            val ox = FloatArray(bins)
+            val oy = FloatArray(bins)
+            var firstFilled = 0
+            while (firstFilled < bins && cnt[firstFilled] == 0) firstFilled++
+            var px = sumX[firstFilled] / cnt[firstFilled]
+            var py = sumY[firstFilled] / cnt[firstFilled]
+            for (j in 0 until bins) {
+                if (cnt[j] > 0) {
+                    px = sumX[j] / cnt[j]
+                    py = sumY[j] / cnt[j]
+                }
+                ox[j] = px
+                oy[j] = py
+            }
+            return ox to oy
         }
 
         fun shake(endMs: Long, windowMs: Long): Float? {

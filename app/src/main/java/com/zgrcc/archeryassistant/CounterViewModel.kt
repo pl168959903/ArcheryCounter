@@ -80,6 +80,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
     /** 本次偵測要求的取樣頻率（Hz） */
     val samplingHzInUse: Int get() = requestedHz
     private val live = LiveBuffer() // 即时波形用，传感器线程写、画面读
+    private val liveTrace = LiveTrace() // 即時晃動圓盤用
 
     private val countLock = Any()
     private val _count = MutableStateFlow(prefs.getInt(KEY_COUNT, 0))
@@ -415,6 +416,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         _measuredHz.value = 0f
         detector.reset()
         live.clear()
+        liveTrace.clear()
         endTracker.reset()
         fatigueWarned = false
         _fatiguePct.value = null
@@ -520,6 +522,14 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
             null
         }
 
+        // 單箭 2D 軌跡：放箭前分析視窗內的 x、y 軌跡。用角速度但沒有陀螺儀時不存
+        val traceGyro = settings.traceGyro.value
+        val trace = if (settings.recordTrace.value && (!traceGyro || gyroSensor != null)) {
+            tracker.trace(endMs = triggerMs - ShotDetector.GAP_MS, windowMs = windowMs, gyro = traceGyro)
+        } else {
+            null
+        }
+
         val index = recorder.addShot(
             relMs = (triggerMs - baseElapsedMs).coerceAtLeast(0L),
             peak = peak,
@@ -527,6 +537,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
             accelRms = st.accelRms,
             gyroRms = gyr,
             waveform = wave,
+            trace = trace,
         )
         if (index >= 0 && settings.followThrough.value) {
             synchronized(pendingFollow) { pendingFollow.add(PendingFollow(_activeId.value, index, triggerMs)) }
@@ -838,6 +849,9 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
     /** 即時波形：最近幾秒的加速度合力大小（m/s²），由舊到新。 */
     fun liveSnapshot(): FloatArray = live.snapshot()
 
+    /** 即時晃動圓盤：最近約 2 秒的 x、y（由舊到新）。 */
+    fun liveTraceSnapshot(): Pair<FloatArray, FloatArray> = liveTrace.snapshot()
+
     suspend fun loadSession(id: String): Session? = withContext(Dispatchers.IO) { store.load(id) }
 
     fun deleteSession(id: String) {
@@ -942,6 +956,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
             lastGy = v[1] * RAD_TO_DEG
             lastGz = v[2] * RAD_TO_DEG
             tracker.addGyro(lastGx, lastGy, lastGz, timeMs)
+            if (settings.live2d.value && settings.traceGyro.value) liveTrace.add(timeMs, lastGx, lastGy)
             return
         }
 
@@ -982,6 +997,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         if (settings.liveWaveform.value) {
             live.add(timeMs, sqrt(ax * ax + ay * ay + az * az))
         }
+        if (settings.live2d.value && !settings.traceGyro.value) liveTrace.add(timeMs, ax, ay)
         recorder.writeRaw(timeMs - baseElapsedMs, ax, ay, az, lastGx, lastGy, lastGz)
         detector.onSample(ax, ay, az, timeMs)
     }

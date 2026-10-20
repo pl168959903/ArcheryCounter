@@ -249,7 +249,7 @@ private fun DetailContent(
                     Chip(
                         onClick = { onOpenShot(row.shotIndex) },
                         label = { Text(shotText(session, row, shot), style = MaterialTheme.typography.caption1, maxLines = 5) },
-                        colors = if (shot.cancelled) ChipDefaults.childChipColors() else kindColors(ChipKind.NAV, ChipDefaults.secondaryChipColors()),
+                        colors = if (shot.cancelled) ChipDefaults.childChipColors() else kindColors(ChipKind.LIST, ChipDefaults.secondaryChipColors()),
                         modifier = Modifier.fillMaxWidth(0.95f),
                     )
                 }

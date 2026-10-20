@@ -117,7 +117,7 @@ fun MatchCompareScreen(vm: CounterViewModel, onOpen: (String) -> Unit) {
                                 maxLines = 4,
                             )
                         },
-                        colors = kindColors(ChipKind.NAV, ChipDefaults.secondaryChipColors()),
+                        colors = kindColors(ChipKind.LIST, ChipDefaults.secondaryChipColors()),
                         modifier = Modifier.fillMaxWidth(0.9f),
                     )
                 }

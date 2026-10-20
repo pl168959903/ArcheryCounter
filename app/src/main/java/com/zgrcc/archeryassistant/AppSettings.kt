@@ -352,6 +352,33 @@ class AppSettings(private val prefs: SharedPreferences) {
         prefs.edit().putBoolean(KEY_SOUND_END, value).apply()
     }
 
+    private val _live2d = MutableStateFlow(prefs.getBoolean(KEY_LIVE_2D, false))
+    /** 偵測中主畫面顯示即時晃動圓盤（取代即時波形）。預設：關 */
+    val live2d: StateFlow<Boolean> = _live2d.asStateFlow()
+
+    fun setLive2d(v: Boolean) {
+        _live2d.value = v
+        prefs.edit().putBoolean(KEY_LIVE_2D, v).apply()
+    }
+
+    private val _recordTrace = MutableStateFlow(prefs.getBoolean(KEY_RECORD_TRACE, false))
+    /** 每一箭另存放箭前的 2D 軌跡。預設：關 */
+    val recordTrace: StateFlow<Boolean> = _recordTrace.asStateFlow()
+
+    fun setRecordTrace(v: Boolean) {
+        _recordTrace.value = v
+        prefs.edit().putBoolean(KEY_RECORD_TRACE, v).apply()
+    }
+
+    private val _traceGyro = MutableStateFlow(prefs.getBoolean(KEY_TRACE_GYRO, false))
+    /** 2D 圖用角速度（true）還是加速度（false）。預設：加速度 */
+    val traceGyro: StateFlow<Boolean> = _traceGyro.asStateFlow()
+
+    fun setTraceGyro(v: Boolean) {
+        _traceGyro.value = v
+        prefs.edit().putBoolean(KEY_TRACE_GYRO, v).apply()
+    }
+
     private val _chipKinds = MutableStateFlow(prefs.getBoolean(KEY_CHIP_KINDS, true))
     /** 按鈕依用途分色（綠＝開始／確認、藍＝進入另一頁、紅＝刪除）。預設：開 */
     val chipKinds: StateFlow<Boolean> = _chipKinds.asStateFlow()
@@ -639,6 +666,9 @@ class AppSettings(private val prefs: SharedPreferences) {
         setCompScoreEntry(true)
         setMatchCompare(true)
         setChipKinds(true)
+        setLive2d(false)
+        setRecordTrace(false)
+        setTraceGyro(false)
         setSensitivityAdvice(true)
         setQuickCheck(true)
         setTileLaunch(true)
@@ -688,6 +718,9 @@ class AppSettings(private val prefs: SharedPreferences) {
         private const val KEY_COMP_SCORE_ENTRY = "comp_score_entry"
         private const val KEY_MATCH_COMPARE = "match_compare"
         private const val KEY_CHIP_KINDS = "chip_kinds"
+        private const val KEY_LIVE_2D = "live_2d"
+        private const val KEY_RECORD_TRACE = "record_trace"
+        private const val KEY_TRACE_GYRO = "trace_gyro"
         private const val KEY_SENSITIVITY_ADVICE = "sensitivity_advice"
         private const val KEY_QUICK_CHECK = "quick_check"
         private const val KEY_TILE_LAUNCH = "tile_launch"

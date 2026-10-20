@@ -88,6 +88,9 @@ fun SettingsScreen(
     val compColors by s.compColors.collectAsStateWithLifecycle()
     val matchCompare by s.matchCompare.collectAsStateWithLifecycle()
     val chipKinds by s.chipKinds.collectAsStateWithLifecycle()
+    val live2d by s.live2d.collectAsStateWithLifecycle()
+    val recordTrace by s.recordTrace.collectAsStateWithLifecycle()
+    val traceGyro by s.traceGyro.collectAsStateWithLifecycle()
     val sensitivityAdvice by s.sensitivityAdvice.collectAsStateWithLifecycle()
     val quickCheck by s.quickCheck.collectAsStateWithLifecycle()
     val tileLaunch by s.tileLaunch.collectAsStateWithLifecycle()
@@ -381,6 +384,9 @@ fun SettingsScreen(
                 }
                 item { Note(tr("穩定度分析視窗：放箭前幾秒的晃動量。從下一次記錄開始", "Stability window: seconds of shake before the release. Starts with the next record")) }
 
+                item { ToggleChip(tr("單箭 2D 軌跡", "Per-shot 2D trace"), recordTrace) { s.setRecordTrace(it) } }
+                item { Note(tr("每一箭另存放箭前（分析視窗內）手錶 x、y 兩軸的軌跡，在單箭頁和快速檢查畫成類似跑車 G 力圖的圓盤，點越集中越穩。每箭約多 0.5～1 KB，只對之後的新記錄生效。資料來源見「圖表與顯示」的「2D 圖數據」", "Saves each shot's x/y trace before release (within the analysis window), drawn as a G-force style disc in the shot page and Quick check; tighter means steadier. About 0.5-1 KB more per shot; only new records. The data source is set by 2D data under Charts & display")) }
+
                 item { ToggleChip(tr("單箭波形", "Per-shot waveform"), recordWaveform) { s.setRecordWaveform(it) } }
                 item { Note(tr("每一箭把放箭前後的波形存進記錄，約 1 KB。關閉後記錄檔最小。從下一箭開始生效", "Saves the waveform around each release, about 1 KB. Off gives the smallest files. Starts with the next shot")) }
 
@@ -646,8 +652,22 @@ fun SettingsScreen(
                 item { ToggleChip(tr("比賽對比", "Match comparison"), matchCompare) { s.setMatchCompare(it) } }
                 item { Note(tr("記錄列表多一個「比賽對比」，把比賽紀錄的日期、總環數、平均晃動、時間到的趟數放在一起比，並畫趨勢圖。只影響顯示，立即生效", "Adds Match comparison to the records list: date, total score, average shake and timed-out ends side by side, with trend charts. Display only. Takes effect immediately")) }
 
+                item { ToggleChip(tr("即時晃動圓盤", "Live shake disc"), live2d) { s.setLive2d(it) } }
+                item { Note(tr("偵測中主畫面顯示像跑車 G 力圖的圓盤：點是最近約 2 秒的手錶 x、y 位置，越集中在圓心越穩，旁邊有外圈大小和虛線圈（均方根半徑）。開啟後取代即時波形，畫圖較耗電。軸是手錶表面方向，取決於怎麼戴表。立即生效", "While detecting, the main screen shows a G-force style disc: the dots are the watch's x/y over the last ~2 s; tighter around the center is steadier. Shows the outer ring size and a dashed ring (RMS radius). Replaces the live waveform and uses more battery. Axes follow the watch face, so they depend on how you wear it. Takes effect immediately")) }
+
+                item {
+                    Chip(
+                        onClick = { s.setTraceGyro(!traceGyro) },
+                        label = { Text(tr("2D 圖數據", "2D data"), maxLines = 1) },
+                        secondaryLabel = { Text(if (traceGyro) tr("角速度（°/s）", "Gyro (°/s)") else tr("加速度（m/s²）", "Accel (m/s²)"), maxLines = 1) },
+                        colors = kindColors(ChipKind.NORMAL, ChipDefaults.primaryChipColors()),
+                        modifier = Modifier.fillMaxWidth(0.9f),
+                    )
+                }
+                item { Note(tr("即時圓盤和單箭 2D 軌跡用的數據：加速度看手腕晃動，角速度看瞄準的轉動（需要陀螺儀）。單箭軌跡只對切換之後的新記錄生效，舊記錄維持原來的類型", "Data used by the live disc and the per-shot 2D trace: accel shows wrist shake, gyro shows aim rotation (needs a gyroscope). Per-shot traces follow the setting at the time of recording; old records keep their type")) }
+
                 item { ToggleChip(tr("按鈕分色", "Colored buttons"), chipKinds) { s.setChipKinds(it) } }
-                item { Note(tr("按鈕依用途上色：綠＝開始／確認，藍＝點進去是另一頁（標籤尾巴有 ›），紅＝刪除或結束，灰＝一般操作。關閉則全部維持原本配色。立即生效", "Buttons are colored by purpose: green = start/confirm, blue = opens another page (label ends with ›), red = delete or end, gray = ordinary actions. Off keeps the original look. Takes effect immediately")) }
+                item { Note(tr("按鈕依用途上色：綠＝開始／確認，藍＝點進去是另一頁（標籤尾巴有 ›），黃＝清單裡的每一項（每筆記錄、每場比賽、每一箭），紅＝刪除或結束，灰＝一般操作。關閉則全部維持原本配色。立即生效", "Buttons are colored by purpose: green = start/confirm, blue = opens another page (label ends with ›), yellow = each item in a list (record, match, shot), red = delete or end, gray = ordinary actions. Off keeps the original look. Takes effect immediately")) }
 
                 item { ToggleChip(tr("即時波形", "Live waveform"), liveWaveform) { s.setLiveWaveform(it) } }
                 item { Note(tr("偵測中在主畫面顯示即時加速度波形。只影響顯示，但最耗電，立即生效", "Shows a live accel waveform on the main screen while detecting. Display only, but uses the most battery. Takes effect immediately")) }

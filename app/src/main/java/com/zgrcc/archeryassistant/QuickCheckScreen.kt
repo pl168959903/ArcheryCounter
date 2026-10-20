@@ -55,6 +55,7 @@ fun QuickCheckScreen(vm: CounterViewModel) {
 @Composable
 private fun QuickCheckContent(vm: CounterViewModel, session: Session, isActive: Boolean) {
     val scope = rememberCoroutineScope()
+    val recordTrace by vm.settings.recordTrace.collectAsStateWithLifecycle()
     val count = session.shots.size
     var pos by remember(session.id) { mutableStateOf(QuickCheck.start(count)) }
     val index = pos.coerceIn(0, (count - 1).coerceAtLeast(0))
@@ -92,6 +93,12 @@ private fun QuickCheckContent(vm: CounterViewModel, session: Session, isActive: 
                 item { ShotWaveform(wave) }
             } else {
                 item { Note(tr("這一箭沒有波形", "No waveform for this shot")) }
+            }
+            val trace = shot.trace
+            if (trace != null) {
+                item { ShotTrace(trace) }
+            } else if (recordTrace) {
+                item { Note(tr("這一箭沒有 2D 軌跡", "No 2D trace for this shot")) }
             }
             item {
                 Chip(

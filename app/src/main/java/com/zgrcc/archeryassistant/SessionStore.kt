@@ -222,6 +222,7 @@ internal object SessionJson {
             if (sh.followGyroRms != null && sh.followGyroRms.isFinite()) append(",\"fg\":").append(num(sh.followGyroRms))
             if (sh.score != null) append(",\"sc\":").append(sh.score)
             if (sh.waveform != null) append(",\"wf\":").append(encodeWave(sh.waveform))
+            if (sh.trace != null) append(",\"tr\":").append(encodeTrace(sh.trace))
             append('}')
         }
 
@@ -252,6 +253,7 @@ internal object SessionJson {
                     accelRms = (m["acc"] as? Number)?.toFloat(),
                     gyroRms = (m["gyr"] as? Number)?.toFloat(),
                     waveform = parseWave(m["wf"]),
+                    trace = parseTrace(m["tr"]),
                     followAccelRms = (m["fa"] as? Number)?.toFloat(),
                     followGyroRms = (m["fg"] as? Number)?.toFloat(),
                     score = (m["sc"] as? Number)?.toInt()?.coerceIn(0, 10),
@@ -313,6 +315,31 @@ internal object SessionJson {
         append(",\"a\":").append(numList(w.accel))
         if (w.gyro.isNotEmpty()) append(",\"g\":").append(numList(w.gyro))
         append('}')
+    }
+
+    private fun num2(v: Float): String =
+        if (v.isNaN() || v.isInfinite()) "0.00" else String.format(Locale.US, "%.2f", v)
+
+    private fun encodeTrace(t: Trace2D): String = buildString {
+        append("{\"s\":").append(t.stepMs)
+        if (t.gyro) append(",\"g\":1")
+        append(",\"x\":").append(t.x.joinToString(",", "[", "]") { num2(it) })
+        append(",\"y\":").append(t.y.joinToString(",", "[", "]") { num2(it) })
+        append('}')
+    }
+
+    private fun parseTrace(raw: Any?): Trace2D? {
+        val m = raw as? Map<*, *> ?: return null
+        val step = (m["s"] as? Number)?.toInt() ?: return null
+        val x = floats(m["x"])
+        val y = floats(m["y"])
+        if (step <= 0 || x.isEmpty() || x.size != y.size) return null
+        val gyro = when (val g = m["g"]) {
+            is Boolean -> g
+            is Number -> g.toInt() != 0
+            else -> false
+        }
+        return Trace2D(step, gyro, x, y)
     }
 
     private fun floats(raw: Any?): List<Float> =

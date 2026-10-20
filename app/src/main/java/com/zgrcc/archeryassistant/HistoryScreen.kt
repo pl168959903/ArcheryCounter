@@ -180,7 +180,7 @@ fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrend: (
                     colors = when {
                         manage && isChosen -> ChipDefaults.primaryChipColors()
                         manage -> ChipDefaults.secondaryChipColors()
-                        else -> kindColors(ChipKind.NAV, ChipDefaults.secondaryChipColors())
+                        else -> kindColors(ChipKind.LIST, ChipDefaults.secondaryChipColors())
                     },
                     enabled = !(manage && isActive),
                     modifier = Modifier.fillMaxWidth(0.9f),

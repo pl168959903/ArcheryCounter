@@ -35,6 +35,8 @@ data class ShotEntry(
     val followGyroRms: Float? = null,
     /** 这一箭的环数（0～10）；没输入为 null */
     val score: Int? = null,
+    /** 放箭前的二维轨迹（v1.12）；没开「單箭 2D 軌跡」或数据不足时为 null */
+    val trace: Trace2D? = null,
 )
 
 /** 校准录制里的一段动作（例如「只拉弓不放箭」），起止时间是距这次记录开始的毫秒数。 */
