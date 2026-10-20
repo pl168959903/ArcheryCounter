@@ -5,15 +5,15 @@ plugins {
 }
 
 android {
-    namespace = "com.example.archerycounter"
+    namespace = "com.zgrcc.archeryassistant"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.example.archerycounter"
+        applicationId = "com.zgrcc.archeryassistant"
         minSdk = 30
-        targetSdk = 34
-        versionCode = 10
-        versionName = "1.8.1"
+        targetSdk = 35
+        versionCode = 11
+        versionName = "1.9"
     }
 
     // 固定簽章：GitHub 編譯時由 Secrets 提供金鑰（見 README），這樣每次編譯出來的 APK 簽章都一樣，

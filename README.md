@@ -7,13 +7,32 @@
 戴在手腕上，自動偵測每次放箭並計數；偵測到時手錶會震動一下，也可以用 − / + 手動修正。
 每次偵測都會自動存成一筆「記錄」，並分析每一箭放箭前**手臂的穩定度**，方便你比較每次射擊之間的差異。
 
-目前版本：**v1.8.1**。
+目前版本：**v1.9**。
 
 ---
 
 ## 版本記錄
 
-### v1.8.1（本版）
+### v1.9（本版）
+每個新功能都有設定開關。
+- **⚠ 套件名稱改為 `com.zgrcc.archeryassistant`**（原為 `com.example.archerycounter`）。為了能上架 Google Play，不能再用 `com.example`。對手錶來說這是**另一個應用**：
+  - 不能覆蓋安裝，舊版（v1.8.1 以前）會留在手錶上，要自己 `adb uninstall com.example.archerycounter`。
+  - 舊版的記錄和設定**不會自動搬過來**。要保留記錄，先用下面〈取出資料〉的方法在舊版上備份（`adb pull`），新版的記錄資料夾路徑也不同。
+  - 簽章金鑰沒有換，之後新版之間仍可直接 `adb install -r` 覆蓋。
+- **比賽模式**（設定頁「比賽模式」開關，預設開）：主畫面多一個「比賽模式」。
+  - 賽制：室內18米（每趟 3 箭、20 趟、120 秒）、室外70米（每趟 6 箭、12 趟、240 秒）、自訂（箭數、趟數、秒數）。
+  - 每趟流程：準備倒數（預設 10 秒，可關）→ 長震一下開始射擊倒數 → 剩 30 秒、剩 10 秒各震動提醒 → 射滿箭數或時間到就自動結束這一趟 → 休息取箭 → 按「下一趟」（也可設成休息幾秒後自動開始）。
+  - 前面可設練習趟（預設 2 趟），不計入正式箭數與統計。
+  - 比賽中自動鎖定觸控（長按 2 秒解鎖，休息時自動解鎖）並保持亮屏；只顯示剩餘時間和箭數。
+  - 結束後存成一筆記錄，標為「比賽」。詳情頁有「比賽統計」：正式箭數、每趟用時、時間到的趟數、逾時箭、每趟平均晃動（環數賽後在單箭頁輸入的話也會加總）。
+  - 時間到之後射出的箭仍會被記錄，但算「逾時箭」。比賽中不使用分趟震動、疲勞提醒、自動暫停。
+- **疲勞／穩定度變化提醒**（設定頁「疲勞提醒」，預設開，門檻 25%）：每滿一趟，比較「剛開始兩趟」與「最近兩趟」的平均晃動量，最近的比剛開始抖超過門檻就長震兩下並在主畫面提示，每次記錄只提醒一次（回穩後可再提醒）。需要「分趟統計」，至少 4 趟才判斷。
+- **取樣頻率**（設定頁「取樣頻率」50／100／200 Hz，預設 100）：感測器每秒取樣次數。偵測中主畫面顯示**實測頻率**（系統可能給得比要求的慢或快）。從下一次開始偵測生效；頻率越高越耗電、記錄檔越大。
+- **英文介面**（設定頁「語言」：自動／繁體中文／English，預設自動）：自動＝系統語言是中文就用中文，其他用英文。切換後回到主畫面。已存的記錄標籤仍以中文儲存，顯示時才轉換。
+- **上架準備**：targetSdk 35；GitHub Actions 同時產出上架用的 `.aab`（Actions 的 Artifacts 下載 `ArcheryAssistant-aab`）；新增 `PRIVACY.md`（隱私權政策）與 `STORE_LISTING.md`（商店文案草稿）；`store/feature-graphic.png`（1024×500 置頂大圖）。
+- 版本號升到 1.9（versionCode 11）。
+
+### v1.8.1
 - **應用名稱改為 Archery Assistant**（原為「射箭計數」）：手錶桌面上的名稱與啟動動畫的標題都改了。套件名稱 `com.example.archerycounter` 沒有變，所以可以直接 `adb install -r` 覆蓋安裝，記錄和設定都保留。
 - 名稱較長，圓形螢幕的桌面上可能被截斷成「Archery Assis…」；若要改短，改 `app/src/main/res/values/strings.xml` 的 `app_name`。
 - 版本號升到 1.8.1（versionCode 10）。
@@ -129,15 +148,15 @@
 推送 `v` 開頭的標籤時，編譯完成後會自動在倉庫的 **Releases** 建立發布並附上 APK，不用再手動下載、上傳。平常 push 只編譯，不發布。
 
 ```
-git tag v1.8.1
-git push origin v1.8.1
+git tag v1.9
+git push origin v1.9
 ```
 
-- 標籤要和 `app/build.gradle.kts` 的 `versionName` 一致：`versionName = "1.8.1"` 就要打 `v1.8.1`。**不一致會直接失敗**，並說明原因。
+- 標籤要和 `app/build.gradle.kts` 的 `versionName` 一致：`versionName = "1.9"` 就要打 `v1.9`。**不一致會直接失敗**，並說明原因。
 - 必須已經設定好固定簽章（見下方〈固定簽章〉的四個 Secrets）。沒設定就**不會發布**並失敗，避免發布出簽章不對的 APK。
 - 附上的檔案是 `ArcheryAssistant-v版本號.apk`（只放 release 版），更新說明自動由 commit 產生。
 - 同一個標籤重跑時，會覆蓋已存在的 Release 裡的同名檔案。
-- 標籤打錯想刪掉：`git tag -d v1.8.1`，再 `git push origin :refs/tags/v1.8.1`；到 Releases 頁手動刪除已建立的發布。
+- 標籤打錯想刪掉：`git tag -d v1.9`，再 `git push origin :refs/tags/v1.9`；到 Releases 頁手動刪除已建立的發布。
 - 編譯超過 20 分鐘會自動失敗，不用手動取消。
 - 倉庫如果是公開的，Release 的 APK 任何人都能下載；金鑰和 Secrets 不會跟著發布。
 - 第一次打標籤後，請確認 Actions 成功、Releases 有出現；失敗的話，查看紅色的日誌排查原因。
@@ -169,7 +188,7 @@ adb install app-release.apk
   ```
 - **沒有設定固定簽章**：每次 GitHub 編譯出來的 APK 簽章都不同，直接覆蓋安裝會失敗（`INSTALL_FAILED_UPDATE_INCOMPATIBLE`）。要先執行：
   ```
-  adb uninstall com.example.archerycounter
+  adb uninstall com.zgrcc.archeryassistant
   ```
   這會清除計數、設定和**手錶上的所有記錄**。如果有想保留的記錄，**先用下面〈取出資料〉的方法備份到電腦**。
 - **第一次換成固定簽章時**，因為簽章和之前的不同，**還是要最後一次** `adb uninstall`（先備份記錄）。之後就不用了。
@@ -200,11 +219,16 @@ base64 -w0 release.jks      # 輸出的整串就是 KEYSTORE_BASE64（Windows �
 - **歸零**：只在暫停時出現，避免射箭時誤觸。
 - **閾值**：多大的衝擊算一次放箭。數值越大越不靈敏。漏計就調低；誤計（拉弓、取箭時被算進去）就調高。
 - **上次峰值**與**晃動量**：最近一箭的衝擊強度，以及放箭前的加速度晃動量與角速度晃動量。
+- **比賽模式**：沒在偵測時出現（設定可關）；比賽進行中這裡變成「回到比賽畫面」。
 - **記錄**、**設定**：進入對應頁面。往右滑動可返回上一頁。
 
 ### 設定頁
 | 項目 | 預設 | 說明 |
 | --- | --- | --- |
+| 語言 | 自動 | 自動／繁體中文／English，點一下切換。切換後回到主畫面。 |
+| 取樣頻率 | 100 Hz | 50／100／200 Hz，點一下切換。下一次開始偵測生效；主畫面顯示實測頻率。 |
+| 疲勞提醒 | 開 | 最近兩趟比剛開始兩趟抖超過門檻（10～60%，預設 25%）就長震兩下提醒一次。需要「分趟統計」，至少 4 趟。 |
+| 比賽模式 | 開 | 主畫面顯示「比賽模式」入口。開啟後可設賽制（室內18米／室外70米／自訂）、練習趟數、準備倒數（0 = 關）、剩 30 秒提醒、剩 10 秒提醒、下一趟（手動／休息 30～120 秒後自動）。 |
 | 開啟動畫 | 開 | 開啟應用時先播放約 3 秒的動畫（圖示放大，顯示版本、作者與簽章）。下次開啟應用時生效。 |
 | 點按後才進入 | 開 | 只在「開啟動畫」開啟時出現。開：動畫播完停在畫面上，點一下才進主畫面（約 60 秒沒點會自己進入）；關：約 3 秒後自動進入。動畫中隨時點一下都會直接進入。下次開啟應用時生效。 |
 | 保持亮屏 | 開 | 應用在前景開著時螢幕不休眠，與是否在偵測無關。切到背景或離開應用後恢復正常休眠。立即生效。 |
@@ -277,12 +301,12 @@ base64 -w0 release.jks      # 輸出的整串就是 KEYSTORE_BASE64（Windows �
 所有記錄都存在手錶上這個位置：
 
 ```
-/sdcard/Android/data/com.example.archerycounter/files/sessions/
+/sdcard/Android/data/com.zgrcc.archeryassistant/files/sessions/
 ```
 
 用 adb 一次拉到電腦（先照上面〈安裝到手錶〉的步驟連線）：
 ```
-adb pull /sdcard/Android/data/com.example.archerycounter/files/sessions ./sessions
+adb pull /sdcard/Android/data/com.zgrcc.archeryassistant/files/sessions ./sessions
 ```
 取出後的 `sessions` 資料夾就是全部的記錄，可以自行備份或分析。
 
@@ -295,7 +319,7 @@ adb pull /sdcard/Android/data/com.example.archerycounter/files/sessions ./sessio
 - `summary.csv`：每次記錄一行。欄位 `id, start, duration_s, detected, cancelled, manual_plus, manual_minus, final_count, threshold_min, threshold_max, peak_avg, interval_avg_s, accel_rms_avg, gyro_rms_avg, follow_accel_avg, follow_gyro_avg, scored, score_avg, tags, calibration`（多個標籤以 `|` 分隔）。
 - `shots.csv`：每一箭一行。欄位 `session, no, time, rel_ms, peak, threshold, accel_rms, gyro_rms, follow_accel_rms, follow_gyro_rms, score, cancelled`。誤判的箭 `no` 留空、`cancelled` 為 1。沒有的數值留空。
 
-**檔案大小**：JSON 很小，每箭約 0.2 KB，加上單箭波形每箭再多約 0.5～1 KB。真正會讓檔案變大的只有 CSV：約 100 Hz 取樣，**每 30 分鐘約 10 MB 以上**。不需要原始資料時請關閉「錄製原始資料」。
+**檔案大小**：JSON 很小，每箭約 0.2 KB，加上單箭波形每箭再多約 0.5～1 KB。真正會讓檔案變大的只有 CSV：預設約 100 Hz 取樣（可在設定改成 50／200 Hz），**每 30 分鐘約 10 MB 以上**。不需要原始資料時請關閉「錄製原始資料」。
 
 **CSV 欄位**（約 100 Hz，每行一筆）
 
@@ -336,7 +360,11 @@ manual: [{ rel, d }, ...]                     d = 實際加減的數量（+1 或
 | `LiveBuffer.kt`、`ChartMath.kt` | 即時波形的緩衝、圖表座標換算。純 Kotlin |
 | `Ends.kt` | 分趟統計與即時的滿趟判斷。純 Kotlin |
 | `Summary.kt` | 跨次趨勢、匯出 CSV。純 Kotlin |
-| `Vibration.kt` | 放箭與滿趟的震動節奏。純 Kotlin |
+| `Vibration.kt` | 放箭、滿趟與比賽模式的震動節奏。純 Kotlin |
+| `I18n.kt` | 介面語言（`tr(中文, English)`）。純 Kotlin |
+| `Fatigue.kt`、`RateMeter.kt` | 疲勞提醒規則、取樣頻率選項與實測。純 Kotlin |
+| `Competition.kt` | 比賽模式的狀態機與賽後統計。純 Kotlin |
+| `CompetitionScreen.kt` | 比賽模式畫面（準備、射擊倒數、休息、結束） |
 | `Tags.kt`、`ThresholdAdvice.kt`、`Calibration.kt` | 條件標籤、閾值建議、校準三段動作。純 Kotlin |
 | `SessionModels.kt` | 記錄的資料結構與統計計算。純 Kotlin |
 | `SessionStore.kt` | 記錄的檔案讀寫（JSON），全部在背景執行緒 |
@@ -346,17 +374,21 @@ manual: [{ rel, d }, ...]                     d = 實際加減的數量（+1 或
 | `MainActivity.kt` | 畫面導覽、保持亮屏、降低亮度、啟動動畫的顯示時機 |
 | `AppInfo.kt` | 作者名稱、版本顯示文字、簽章指紋計算與固定金鑰比對。純 Kotlin |
 | `SplashTiming.kt`、`SplashScreen.kt` | 啟動動畫的時間軸（純 Kotlin）與畫面（圖示、文字、點按進入） |
-| `MainScreen.kt`、`SettingsScreen.kt`、`HistoryScreen.kt`、`DetailScreen.kt`、`ShotScreen.kt`、`TrendScreen.kt`、`CalibrationScreen.kt` | 七個頁面 |
+| `MainScreen.kt`、`SettingsScreen.kt`、`HistoryScreen.kt`、`DetailScreen.kt`、`ShotScreen.kt`、`TrendScreen.kt`、`CalibrationScreen.kt`、`CompetitionScreen.kt` | 八個頁面 |
 | `Training.kt` | 自動暫停、低電量、今日目標、每趟回饋、亮度檔位的規則。純 Kotlin |
 | `Charts.kt` | 趨勢圖、單箭波形、即時波形（Canvas 繪製） |
 | `Components.kt`、`Fmt.kt` | 共用元件、格式化 |
 
 判定放箭的參數（靜止閾值、時間窗口、冷卻時間）在 `ShotDetector.kt` 的 `companion object` 裡。
-單元測試在 `app/src/test/`（偵測、穩定度、統計、記錄存取、波形、誤判取消、分趟、匯出、標籤、閾值建議、校準標注、占用空間、自動暫停、低電量、今日目標、每趟回饋、版本與簽章指紋、啟動動畫時間軸等共 163 項，全部通過）。
+單元測試在 `app/src/test/`（偵測、穩定度、統計、記錄存取、波形、誤判取消、分趟、匯出、標籤、閾值建議、校準標注、占用空間、自動暫停、低電量、今日目標、每趟回饋、版本與簽章指紋、啟動動畫時間軸等共 190 項，全部通過）。
 
 ---
 
 ## 已知限制與尚未驗證的部分
+
+- **v1.9 新增的比賽模式、疲勞提醒、取樣頻率、英文介面都沒有在實機上測過。** 它們的純邏輯（比賽流程狀態機、賽後統計、疲勞規則、頻率量測、語言選擇）有單元測試；畫面與震動只有在手錶上才能確認。
+- 取樣頻率只是對系統的「要求」，實際頻率由手錶決定（設定頁與主畫面會顯示實測值）；200 Hz 以上需要額外權限，本應用最高只要求 200 Hz。
+- 英文介面是逐句對照翻譯，個別句子在小螢幕上可能偏長。
 
 - **手錶端程式（畫面、感測器、檔案存取、唤醒鎖）沒有自動化測試，需要在實機上確認。**
   純邏輯（放箭偵測、穩定度計算、統計、記錄檔的存取、波形取樣、誤判取消、分趟、環數相關性、匯出、震動節奏、標籤、閾值建議、校準標注、占用空間、自動暫停、低電量、今日目標、每趟回饋）有跑過測試，全部通過。

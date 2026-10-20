@@ -67,13 +67,13 @@ jobs:
             exit 1
           fi
 
-      # 同時編譯 release（較快，建議使用）和 debug（備用）
-      - name: Build APKs
+      # 同時編譯 release APK（較快，建議使用）、debug APK（備用），以及上架 Google Play 用的 AAB
+      - name: Build APKs and AAB
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: gradle :app:assembleRelease :app:assembleDebug --no-daemon
+        run: gradle :app:assembleRelease :app:assembleDebug :app:bundleRelease --no-daemon
 
       - uses: actions/upload-artifact@v4
         with:
@@ -81,6 +81,12 @@ jobs:
           path: |
             app/build/outputs/apk/release/app-release.apk
             app/build/outputs/apk/debug/app-debug.apk
+
+      # 上架 Google Play 用的 App Bundle（.aab），在 Actions 的 Artifacts 下載，不放進 GitHub Release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ArcheryAssistant-aab
+          path: app/build/outputs/bundle/release/app-release.aab
 
       # 只有推送 v 開頭的標籤時才發布。只附 release 版，檔名帶版本號。
       # 同一個標籤重跑時，會覆蓋已存在的 Release 裡的同名檔案。

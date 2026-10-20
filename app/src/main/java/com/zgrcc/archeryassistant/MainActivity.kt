@@ -1,0 +1,164 @@
+package com.zgrcc.archeryassistant
+
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import android.os.Bundle
+import android.view.WindowManager
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.wear.compose.material.MaterialTheme
+import androidx.wear.compose.navigation.SwipeDismissableNavHost
+import androidx.wear.compose.navigation.composable
+import androidx.wear.compose.navigation.rememberSwipeDismissableNavController
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContent { ArcheryApp() }
+    }
+}
+
+private const val ROUTE_MAIN = "main"
+private const val ROUTE_SETTINGS = "settings"
+private const val ROUTE_HISTORY = "history"
+private const val ROUTE_DETAIL = "detail"
+private const val ROUTE_SHOT = "shot"
+private const val ROUTE_TREND = "trend"
+private const val ROUTE_CALIBRATION = "calibration"
+private const val ROUTE_COMPETITION = "competition"
+
+@Composable
+fun ArcheryApp(vm: CounterViewModel = viewModel()) {
+    // 只要應用開著就保持亮屏（可在設定頁關閉），不論有沒有在偵測
+    val keepScreenOnSetting by vm.settings.keepScreenOn.collectAsStateWithLifecycle()
+    val compState by vm.comp.collectAsStateWithLifecycle()
+    val runningNow by vm.running.collectAsStateWithLifecycle()
+    // 比賽進行中一律保持亮屏，不管設定
+    val keepScreenOn = keepScreenOnSetting || (runningNow && compState != null)
+    val view = LocalView.current
+    DisposableEffect(keepScreenOn) {
+        view.keepScreenOn = keepScreenOn
+        onDispose { view.keepScreenOn = false }
+    }
+
+    // 介面語言：設定變動時整個畫面重新組合（見 I18n）
+    val language by vm.settings.language.collectAsStateWithLifecycle()
+    val english = I18n.resolveEnglish(language, java.util.Locale.getDefault().language)
+    I18n.english = english
+
+    // 偵測中降低亮度（設定頁可關）：只在偵測中且開啟時覆寫視窗亮度，其他時候交還給系統
+    val running by vm.running.collectAsStateWithLifecycle()
+    val dim by vm.settings.dimWhenRunning.collectAsStateWithLifecycle()
+    val dimLevel by vm.settings.dimLevel.collectAsStateWithLifecycle()
+    val activity = LocalContext.current.findActivity()
+    DisposableEffect(running, dim, dimLevel) {
+        val window = activity?.window
+        if (window != null && running && dim) {
+            val lp = window.attributes
+            lp.screenBrightness = Brightness.level(dimLevel)
+            window.attributes = lp
+        }
+        onDispose {
+            window?.let {
+                val lp = it.attributes
+                lp.screenBrightness = WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+                it.attributes = lp
+            }
+        }
+    }
+
+    // 啟動動畫：只在剛開啟應用時播放一次（設定頁可關）。轉場、旋轉不會重播
+    val splashOn = remember { vm.settings.splash.value }
+    val splashTap = remember { vm.settings.splashTap.value }
+    var showSplash by rememberSaveable { mutableStateOf(splashOn) }
+
+    key(english) {
+        MaterialTheme {
+            if (showSplash) {
+                SplashScreen(
+                    versionLabel = vm.versionLabel,
+                    signature = vm.signatureShort,
+                    waitForTap = splashTap,
+                    onDone = { showSplash = false },
+                )
+            } else {
+                AppNav(vm)
+            }
+        }
+    }
+}
+
+@Composable
+private fun AppNav(vm: CounterViewModel) {
+    val nav = rememberSwipeDismissableNavController()
+    SwipeDismissableNavHost(navController = nav, startDestination = ROUTE_MAIN) {
+        composable(ROUTE_MAIN) {
+            MainScreen(
+                vm = vm,
+                onOpenHistory = { nav.navigate(ROUTE_HISTORY) },
+                onOpenSettings = { nav.navigate(ROUTE_SETTINGS) },
+                onOpenCompetition = { nav.navigate(ROUTE_COMPETITION) },
+            )
+        }
+        composable(ROUTE_SETTINGS) {
+            SettingsScreen(vm = vm, onOpenCalibration = { nav.navigate(ROUTE_CALIBRATION) })
+        }
+        composable(ROUTE_HISTORY) {
+            HistoryScreen(
+                vm = vm,
+                onOpen = { id ->
+                    vm.selectSession(id)
+                    nav.navigate(ROUTE_DETAIL)
+                },
+                onOpenTrend = { nav.navigate(ROUTE_TREND) },
+            )
+        }
+        composable(ROUTE_DETAIL) {
+            DetailScreen(
+                vm = vm,
+                onOpenShot = { index ->
+                    vm.selectShot(index)
+                    nav.navigate(ROUTE_SHOT)
+                },
+                onDeleted = { nav.popBackStack() },
+            )
+        }
+        composable(ROUTE_SHOT) {
+            ShotScreen(vm = vm)
+        }
+        composable(ROUTE_TREND) {
+            TrendScreen(vm = vm)
+        }
+        composable(ROUTE_COMPETITION) {
+            CompetitionScreen(
+                vm = vm,
+                onOpenRecord = { id ->
+                    vm.selectSession(id)
+                    nav.navigate(ROUTE_DETAIL)
+                },
+            )
+        }
+        composable(ROUTE_CALIBRATION) {
+            CalibrationScreen(vm = vm)
+        }
+    }
+}
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}
