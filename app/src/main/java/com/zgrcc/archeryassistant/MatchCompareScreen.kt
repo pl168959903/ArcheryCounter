@@ -23,12 +23,17 @@ import androidx.wear.compose.material.Text
 fun MatchCompareScreen(vm: CounterViewModel, onOpen: (String) -> Unit) {
     val sessions by vm.sessions.collectAsStateWithLifecycle()
     var sameOnly by remember { mutableStateOf(false) }
+    val paceOn by vm.settings.paceAnalysis.collectAsStateWithLifecycle()
+    val bestOn by vm.settings.personalBest.collectAsStateWithLifecycle()
 
     val all = remember(sessions) { MatchCompare.rows(sessions) }
     val rows = remember(all, sameOnly) { if (sameOnly) MatchCompare.sameAsLatest(all) else all }
     val shake = remember(rows) { MatchCompare.shakeSeries(rows) }
     val score = remember(rows) { MatchCompare.scoreSeries(rows) }
     val delta = remember(rows) { MatchCompare.scoreDelta(rows) }
+    // 個人最佳：同賽制才比（賽制不同的場次不互相比較）
+    val bestScore = remember(rows) { PersonalBest.bestScoreIds(rows) }
+    val bestSteady = remember(rows) { PersonalBest.steadiestMatchIds(rows) }
 
     ScalingLazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -103,7 +108,10 @@ fun MatchCompareScreen(vm: CounterViewModel, onOpen: (String) -> Unit) {
                 item {
                     Chip(
                         onClick = { onOpen(r.id) },
-                        label = { Text(Fmt.dateTime(r.startMs) + navMark(), maxLines = 1) },
+                        label = {
+                            val star = if (bestOn && (r.id in bestScore || r.id in bestSteady)) "★ " else ""
+                            Text(star + Fmt.dateTime(r.startMs) + navMark(), maxLines = 1)
+                        },
                         secondaryLabel = {
                             Text(
                                 buildString {
@@ -113,8 +121,14 @@ fun MatchCompareScreen(vm: CounterViewModel, onOpen: (String) -> Unit) {
                                     append(tr(" · 晃動 ${Fmt.numOrDash(r.accelAvg, 2)}", " · Shake ${Fmt.numOrDash(r.accelAvg, 2)}"))
                                     append("\n")
                                     append(tr("共 ${r.totalArrows} 箭 · 時間到 ${r.timedOutEnds} 趟", "${r.totalArrows} arrows · ${r.timedOutEnds} timed out"))
+                                    if (paceOn && r.firstWaitAvg != null) {
+                                        append("\n")
+                                        append(tr("平均第一箭等待 ${Fmt.num(r.firstWaitAvg, 1)} 秒", "Avg first-arrow wait ${Fmt.num(r.firstWaitAvg, 1)} s"))
+                                    }
+                                    if (bestOn && r.id in bestScore) append(tr("\n★ 同賽制最高環數", "\n★ Highest score in this format"))
+                                    if (bestOn && r.id in bestSteady) append(tr("\n★ 同賽制最穩", "\n★ Steadiest in this format"))
                                 },
-                                maxLines = 4,
+                                maxLines = 7,
                             )
                         },
                         colors = kindColors(ChipKind.LIST, ChipDefaults.secondaryChipColors()),

@@ -95,6 +95,36 @@ class SessionStore(baseDir: File) {
         RawDeleteResult(count, bytes)
     }
 
+    /**
+     * 自動清理：早於 [cutoffMs] 的記錄，刪掉原始資料 CSV，並去掉波形和 2D 軌跡，其他統計資料保留。
+     * [keepId]（進行中的那一筆）、校準記錄、不夠舊的都不動。回傳清了幾筆、釋出多少位元組。
+     */
+    fun cleanOld(cutoffMs: Long, keepId: String?): CleanResult = onIo(CleanResult(0, 0L, System.currentTimeMillis())) {
+        var count = 0
+        var bytes = 0L
+        for (f in dir.listFiles { x -> x.isFile && x.name.endsWith(".json") }.orEmpty()) {
+            val id = f.name.removeSuffix(".json")
+            if (id == keepId) continue
+            val s = readFile(f) ?: continue
+            if (!AutoClean.needsClean(s, cutoffMs)) continue
+            val before = f.length()
+            val csv = File(dir, "$id.csv")
+            val csvBytes = if (csv.isFile) csv.length() else 0L
+            write(AutoClean.strip(s))
+            if (csv.isFile) csv.delete()
+            bytes += csvBytes + (before - jsonFile(id).length()).coerceAtLeast(0L)
+            count++
+        }
+        CleanResult(count, bytes, System.currentTimeMillis())
+    }
+
+    /** 原始資料 CSV 逐行讀取（校準分析用）；檔案不存在回傳 null。 */
+    fun <T> readRawLines(id: String, block: (Sequence<String>) -> T): T? = onIo(null) {
+        if (!isSafeId(id)) return@onIo null
+        val f = File(dir, "$id.csv")
+        if (!f.isFile) null else f.useLines { block(it) }
+    }
+
     private fun isRawCsv(f: File) = f.name.endsWith(".csv") && f.name !in EXPORT_FILES
 
     /** 一次删除多笔（记录页的管理模式）。 */
@@ -223,6 +253,7 @@ internal object SessionJson {
             if (sh.score != null) append(",\"sc\":").append(sh.score)
             if (sh.waveform != null) append(",\"wf\":").append(encodeWave(sh.waveform))
             if (sh.trace != null) append(",\"tr\":").append(encodeTrace(sh.trace))
+            if (sh.feel != null) append(",\"fe\":").append(sh.feel)
             append('}')
         }
 
@@ -254,6 +285,7 @@ internal object SessionJson {
                     gyroRms = (m["gyr"] as? Number)?.toFloat(),
                     waveform = parseWave(m["wf"]),
                     trace = parseTrace(m["tr"]),
+                    feel = Feel.valid((m["fe"] as? Number)?.toInt()),
                     followAccelRms = (m["fa"] as? Number)?.toFloat(),
                     followGyroRms = (m["fg"] as? Number)?.toFloat(),
                     score = (m["sc"] as? Number)?.toInt()?.coerceIn(0, 10),

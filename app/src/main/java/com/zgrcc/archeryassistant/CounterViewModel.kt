@@ -217,6 +217,34 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         viewModelScope.launch { settings.cooldownSec.collect { detector.cooldownMs = it * 1000L } }
     }
 
+    // ---- 自動清理與校準分析（v1.14） ----
+
+    private val _cleanLast = MutableStateFlow(AutoClean.decode(settings.cleanLast))
+    /** 上次自動清理的結果（沒清過為 null） */
+    val cleanLast: StateFlow<CleanResult?> = _cleanLast.asStateFlow()
+
+    /** 開啟自動清理時，應用啟動後清一次。進行中的記錄與校準記錄不會動。 */
+    private fun runAutoClean() {
+        if (!settings.autoClean.value) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val cutoff = AutoClean.cutoff(System.currentTimeMillis(), settings.autoCleanDays.value)
+            val r = store.cleanOld(cutoff, keepId = _activeId.value)
+            if (r.count > 0) {
+                settings.cleanLast = AutoClean.encode(r)
+                _cleanLast.value = r
+                publishSessions()
+            }
+        }
+    }
+
+    /** 分析一筆校準記錄的原始資料，回傳建議；沒有原始資料或記錄回傳 null。 */
+    suspend fun analyzeCalibration(id: String): CalibAdvice? = withContext(Dispatchers.IO) {
+        val s = store.load(id) ?: return@withContext null
+        if (!s.calibration) return@withContext null
+        val samples = store.readRawLines(id) { CalibrationAnalyzer.parseCsv(it) } ?: return@withContext null
+        CalibrationAnalyzer.analyze(s.marks, s.shots, samples)
+    }
+
     // ---- 檢查更新（v1.13） ----
 
     private val updater = UpdateManager(appContext)
@@ -877,6 +905,16 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
     suspend fun setShotScore(id: String, index: Int, score: Int?): Unit =
         updateShot(id, index) { it.copy(score = score?.coerceIn(0, 10)) }
 
+    /** 單箭自評（1 差、2 普通、3 好，null 清除）。進行中的記錄交給錄製器，其他的改存檔。 */
+    suspend fun setShotFeel(id: String, index: Int, feel: Int?): Unit {
+        val v = Feel.valid(feel)
+        if (id == _activeId.value) {
+            recorder.setFeel(index, v)
+        } else {
+            updateShot(id, index) { it.copy(feel = v) }
+        }
+    }
+
     private suspend fun updateShot(id: String, index: Int, change: (ShotEntry) -> ShotEntry): Unit =
         updateSession(id) { s ->
             if (index !in s.shots.indices) {
@@ -1106,6 +1144,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
                 }
             }
         }
+        runAutoClean()
         // 自動檢查更新：開啟時，距上次超過一天才查
         if (settings.updateAuto.value && UpdatePolicy.due(settings.updateLastCheck, System.currentTimeMillis())) {
             checkUpdate(manual = false)

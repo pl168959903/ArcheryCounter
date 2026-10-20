@@ -61,6 +61,8 @@ private const val ROUTE_CALIBRATION = "calibration"
 private const val ROUTE_COMPETITION = "competition"
 private const val ROUTE_MATCH_COMPARE = "match_compare"
 private const val ROUTE_QUICK_CHECK = "quick_check"
+private const val ROUTE_GROUPS = "groups"
+private const val ROUTE_OVERVIEW = "overview"
 private const val ROUTE_DISC = "disc"
 
 @Composable
@@ -189,6 +191,8 @@ private fun AppNav(vm: CounterViewModel, launch: String?, onLaunchHandled: () ->
                 },
                 onOpenTrend = { nav.navigate(ROUTE_TREND) },
                 onOpenMatchCompare = { nav.navigate(ROUTE_MATCH_COMPARE) },
+                onOpenGroups = { nav.navigate(ROUTE_GROUPS) },
+                onOpenOverview = { nav.navigate(ROUTE_OVERVIEW) },
             )
         }
         composable(ROUTE_DETAIL) {
@@ -205,6 +209,8 @@ private fun AppNav(vm: CounterViewModel, launch: String?, onLaunchHandled: () ->
         composable(ROUTE_SHOT) {
             ShotScreen(vm = vm)
         }
+        composable(ROUTE_GROUPS) { GroupCompareScreen(vm) }
+        composable(ROUTE_OVERVIEW) { OverviewScreen(vm) }
         composable(ROUTE_MATCH_COMPARE) {
             MatchCompareScreen(
                 vm = vm,

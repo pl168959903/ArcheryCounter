@@ -66,6 +66,7 @@ private fun ShotContent(vm: CounterViewModel, session: Session, index: Int, shot
     val recordScore by vm.settings.recordScore.collectAsStateWithLifecycle()
     val recordTrace by vm.settings.recordTrace.collectAsStateWithLifecycle()
     val discSize by vm.settings.discSize.collectAsStateWithLifecycle()
+    val shotFeel by vm.settings.shotFeel.collectAsStateWithLifecycle()
 
     // 有效的第幾箭（不含誤判）
     val validNo = if (shot.cancelled) 0 else session.shots.take(index + 1).count { !it.cancelled }
@@ -121,6 +122,15 @@ private fun ShotContent(vm: CounterViewModel, session: Session, index: Int, shot
             } else {
                 item { Note(tr("這一箭沒有 2D 軌跡：記錄時「單箭 2D 軌跡」是關閉的，或當時資料不足", "No 2D trace for this shot: Per-shot 2D trace was off, or there was not enough data")) }
             }
+        }
+
+        // 自評：設定頁開啟，或這一箭已經有自評時才顯示；誤判的箭不用評
+        if ((shotFeel || shot.feel != null) && !shot.cancelled) {
+            item { SectionTitle(tr("自評", "Self-rating")) }
+            item {
+                FeelRow(shot.feel) { v -> scope.launch { vm.setShotFeel(session.id, index, v) } }
+            }
+            item { Note(tr("差／普通／好：這一箭你自己覺得怎麼樣，點已選的再按一次取消。統計裡會比較自評和實際晃動", "Bad / OK / Good: how this shot felt to you; tap the selected one again to clear. Statistics compare it with actual shake")) }
         }
 
         // 環數：設定頁開啟，或這一箭已經有環數時才顯示；誤判的箭不用輸入

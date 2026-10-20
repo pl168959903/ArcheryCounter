@@ -352,6 +352,76 @@ class AppSettings(private val prefs: SharedPreferences) {
         prefs.edit().putBoolean(KEY_SOUND_END, value).apply()
     }
 
+    private val _paceAnalysis = MutableStateFlow(prefs.getBoolean(KEY_PACE, true))
+    /** 比賽記錄顯示節奏分析。預設：開 */
+    val paceAnalysis: StateFlow<Boolean> = _paceAnalysis.asStateFlow()
+    fun setPaceAnalysis(v: Boolean) {
+        _paceAnalysis.value = v
+        prefs.edit().putBoolean(KEY_PACE, v).apply()
+    }
+
+    private val _groupCompare = MutableStateFlow(prefs.getBoolean(KEY_GROUP_COMPARE, true))
+    /** 記錄列表顯示「條件對比」。預設：開 */
+    val groupCompare: StateFlow<Boolean> = _groupCompare.asStateFlow()
+    fun setGroupCompare(v: Boolean) {
+        _groupCompare.value = v
+        prefs.edit().putBoolean(KEY_GROUP_COMPARE, v).apply()
+    }
+
+    private val _personalBest = MutableStateFlow(prefs.getBoolean(KEY_PERSONAL_BEST, true))
+    /** 顯示個人最佳的 ★ 標記。預設：開 */
+    val personalBest: StateFlow<Boolean> = _personalBest.asStateFlow()
+    fun setPersonalBest(v: Boolean) {
+        _personalBest.value = v
+        prefs.edit().putBoolean(KEY_PERSONAL_BEST, v).apply()
+    }
+
+    private val _overview = MutableStateFlow(prefs.getBoolean(KEY_OVERVIEW, true))
+    /** 記錄列表顯示「訓練總覽」。預設：開 */
+    val overview: StateFlow<Boolean> = _overview.asStateFlow()
+    fun setOverview(v: Boolean) {
+        _overview.value = v
+        prefs.edit().putBoolean(KEY_OVERVIEW, v).apply()
+    }
+
+    private val _autoClean = MutableStateFlow(prefs.getBoolean(KEY_AUTO_CLEAN, false))
+    /** 開啟應用時自動清理舊記錄的原始資料、波形和 2D 軌跡。預設：關 */
+    val autoClean: StateFlow<Boolean> = _autoClean.asStateFlow()
+    fun setAutoClean(v: Boolean) {
+        _autoClean.value = v
+        prefs.edit().putBoolean(KEY_AUTO_CLEAN, v).apply()
+    }
+
+    private val _autoCleanDays = MutableStateFlow(AutoClean.validDays(prefs.getInt(KEY_AUTO_CLEAN_DAYS, AutoClean.DEFAULT_DAYS)))
+    /** 超過幾天的記錄才清理（30／60／90）。預設：60 */
+    val autoCleanDays: StateFlow<Int> = _autoCleanDays.asStateFlow()
+    fun setAutoCleanDays(v: Int) {
+        val value = AutoClean.validDays(v)
+        _autoCleanDays.value = value
+        prefs.edit().putInt(KEY_AUTO_CLEAN_DAYS, value).apply()
+    }
+
+    /** 上次自動清理的結果；不屬於「恢復預設設定」 */
+    var cleanLast: String
+        get() = prefs.getString(KEY_CLEAN_LAST, "") ?: ""
+        set(v) { prefs.edit().putString(KEY_CLEAN_LAST, v).apply() }
+
+    private val _shotFeel = MutableStateFlow(prefs.getBoolean(KEY_SHOT_FEEL, false))
+    /** 單箭頁與快速檢查提供「差／普通／好」自評。預設：關 */
+    val shotFeel: StateFlow<Boolean> = _shotFeel.asStateFlow()
+    fun setShotFeel(v: Boolean) {
+        _shotFeel.value = v
+        prefs.edit().putBoolean(KEY_SHOT_FEEL, v).apply()
+    }
+
+    private val _calAdvice = MutableStateFlow(prefs.getBoolean(KEY_CAL_ADVICE, true))
+    /** 校準錄製完成後與校準記錄詳情提供「分析校準資料」。預設：開 */
+    val calAdvice: StateFlow<Boolean> = _calAdvice.asStateFlow()
+    fun setCalAdvice(v: Boolean) {
+        _calAdvice.value = v
+        prefs.edit().putBoolean(KEY_CAL_ADVICE, v).apply()
+    }
+
     private val _updateAuto = MutableStateFlow(prefs.getBoolean(KEY_UPDATE_AUTO, false))
     /** 啟動時自動檢查更新（最多一天一次）。預設：關 */
     val updateAuto: StateFlow<Boolean> = _updateAuto.asStateFlow()
@@ -707,6 +777,14 @@ class AppSettings(private val prefs: SharedPreferences) {
         setLive2d(false)
         setDiscSize(DiscSize.DEFAULT)
         setUpdateAuto(false)
+        setPaceAnalysis(true)
+        setGroupCompare(true)
+        setPersonalBest(true)
+        setOverview(true)
+        setAutoClean(false)
+        setAutoCleanDays(AutoClean.DEFAULT_DAYS)
+        setShotFeel(false)
+        setCalAdvice(true)
         setDiscFullscreen(true)
         setRecordTrace(false)
         setTraceGyro(false)
@@ -762,6 +840,15 @@ class AppSettings(private val prefs: SharedPreferences) {
         private const val KEY_LIVE_2D = "live_2d"
         private const val KEY_DISC_SIZE = "disc_size"
         private const val KEY_UPDATE_AUTO = "update_auto"
+        private const val KEY_PACE = "pace_analysis"
+        private const val KEY_GROUP_COMPARE = "group_compare"
+        private const val KEY_PERSONAL_BEST = "personal_best"
+        private const val KEY_OVERVIEW = "overview"
+        private const val KEY_AUTO_CLEAN = "auto_clean"
+        private const val KEY_AUTO_CLEAN_DAYS = "auto_clean_days"
+        private const val KEY_CLEAN_LAST = "clean_last"
+        private const val KEY_SHOT_FEEL = "shot_feel"
+        private const val KEY_CAL_ADVICE = "cal_advice"
         private const val KEY_UPDATE_LAST = "update_last_check"
         private const val KEY_UPDATE_SKIPPED = "update_skipped"
         private const val KEY_DISC_FULLSCREEN = "disc_fullscreen"

@@ -29,6 +29,8 @@ fun CalibrationScreen(vm: CounterViewModel) {
     val step by vm.calStep.collectAsStateWithLifecycle()
     val marking by vm.calMarking.collectAsStateWithLifecycle()
     var saved by remember { mutableStateOf(false) }
+    var savedId by remember { mutableStateOf<String?>(null) }
+    val calAdvice by vm.settings.calAdvice.collectAsStateWithLifecycle()
 
     val steps = Calibration.STEPS
 
@@ -48,6 +50,10 @@ fun CalibrationScreen(vm: CounterViewModel) {
                 if (saved) {
                     item { Body(tr("校準記錄已儲存。它會在「記錄」裡標為「校準」，不計入箭數和趨勢", "Calibration saved. It shows as 'Calibration' in Records and is not counted in arrows or trends")) }
                     item { Note(tr("用 adb pull 把 sessions 資料夾取出，就能拿去分析", "Pull the sessions folder with adb to analyze it")) }
+                    val sid = savedId
+                    if (calAdvice && sid != null) {
+                        item { CalibrationAdviceBlock(vm, sid) }
+                    }
                 }
                 item {
                     Body(
@@ -105,6 +111,7 @@ fun CalibrationScreen(vm: CounterViewModel) {
             item {
                 Chip(
                     onClick = {
+                        savedId = vm.activeSessionId.value
                         vm.stop()
                         saved = true
                     },

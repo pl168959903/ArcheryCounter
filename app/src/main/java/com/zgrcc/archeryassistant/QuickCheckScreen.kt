@@ -57,6 +57,7 @@ private fun QuickCheckContent(vm: CounterViewModel, session: Session, isActive: 
     val scope = rememberCoroutineScope()
     val recordTrace by vm.settings.recordTrace.collectAsStateWithLifecycle()
     val discSize by vm.settings.discSize.collectAsStateWithLifecycle()
+    val shotFeel by vm.settings.shotFeel.collectAsStateWithLifecycle()
     val count = session.shots.size
     var pos by remember(session.id) { mutableStateOf(QuickCheck.start(count)) }
     val index = pos.coerceIn(0, (count - 1).coerceAtLeast(0))
@@ -100,6 +101,11 @@ private fun QuickCheckContent(vm: CounterViewModel, session: Session, isActive: 
                 item { ShotTrace(trace, DiscSize.dp(discSize)) }
             } else if (recordTrace) {
                 item { Note(tr("這一箭沒有 2D 軌跡", "No 2D trace for this shot")) }
+            }
+            if (shotFeel && !shot.cancelled) {
+                item {
+                    FeelRow(shot.feel) { v -> scope.launch { vm.setShotFeel(session.id, index, v) } }
+                }
             }
             item {
                 Chip(

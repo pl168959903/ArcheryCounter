@@ -116,6 +116,23 @@ private fun DetailContent(
     val gyroSeries = remember(session) { metricSeries(session, gyro = true) }
     var confirmDelete by remember { mutableStateOf(false) }
     val tagsEnabled by vm.settings.tagsEnabled.collectAsStateWithLifecycle()
+    val paceOn by vm.settings.paceAnalysis.collectAsStateWithLifecycle()
+    val bestOn by vm.settings.personalBest.collectAsStateWithLifecycle()
+    val calAdvice by vm.settings.calAdvice.collectAsStateWithLifecycle()
+    val allSessions by vm.sessions.collectAsStateWithLifecycle()
+    val isSteadiest = remember(allSessions, session.id, bestOn) {
+        bestOn && !session.calibration && session.comp == null && PersonalBest.steadiestId(allSessions) == session.id
+    }
+    val matchStars = remember(allSessions, session.id, bestOn) {
+        if (!bestOn || session.comp == null) emptyList<String>() else {
+            val rows = MatchCompare.rows(allSessions)
+            buildList {
+                if (session.id in PersonalBest.bestScoreIds(rows)) add(tr("★ 同賽制最高環數", "★ Highest score in this format"))
+                if (session.id in PersonalBest.steadiestMatchIds(rows)) add(tr("★ 同賽制最穩", "★ Steadiest in this format"))
+            }
+        }
+    }
+    val pace = remember(session, paceOn) { if (paceOn && !session.calibration) PaceAnalyzer.analyze(session) else null }
     val scope = rememberCoroutineScope()
 
     ScalingLazyColumn(
@@ -140,6 +157,15 @@ private fun DetailContent(
             }
         }
         item { Body(summaryText(session, stats, isActive)) }
+        if (isSteadiest) {
+            item { Body(tr("★ 個人最佳：這是你最穩的一次練習（平均晃動最低）", "★ Personal best: your steadiest practice session (lowest average shake)")) }
+        }
+        if (matchStars.isNotEmpty()) {
+            item { Body(matchStars.joinToString("\n")) }
+        }
+        if (session.calibration && calAdvice && session.rawCsv && !isActive && session.endMs != null) {
+            item { CalibrationAdviceBlock(vm, session.id) }
+        }
 
         // 比賽模式（v1.9）：逐趟用時、逾時、箭數與晃動變化
         if (!session.calibration && session.comp != null) {
@@ -147,6 +173,10 @@ private fun DetailContent(
             if (compSum != null) {
                 item { Text(tr("比賽統計", "Match summary"), style = MaterialTheme.typography.title3) }
                 item { Body(compSummaryText(compSum, session.comp)) }
+            }
+            if (pace != null) {
+                item { Text(tr("節奏分析", "Pace analysis"), style = MaterialTheme.typography.title3) }
+                item { Body(paceText(pace)) }
             }
         }
 
@@ -339,6 +369,14 @@ private fun statsText(s: Session, st: SessionStats): String = buildString {
         }
     }
 
+    val feelGroups = FeelStats.groups(s)
+    if (feelGroups.isNotEmpty()) {
+        append(tr("\n\n自評與晃動", "\n\nSelf-rating and shake"))
+        for (g in feelGroups) {
+            append("\n${Feel.label(g.feel)}　${g.count}${tr(" 箭", " arrows")} · ${Fmt.numOrDash(g.accelAvg, 2)} m/s²")
+        }
+    }
+
     append(tr("\n\n加速度晃動（m/s²）", "\n\nAccel shake (m/s²)"))
     appendStability(st.accelAvg, st.accelSteadiest, st.accelShakiest, st.accelTrend, 2)
 
@@ -414,5 +452,27 @@ private fun compSummaryText(sum: CompSummary, meta: CompMeta): String = buildStr
         if (e.lateArrows > 0) append(tr(" 逾時箭 ${e.lateArrows}", " late ${e.lateArrows}"))
         e.accelAvg?.let { append(tr(" 晃動 ", " shake ")).append(Fmt.num(it)) }
         e.score?.let { append(tr(" 環 $it", " score $it")) }
+    }
+}
+
+/** 比賽節奏分析文字（v1.14）：第一箭等待、最後一箭剩餘秒數、壓線趟數、用時。 */
+private fun paceText(p: MatchPace): String = buildString {
+    if (p.firstWaitAvg != null) {
+        append(tr("平均第一箭等待 ${Fmt.num(p.firstWaitAvg, 1)} 秒", "Avg first-arrow wait ${Fmt.num(p.firstWaitAvg, 1)} s"))
+        if (p.firstWaitMax != null) append(tr("（最久 ${Fmt.num(p.firstWaitMax, 1)} 秒", " (longest ${Fmt.num(p.firstWaitMax, 1)} s"))
+        if (p.slowestEnd != null) append(tr("，${p.slowestEnd}）", ", ${p.slowestEnd})")) else append(")")
+    }
+    if (p.lastRemainMin != null) {
+        append(tr("\n最後一箭最少只剩 ${Fmt.num(p.lastRemainMin, 1)} 秒", "\nThe last arrow had as little as ${Fmt.num(p.lastRemainMin, 1)} s left"))
+        if (p.tightestEnd != null) append(tr("（${p.tightestEnd}）", " (${p.tightestEnd})"))
+    }
+    append(tr("\n壓線（剩 ${PaceAnalyzer.TIGHT_SEC.toInt()} 秒內才放最後一箭）${p.tightEnds} 趟", "\nTight ends (last arrow with ≤${PaceAnalyzer.TIGHT_SEC.toInt()} s left): ${p.tightEnds}"))
+    if (p.usedAvg != null) {
+        append(tr("\n每趟用時 平均 ${Fmt.num(p.usedAvg, 0)} 秒", "\nTime used per end: avg ${Fmt.num(p.usedAvg, 0)} s"))
+        if (p.usedMax != null) append(tr("，最長 ${Fmt.num(p.usedMax, 0)} 秒", ", max ${Fmt.num(p.usedMax, 0)} s"))
+    }
+    for (e in p.ends) {
+        append("\n${e.label}　")
+        append(tr("等 ${Fmt.numOrDash(e.firstWaitSec, 0)} 秒 · 剩 ${Fmt.numOrDash(e.lastRemainSec, 0)} 秒", "wait ${Fmt.numOrDash(e.firstWaitSec, 0)} s · ${Fmt.numOrDash(e.lastRemainSec, 0)} s left"))
     }
 }

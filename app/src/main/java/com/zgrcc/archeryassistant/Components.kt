@@ -107,3 +107,22 @@ fun kindColors(kind: ChipKind, fallback: androidx.wear.compose.material.ChipColo
 /** 「點進去是另一頁」的按鈕在標籤尾巴加「›」，不單靠顏色分辨。 */
 @Composable
 fun navMark(): String = if (LocalChipKinds.current) " ›" else ""
+
+/** 單箭自評（v1.14）：差／普通／好三顆按鈕，點已選的那顆取消。 */
+@Composable
+fun FeelRow(current: Int?, onSelect: (Int?) -> Unit) {
+    androidx.compose.foundation.layout.Row(
+        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(6.dp),
+    ) {
+        for (v in listOf(Feel.BAD, Feel.OK, Feel.GOOD)) {
+            Button(
+                onClick = { onSelect(Feel.toggle(current, v)) },
+                modifier = Modifier.size(width = 52.dp, height = 40.dp),
+                colors = if (current == v) ButtonDefaults.primaryButtonColors() else ButtonDefaults.secondaryButtonColors(),
+            ) {
+                Text(Feel.label(v), maxLines = 1)
+            }
+        }
+    }
+}

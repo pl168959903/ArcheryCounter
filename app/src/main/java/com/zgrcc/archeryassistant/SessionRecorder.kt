@@ -162,6 +162,14 @@ class SessionRecorder(private val store: SessionStore) {
         saveLocked(null)
     }
 
+    /** 進行中設定或清除某一箭的自評（1 差、2 普通、3 好）；位置不存在就什麼都不做。 */
+    @Synchronized
+    fun setFeel(index: Int, feel: Int?) {
+        if (id == null || index !in shots.indices) return
+        shots[index] = shots[index].copy(feel = Feel.valid(feel))
+        saveLocked(null)
+    }
+
     /** 校准录制：一段动作开始。上一段若还没结束，先把它结束在同一时间。 */
     @Synchronized
     fun startMark(relMs: Long, label: String) {

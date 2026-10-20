@@ -14,6 +14,8 @@ data class MatchRow(
     /** 正式趟的平均加速度晃動；沒有數據為 null */
     val accelAvg: Float?,
     val timedOutEnds: Int,
+    /** 正式趟第一箭平均等待秒數（v1.14）；沒有數據為 null */
+    val firstWaitAvg: Float? = null,
 )
 
 /** 跨場比賽對比（v1.11）。純邏輯。 */
@@ -41,6 +43,7 @@ object MatchCompare {
                     scoreTotal = sum.scoreTotal,
                     accelAvg = if (avgs.isEmpty()) null else avgs.average().toFloat(),
                     timedOutEnds = sum.timedOutEnds,
+                    firstWaitAvg = PaceAnalyzer.analyze(s)?.firstWaitAvg,
                 )
             }
             .takeLast(limit)

@@ -20,11 +20,15 @@ import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
 
 @Composable
-fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrend: () -> Unit, onOpenMatchCompare: () -> Unit) {
+fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrend: () -> Unit, onOpenMatchCompare: () -> Unit, onOpenGroups: () -> Unit, onOpenOverview: () -> Unit) {
     val sessions by vm.sessions.collectAsStateWithLifecycle()
     val activeId by vm.activeSessionId.collectAsStateWithLifecycle()
     val showTrend by vm.settings.showSessionTrend.collectAsStateWithLifecycle()
     val matchCompare by vm.settings.matchCompare.collectAsStateWithLifecycle()
+    val groupCompare by vm.settings.groupCompare.collectAsStateWithLifecycle()
+    val overviewOn by vm.settings.overview.collectAsStateWithLifecycle()
+    val bestOn by vm.settings.personalBest.collectAsStateWithLifecycle()
+    val steadiestId = remember(sessions, bestOn) { if (bestOn) PersonalBest.steadiestId(sessions) else null }
 
     var confirmClear by remember { mutableStateOf(false) }
 
@@ -133,6 +137,29 @@ fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrend: (
             }
         }
 
+        if (!manage && groupCompare && GroupCompare.groups(sessions).isNotEmpty()) {
+            item {
+                Chip(
+                    onClick = onOpenGroups,
+                    label = { Text(tr("條件對比", "Compare conditions") + navMark(), maxLines = 1) },
+                    secondaryLabel = { Text(tr("依距離、弓種分組", "Grouped by distance and bow"), maxLines = 1) },
+                    colors = kindColors(ChipKind.NAV, ChipDefaults.secondaryChipColors()),
+                    modifier = Modifier.fillMaxWidth(0.9f),
+                )
+            }
+        }
+        if (!manage && overviewOn && sessions.any { !it.calibration }) {
+            item {
+                Chip(
+                    onClick = onOpenOverview,
+                    label = { Text(tr("訓練總覽", "Training overview") + navMark(), maxLines = 1) },
+                    secondaryLabel = { Text(tr("每週、每月的箭數", "Arrows per week and month"), maxLines = 1) },
+                    colors = kindColors(ChipKind.NAV, ChipDefaults.secondaryChipColors()),
+                    modifier = Modifier.fillMaxWidth(0.9f),
+                )
+            }
+        }
+
         if (sessions.isEmpty()) {
             item { Note(tr("尚無記錄。按「開始偵測」後，每次偵測都會自動存成一筆記錄", "No records yet. Each time you press Start detection, a record is saved automatically")) }
         }
@@ -149,10 +176,11 @@ fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrend: (
                 val isChosen = s.id in chosen
 
                 // 管理模式用文字符號表示勾選，不單靠顏色
+                val star = if (s.id == steadiestId) "★ " else ""
                 val title = if (manage) {
                     (if (isChosen) "☑ " else "☐ ") + Fmt.dateTime(s.startMs)
                 } else {
-                    Fmt.dateTime(s.startMs)
+                    star + Fmt.dateTime(s.startMs)
                 }
                 val second = buildString {
                     append(if (s.calibration) tr("校準 · ", "Calibration · ") else "")
