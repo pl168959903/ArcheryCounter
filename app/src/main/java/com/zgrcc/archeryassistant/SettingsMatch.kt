@@ -26,23 +26,28 @@ import kotlinx.coroutines.launch
 @Composable
 fun SettingsMatch(vm: CounterViewModel) {
     val s = vm.settings
+    // 賽制
     val compEnabled by s.compEnabled.collectAsStateWithLifecycle()
     val compFormat by s.compFormat.collectAsStateWithLifecycle()
     val compArrows by s.compArrows.collectAsStateWithLifecycle()
     val compEnds by s.compEnds.collectAsStateWithLifecycle()
     val compSeconds by s.compSeconds.collectAsStateWithLifecycle()
     val compPractice by s.compPractice.collectAsStateWithLifecycle()
+    // 提醒與流程
     val compPrepare by s.compPrepare.collectAsStateWithLifecycle()
     val compRemind30 by s.compRemind30.collectAsStateWithLifecycle()
     val compRemind10 by s.compRemind10.collectAsStateWithLifecycle()
     val compAutoNext by s.compAutoNext.collectAsStateWithLifecycle()
+    // 已存賽制
     val compSavedText by s.compSaved.collectAsStateWithLifecycle()
+    // 環數輸入、單箭限時、配色
     val compScoreEntry by s.compScoreEntry.collectAsStateWithLifecycle()
     val compArrowTimer by s.compArrowTimer.collectAsStateWithLifecycle()
     val compArrowSec by s.compArrowSec.collectAsStateWithLifecycle()
     val savedFormats = SavedFormats.decode(compSavedText)
     var confirmDeleteFormat by remember { mutableStateOf(false) }
     val compColors by s.compColors.collectAsStateWithLifecycle()
+    // 聲音
     val soundEnabled by s.soundEnabled.collectAsStateWithLifecycle()
     val soundVolume by s.soundVolume.collectAsStateWithLifecycle()
     val soundStyle by s.soundStyle.collectAsStateWithLifecycle()

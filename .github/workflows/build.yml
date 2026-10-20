@@ -67,6 +67,16 @@ jobs:
             exit 1
           fi
 
+      # 單元測試（v1.14.2 起）：失敗就停，並把失敗的測試名稱輸出成註解
+      - name: Unit tests
+        run: |
+          set -o pipefail
+          gradle :app:testDebugUnitTest --no-daemon 2>&1 | tee test.log || {
+            grep -E "^e: " test.log | sed 's/^e: file:\/\/\/.*archerycounter\///; s/^/::error::/' | head -40
+            grep -E "FAILED|AssertionError|Exception" test.log | sed 's/^/::error::/' | head -40
+            exit 1
+          }
+
       # 同時編譯 release APK（較快，建議使用）、debug APK（備用），以及上架 Google Play 用的 AAB
       - name: Build APKs and AAB
         env:

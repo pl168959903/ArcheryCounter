@@ -1,21 +1,16 @@
 package com.zgrcc.archeryassistant
 
 import android.app.Application
-import android.content.BroadcastReceiver
 import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
-import android.os.BatteryManager
 import android.os.Build
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.PowerManager
 import android.os.SystemClock
-import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import androidx.lifecycle.AndroidViewModel
@@ -123,10 +118,11 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
     /** 剛射完一趟的回饋，顯示約 5 秒後消失 */
     val endFeedback: StateFlow<EndFeedback?> = _endFeedback.asStateFlow()
 
-    private val _batteryLow = MutableStateFlow(false)
-    val batteryLow: StateFlow<Boolean> = _batteryLow.asStateFlow()
-    private val _batteryPercent = MutableStateFlow(-1)
-    val batteryPercent: StateFlow<Int> = _batteryPercent.asStateFlow()
+    // 震動與電量（邏輯在 Buzzer、BatteryMonitor）
+    private val buzzer = Buzzer(vibrator)
+    private val battery = BatteryMonitor(appContext, settings) { buzzEnd(EndVibration.LONG) }
+    val batteryLow: StateFlow<Boolean> = battery.low
+    val batteryPercent: StateFlow<Int> = battery.percent
 
     private val _notice = MutableStateFlow<String?>(null)
     /** 主畫面上的一次性通知（例如「已自動暫停」），下次開始偵測時清掉 */
@@ -135,14 +131,6 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
     // 自動暫停：最後一次放箭（或開始偵測後第一筆資料）的傳感器時間；-1 = 還沒有
     @Volatile private var lastActivityMs = -1L
     @Volatile private var autoPausing = false
-    private var batteryWarned = false
-    private var batteryRegistered = false
-
-    private val batteryReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent != null) handleBattery(intent)
-        }
-    }
 
     private val _locked = MutableStateFlow(false)
     /** 觸控鎖：鎖定時主畫面只顯示箭數，長按約 2 秒才解鎖 */
@@ -395,9 +383,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
     /** 設定頁選音量、音色時試播。 */
     fun previewSound() = sound.preview()
 
-    private fun buzzPattern(pattern: LongArray) {
-        vibrator?.vibrate(VibrationEffect.createWaveform(pattern, -1))
-    }
+    private fun buzzPattern(pattern: LongArray) = buzzer.pattern(pattern)
 
     /** 開始校準錄製：強制錄原始資料，記錄標為「校準」。 */
     fun startCalibration() = begin(calibration = true)
@@ -457,9 +443,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         _notice.value = null
         lastActivityMs = -1L
         autoPausing = false
-        batteryWarned = false
-        _batteryLow.value = false
-        registerBattery()
+        battery.start()
 
         _running.value = true
         val periodUs = SamplingRate.periodUs(hz)
@@ -489,8 +473,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         _calibrationActive.value = false
         _calMarking.value = false
         _endFeedback.value = null
-        _batteryLow.value = false
-        unregisterBattery()
+        battery.stop()
         synchronized(pendingFollow) { pendingFollow.clear() } // 還沒滿 1 秒的就不補了
         recorder.stop(System.currentTimeMillis())
         _activeId.value = null
@@ -899,57 +882,13 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         _notice.value = tr("已自動暫停：超過 $min 分鐘沒有放箭", "Auto-paused: no arrow for over $min min")
     }
 
-    // ---- 電量 ----
-
-    private fun registerBattery() {
-        if (batteryRegistered) return
-        val filter = IntentFilter(Intent.ACTION_BATTERY_CHANGED)
-        // ACTION_BATTERY_CHANGED 是黏性廣播：註冊的當下就會收到目前的電量
-        val sticky = if (Build.VERSION.SDK_INT >= 33) {
-            appContext.registerReceiver(batteryReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            appContext.registerReceiver(batteryReceiver, filter)
-        }
-        batteryRegistered = true
-        if (sticky != null) handleBattery(sticky)
-    }
-
-    private fun unregisterBattery() {
-        if (!batteryRegistered) return
-        try {
-            appContext.unregisterReceiver(batteryReceiver)
-        } catch (_: IllegalArgumentException) {
-        }
-        batteryRegistered = false
-    }
-
-    private fun handleBattery(intent: Intent) {
-        val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
-        val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
-        val percent = if (level >= 0 && scale > 0) level * 100 / scale else -1
-        val charging = intent.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0
-        _batteryPercent.value = percent
-
-        if (!settings.lowBattery.value) {
-            _batteryLow.value = false
-            return
-        }
-        val d = BatteryRule.decide(percent, charging, batteryWarned)
-        batteryWarned = d.warned
-        _batteryLow.value = d.warned
-        if (d.warnNow) buzzEnd(EndVibration.LONG)
-    }
+    // ---- 震動 ----
 
     /** 每一箭：一次很短的輕震。 */
-    private fun buzzShot() {
-        vibrator?.vibrate(VibrationEffect.createOneShot(EndVibration.SHOT_MS, VibrationEffect.DEFAULT_AMPLITUDE))
-    }
+    private fun buzzShot() = buzzer.shot()
 
-    /** 滿一趟：節奏明顯不同的震動；樣式為「關閉」時什麼都不做。設定頁選樣式時也用它試震。 */
-    fun buzzEnd(style: Int) {
-        val pattern = EndVibration.pattern(style) ?: return
-        vibrator?.vibrate(VibrationEffect.createWaveform(pattern, -1))
-    }
+    /** 滿一趟的震動；樣式為「關閉」時什麼都不做。設定頁選樣式時也用它試震。 */
+    fun buzzEnd(style: Int) = buzzer.end(style)
 
     // ---- 传感器回调（背景线程） ----
 
@@ -1013,7 +952,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
 
     override fun onCleared() {
         sensorManager.unregisterListener(this)
-        unregisterBattery()
+        battery.stop()
         if (_running.value) {
             _running.value = false
             recorder.stop(System.currentTimeMillis())

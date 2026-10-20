@@ -7,13 +7,20 @@
 戴在手腕上，自動偵測每次放箭並計數；偵測到時手錶會震動一下，也可以用 − / + 手動修正。
 每次偵測都會自動存成一筆「記錄」，並分析每一箭放箭前**手臂的穩定度**，方便你比較每次射擊之間的差異。
 
-目前版本：**v1.14.1**。
+目前版本：**v1.14.2**。
 
 ---
 
 ## 版本記錄
 
-### v1.14.1（本版）
+### v1.14.2（本版）
+同樣只整理，功能與畫面不變。
+- **CI 現在會跑單元測試**：每次推送先執行 `testDebugUnitTest`，有測試失敗就停止，並把失敗訊息輸出成註解。
+- `CounterViewModel` 再抽出 `BatteryMonitor`（電量監看與低電量提醒）和 `Buzzer`（震動輸出）。
+- 設定頁「比賽模式」的狀態宣告加上分組註解。
+- 版本號升到 1.14.2（versionCode 22）。標籤請打 `v1.14.2`。
+
+### v1.14.1
 只整理程式結構，功能、畫面、設定鍵名和預設值都沒有改，設定與記錄不受影響。
 - 設定頁拆成八個分類檔案（`SettingsGeneral`、`SettingsDetect`、`SettingsRecord`、`SettingsTrain`、`SettingsMatch`、`SettingsDisplay`、`SettingsData`、`SettingsAbout`）加共用元件 `SettingsCommon`，`SettingsScreen` 只剩路由。
 - `CounterViewModel` 抽出 `UpdateController`（檢查更新、下載、略過）和 `MatchSoundPlayer`（比賽聲音），ViewModel 只轉接。
@@ -237,15 +244,15 @@
 推送 `v` 開頭的標籤時，編譯完成後會自動在倉庫的 **Releases** 建立發布並附上 APK，不用再手動下載、上傳。平常 push 只編譯，不發布。
 
 ```
-git tag v1.14.1
-git push origin v1.14.1
+git tag v1.14.2
+git push origin v1.14.2
 ```
 
-- 標籤要和 `app/build.gradle.kts` 的 `versionName` 一致：`versionName = "1.14.1"` 就要打 `v1.14.1`。**不一致會直接失敗**，並說明原因。
+- 標籤要和 `app/build.gradle.kts` 的 `versionName` 一致：`versionName = "1.14.2"` 就要打 `v1.14.2`。**不一致會直接失敗**，並說明原因。
 - 必須已經設定好固定簽章（見下方〈固定簽章〉的四個 Secrets）。沒設定就**不會發布**並失敗，避免發布出簽章不對的 APK。
 - 附上的檔案是 `ArcheryAssistant-v版本號.apk`（只放 release 版），更新說明自動由 commit 產生。
 - 同一個標籤重跑時，會覆蓋已存在的 Release 裡的同名檔案。
-- 標籤打錯想刪掉：`git tag -d v1.14.1`，再 `git push origin :refs/tags/v1.14.1`；到 Releases 頁手動刪除已建立的發布。
+- 標籤打錯想刪掉：`git tag -d v1.14.2`，再 `git push origin :refs/tags/v1.14.2`；到 Releases 頁手動刪除已建立的發布。
 - 編譯超過 20 分鐘會自動失敗，不用手動取消。
 - 倉庫如果是公開的，Release 的 APK 任何人都能下載；金鑰和 Secrets 不會跟著發布。
 - 第一次打標籤後，請確認 Actions 成功、Releases 有出現；失敗的話，查看紅色的日誌排查原因。
