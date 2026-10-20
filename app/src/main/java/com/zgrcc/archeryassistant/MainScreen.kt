@@ -124,7 +124,7 @@ fun MainScreen(
                     onClick = { if (running) vm.stop() else vm.start() },
                     label = { Text(if (running) tr("暫停偵測", "Pause detection") else tr("開始偵測", "Start detection"), maxLines = 1) },
                     colors = if (running) ChipDefaults.secondaryChipColors()
-                    else ChipDefaults.primaryChipColors(),
+                    else kindColors(ChipKind.GO, ChipDefaults.primaryChipColors()),
                     modifier = Modifier.fillMaxWidth(0.85f),
                 )
             }
@@ -137,7 +137,7 @@ fun MainScreen(
                     Chip(
                         onClick = onOpenCompetition,
                         label = { Text(tr("回到比賽畫面", "Back to match"), maxLines = 1) },
-                        colors = ChipDefaults.primaryChipColors(),
+                        colors = kindColors(ChipKind.GO, ChipDefaults.primaryChipColors()),
                         modifier = Modifier.fillMaxWidth(0.85f),
                     )
                 }
@@ -150,7 +150,7 @@ fun MainScreen(
                         },
                         label = { Text(tr("比賽模式", "Match mode"), maxLines = 1) },
                         secondaryLabel = { Text(tr("倒數計時・逐趟記錄", "Countdown & per-end log"), maxLines = 1) },
-                        colors = ChipDefaults.secondaryChipColors(),
+                        colors = kindColors(ChipKind.GO, ChipDefaults.secondaryChipColors()),
                         modifier = Modifier.fillMaxWidth(0.85f),
                     )
                 }
@@ -168,7 +168,7 @@ fun MainScreen(
                     onClick = { vm.lockTouch() },
                     label = { Text(tr("鎖定觸控", "Lock touch"), maxLines = 1) },
                     secondaryLabel = { Text(tr("長按 2 秒解鎖", "Hold 2 s to unlock"), maxLines = 1) },
-                    colors = ChipDefaults.secondaryChipColors(),
+                    colors = kindColors(ChipKind.NORMAL, ChipDefaults.secondaryChipColors()),
                     modifier = Modifier.fillMaxWidth(0.85f),
                 )
             }
@@ -185,7 +185,7 @@ fun MainScreen(
                 Chip(
                     onClick = { vm.resetCount() },
                     label = { Text(tr("歸零", "Reset"), maxLines = 1) },
-                    colors = ChipDefaults.secondaryChipColors(),
+                    colors = kindColors(ChipKind.DANGER, ChipDefaults.secondaryChipColors()),
                     modifier = Modifier.fillMaxWidth(0.85f),
                 )
             }
@@ -227,16 +227,16 @@ fun MainScreen(
         item {
             Chip(
                 onClick = onOpenHistory,
-                label = { Text(tr("記錄", "Records"), maxLines = 1) },
-                colors = ChipDefaults.secondaryChipColors(),
+                label = { Text(tr("記錄", "Records") + navMark(), maxLines = 1) },
+                colors = kindColors(ChipKind.NAV, ChipDefaults.secondaryChipColors()),
                 modifier = Modifier.fillMaxWidth(0.85f),
             )
         }
         item {
             Chip(
                 onClick = onOpenSettings,
-                label = { Text(tr("設定", "Settings"), maxLines = 1) },
-                colors = ChipDefaults.secondaryChipColors(),
+                label = { Text(tr("設定", "Settings") + navMark(), maxLines = 1) },
+                colors = kindColors(ChipKind.NAV, ChipDefaults.secondaryChipColors()),
                 modifier = Modifier.fillMaxWidth(0.85f),
             )
         }

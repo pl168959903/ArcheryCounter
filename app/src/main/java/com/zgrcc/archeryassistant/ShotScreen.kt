@@ -151,7 +151,7 @@ private fun ShotContent(vm: CounterViewModel, session: Session, index: Int, shot
                         scope.launch { vm.setShotCancelled(session.id, index, !shot.cancelled) }
                     },
                     label = { Text(if (shot.cancelled) tr("恢復為有效", "Restore as valid") else tr("標記為誤判", "Mark as false detection"), maxLines = 1) },
-                    colors = if (shot.cancelled) ChipDefaults.primaryChipColors() else ChipDefaults.secondaryChipColors(),
+                    colors = if (shot.cancelled) kindColors(ChipKind.GO, ChipDefaults.primaryChipColors()) else ChipDefaults.secondaryChipColors(),
                     modifier = Modifier.fillMaxWidth(0.9f),
                 )
             }

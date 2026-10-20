@@ -69,7 +69,7 @@ fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrend: (
                         confirmDelete = false
                     },
                     label = { Text(if (chosen.size == deletable.size && deletable.isNotEmpty()) tr("取消全選", "Select none") else tr("全選", "Select all"), maxLines = 1) },
-                    colors = ChipDefaults.secondaryChipColors(),
+                    colors = kindColors(ChipKind.NORMAL, ChipDefaults.secondaryChipColors()),
                     enabled = deletable.isNotEmpty(),
                     modifier = Modifier.fillMaxWidth(0.9f),
                 )
@@ -79,7 +79,7 @@ fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrend: (
                     Chip(
                         onClick = { confirmDelete = true },
                         label = { Text(tr("刪除已選 ${chosen.size} 筆", "Delete ${chosen.size} selected"), maxLines = 1) },
-                        colors = ChipDefaults.secondaryChipColors(),
+                        colors = kindColors(ChipKind.DANGER, ChipDefaults.secondaryChipColors()),
                         enabled = chosen.isNotEmpty(),
                         modifier = Modifier.fillMaxWidth(0.9f),
                     )
@@ -95,7 +95,7 @@ fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrend: (
                             manage = false
                         },
                         label = { Text(tr("確定刪除", "Delete"), maxLines = 1) },
-                        colors = ChipDefaults.primaryChipColors(),
+                        colors = kindColors(ChipKind.DANGER, ChipDefaults.primaryChipColors()),
                         modifier = Modifier.fillMaxWidth(0.9f),
                     )
                 }
@@ -103,7 +103,7 @@ fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrend: (
                     Chip(
                         onClick = { confirmDelete = false },
                         label = { Text(tr("取消", "Cancel"), maxLines = 1) },
-                        colors = ChipDefaults.secondaryChipColors(),
+                        colors = kindColors(ChipKind.NORMAL, ChipDefaults.secondaryChipColors()),
                         modifier = Modifier.fillMaxWidth(0.9f),
                     )
                 }
@@ -112,9 +112,9 @@ fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrend: (
             item {
                 Chip(
                     onClick = onOpenTrend,
-                    label = { Text(tr("跨次趨勢", "Trend across sessions"), maxLines = 1) },
+                    label = { Text(tr("跨次趨勢", "Trend across sessions") + navMark(), maxLines = 1) },
                     secondaryLabel = { Text(tr("最近 ${minOf(sessions.size, 20)} 次的晃動量", "Shake over the last ${minOf(sessions.size, 20)} sessions"), maxLines = 1) },
-                    colors = ChipDefaults.secondaryChipColors(),
+                    colors = kindColors(ChipKind.NAV, ChipDefaults.secondaryChipColors()),
                     modifier = Modifier.fillMaxWidth(0.9f),
                 )
             }
@@ -125,9 +125,9 @@ fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrend: (
             item {
                 Chip(
                     onClick = onOpenMatchCompare,
-                    label = { Text(tr("比賽對比", "Match comparison"), maxLines = 1) },
+                    label = { Text(tr("比賽對比", "Match comparison") + navMark(), maxLines = 1) },
                     secondaryLabel = { Text(tr("$matchCount 場比賽", "$matchCount matches"), maxLines = 1) },
-                    colors = ChipDefaults.secondaryChipColors(),
+                    colors = kindColors(ChipKind.NAV, ChipDefaults.secondaryChipColors()),
                     modifier = Modifier.fillMaxWidth(0.9f),
                 )
             }
@@ -170,14 +170,18 @@ fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrend: (
                             onOpen(s.id)
                         }
                     },
-                    label = { Text(title, maxLines = 1) },
+                    label = { Text(if (manage) title else title + navMark(), maxLines = 1) },
                     secondaryLabel = {
                         Text(
                             if (manage && isActive) tr("進行中，無法選取", "In progress; cannot select") else second,
                             maxLines = 3,
                         )
                     },
-                    colors = if (manage && isChosen) ChipDefaults.primaryChipColors() else ChipDefaults.secondaryChipColors(),
+                    colors = when {
+                        manage && isChosen -> ChipDefaults.primaryChipColors()
+                        manage -> ChipDefaults.secondaryChipColors()
+                        else -> kindColors(ChipKind.NAV, ChipDefaults.secondaryChipColors())
+                    },
                     enabled = !(manage && isActive),
                     modifier = Modifier.fillMaxWidth(0.9f),
                 )
@@ -190,7 +194,7 @@ fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrend: (
                     Chip(
                         onClick = { confirmClear = true },
                         label = { Text(tr("清除全部", "Clear all"), maxLines = 1) },
-                        colors = ChipDefaults.secondaryChipColors(),
+                        colors = kindColors(ChipKind.DANGER, ChipDefaults.secondaryChipColors()),
                         modifier = Modifier.fillMaxWidth(0.9f),
                     )
                 }
@@ -203,7 +207,7 @@ fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrend: (
                             confirmClear = false
                         },
                         label = { Text(tr("確定刪除", "Delete"), maxLines = 1) },
-                        colors = ChipDefaults.primaryChipColors(),
+                        colors = kindColors(ChipKind.DANGER, ChipDefaults.primaryChipColors()),
                         modifier = Modifier.fillMaxWidth(0.9f),
                     )
                 }
@@ -211,7 +215,7 @@ fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrend: (
                     Chip(
                         onClick = { confirmClear = false },
                         label = { Text(tr("取消", "Cancel"), maxLines = 1) },
-                        colors = ChipDefaults.secondaryChipColors(),
+                        colors = kindColors(ChipKind.NORMAL, ChipDefaults.secondaryChipColors()),
                         modifier = Modifier.fillMaxWidth(0.9f),
                     )
                 }

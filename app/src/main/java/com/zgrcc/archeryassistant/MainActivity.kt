@@ -9,6 +9,7 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -106,7 +107,10 @@ fun ArcheryApp(vm: CounterViewModel = viewModel(), launch: String? = null, onLau
     val splashTap = remember { vm.settings.splashTap.value }
     var showSplash by rememberSaveable { mutableStateOf(splashOn) }
 
+    val chipKinds by vm.settings.chipKinds.collectAsStateWithLifecycle()
+
     key(english) {
+      CompositionLocalProvider(LocalChipKinds provides chipKinds) {
         MaterialTheme {
             if (showSplash) {
                 SplashScreen(
@@ -119,6 +123,7 @@ fun ArcheryApp(vm: CounterViewModel = viewModel(), launch: String? = null, onLau
                 AppNav(vm, launch, onLaunchHandled)
             }
         }
+      }
     }
 }
 

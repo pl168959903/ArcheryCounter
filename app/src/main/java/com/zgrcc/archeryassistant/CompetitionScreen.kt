@@ -147,8 +147,8 @@ fun CompetitionScreen(vm: CounterViewModel, onOpenRecord: (String) -> Unit) {
                     item {
                         Chip(
                             onClick = { entering = true },
-                            label = { Text(tr("輸入環數", "Enter scores"), maxLines = 1) },
-                            colors = ChipDefaults.secondaryChipColors(),
+                            label = { Text(tr("輸入環數", "Enter scores") + navMark(), maxLines = 1) },
+                            colors = kindColors(ChipKind.NAV, ChipDefaults.secondaryChipColors()),
                             modifier = Modifier.fillMaxWidth(0.85f),
                         )
                     }
@@ -157,7 +157,7 @@ fun CompetitionScreen(vm: CounterViewModel, onOpenRecord: (String) -> Unit) {
                     Chip(
                         onClick = { vm.compNextEnd() },
                         label = { Text(tr("下一趟", "Next end"), maxLines = 1) },
-                        colors = ChipDefaults.primaryChipColors(),
+                        colors = kindColors(ChipKind.GO, ChipDefaults.primaryChipColors()),
                         modifier = Modifier.fillMaxWidth(0.85f),
                     )
                 }
@@ -170,8 +170,8 @@ fun CompetitionScreen(vm: CounterViewModel, onOpenRecord: (String) -> Unit) {
                     item {
                         Chip(
                             onClick = { onOpenRecord(id) },
-                            label = { Text(tr("查看記錄", "View record"), maxLines = 1) },
-                            colors = ChipDefaults.primaryChipColors(),
+                            label = { Text(tr("查看記錄", "View record") + navMark(), maxLines = 1) },
+                            colors = kindColors(ChipKind.NAV, ChipDefaults.primaryChipColors()),
                             modifier = Modifier.fillMaxWidth(0.85f),
                         )
                     }
@@ -188,7 +188,7 @@ private fun EndMatchChip(vm: CounterViewModel) {
     Chip(
         onClick = { vm.stop() },
         label = { Text(tr("結束比賽", "End match"), maxLines = 1) },
-        colors = ChipDefaults.secondaryChipColors(),
+        colors = kindColors(ChipKind.DANGER, ChipDefaults.secondaryChipColors()),
         modifier = Modifier.fillMaxWidth(0.85f),
     )
 }
@@ -297,7 +297,7 @@ private fun ScoreEntryList(vm: CounterViewModel, onDone: () -> Unit) {
             Chip(
                 onClick = onDone,
                 label = { Text(tr("完成", "Done"), maxLines = 1) },
-                colors = ChipDefaults.primaryChipColors(),
+                colors = kindColors(ChipKind.GO, ChipDefaults.primaryChipColors()),
                 modifier = Modifier.fillMaxWidth(0.85f),
             )
         }

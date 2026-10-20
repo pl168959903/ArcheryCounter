@@ -103,7 +103,7 @@ fun MatchCompareScreen(vm: CounterViewModel, onOpen: (String) -> Unit) {
                 item {
                     Chip(
                         onClick = { onOpen(r.id) },
-                        label = { Text(Fmt.dateTime(r.startMs), maxLines = 1) },
+                        label = { Text(Fmt.dateTime(r.startMs) + navMark(), maxLines = 1) },
                         secondaryLabel = {
                             Text(
                                 buildString {
@@ -117,7 +117,7 @@ fun MatchCompareScreen(vm: CounterViewModel, onOpen: (String) -> Unit) {
                                 maxLines = 4,
                             )
                         },
-                        colors = ChipDefaults.secondaryChipColors(),
+                        colors = kindColors(ChipKind.NAV, ChipDefaults.secondaryChipColors()),
                         modifier = Modifier.fillMaxWidth(0.9f),
                     )
                 }

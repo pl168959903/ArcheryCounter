@@ -56,3 +56,46 @@ fun SectionTitle(text: String) {
         textAlign = TextAlign.Center,
     )
 }
+
+/** 設定「按鈕分色」是否開啟（v1.11.1）。關閉時所有按鈕維持原本的配色。 */
+val LocalChipKinds = androidx.compose.runtime.compositionLocalOf { true }
+
+/** 按鈕的用途分類，決定顏色。 */
+enum class ChipKind {
+    /** 開始、確認、完成 */
+    GO,
+    /** 點進去是另一頁或另一個清單 */
+    NAV,
+    /** 刪除、結束、不可復原 */
+    DANGER,
+    /** 一般操作、切換選項：灰色 */
+    NORMAL,
+}
+
+private val GO_BG = androidx.compose.ui.graphics.Color(0xFF2E7D32)
+private val NAV_BG = androidx.compose.ui.graphics.Color(0xFF1565C0)
+private val DANGER_BG = androidx.compose.ui.graphics.Color(0xFFB71C1C)
+
+/** 依用途回傳按鈕顏色；「按鈕分色」關閉時回傳 [fallback]（原本的配色）。 */
+@Composable
+fun kindColors(kind: ChipKind, fallback: androidx.wear.compose.material.ChipColors): androidx.wear.compose.material.ChipColors {
+    if (!LocalChipKinds.current) return fallback
+    val white = androidx.compose.ui.graphics.Color.White
+    val soft = androidx.compose.ui.graphics.Color(0xFFE0E0E0)
+    return when (kind) {
+        ChipKind.GO -> androidx.wear.compose.material.ChipDefaults.chipColors(
+            backgroundColor = GO_BG, contentColor = white, secondaryContentColor = soft,
+        )
+        ChipKind.NAV -> androidx.wear.compose.material.ChipDefaults.chipColors(
+            backgroundColor = NAV_BG, contentColor = white, secondaryContentColor = soft,
+        )
+        ChipKind.DANGER -> androidx.wear.compose.material.ChipDefaults.chipColors(
+            backgroundColor = DANGER_BG, contentColor = white, secondaryContentColor = soft,
+        )
+        ChipKind.NORMAL -> androidx.wear.compose.material.ChipDefaults.secondaryChipColors()
+    }
+}
+
+/** 「點進去是另一頁」的按鈕在標籤尾巴加「›」，不單靠顏色分辨。 */
+@Composable
+fun navMark(): String = if (LocalChipKinds.current) " ›" else ""

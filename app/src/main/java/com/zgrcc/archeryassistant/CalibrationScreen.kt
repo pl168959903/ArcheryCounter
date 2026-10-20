@@ -63,7 +63,7 @@ fun CalibrationScreen(vm: CounterViewModel) {
                             vm.startCalibration()
                         },
                         label = { Text(tr("開始校準", "Start calibration"), maxLines = 1) },
-                        colors = ChipDefaults.primaryChipColors(),
+                        colors = kindColors(ChipKind.GO, ChipDefaults.primaryChipColors()),
                         enabled = vm.sensorAvailable,
                         modifier = Modifier.fillMaxWidth(0.9f),
                     )
@@ -80,7 +80,7 @@ fun CalibrationScreen(vm: CounterViewModel) {
                         Chip(
                             onClick = { vm.calStartSegment() },
                             label = { Text(tr("開始這一段", "Start this step"), maxLines = 1) },
-                            colors = ChipDefaults.primaryChipColors(),
+                            colors = kindColors(ChipKind.GO, ChipDefaults.primaryChipColors()),
                             modifier = Modifier.fillMaxWidth(0.9f),
                         )
                     } else {
@@ -88,7 +88,7 @@ fun CalibrationScreen(vm: CounterViewModel) {
                             onClick = { vm.calEndSegment() },
                             label = { Text(tr("結束這一段", "End this step"), maxLines = 1) },
                             secondaryLabel = { Text(tr("錄製中", "Recording"), maxLines = 1) },
-                            colors = ChipDefaults.primaryChipColors(),
+                            colors = kindColors(ChipKind.GO, ChipDefaults.primaryChipColors()),
                             modifier = Modifier.fillMaxWidth(0.9f),
                         )
                     }
@@ -109,7 +109,7 @@ fun CalibrationScreen(vm: CounterViewModel) {
                         saved = true
                     },
                     label = { Text(if (step >= steps.size) tr("完成並儲存", "Finish and save") else tr("中止並儲存", "Stop and save"), maxLines = 1) },
-                    colors = if (step >= steps.size) ChipDefaults.primaryChipColors() else ChipDefaults.secondaryChipColors(),
+                    colors = if (step >= steps.size) kindColors(ChipKind.GO, ChipDefaults.primaryChipColors()) else ChipDefaults.secondaryChipColors(),
                     modifier = Modifier.fillMaxWidth(0.9f),
                 )
             }

@@ -352,6 +352,15 @@ class AppSettings(private val prefs: SharedPreferences) {
         prefs.edit().putBoolean(KEY_SOUND_END, value).apply()
     }
 
+    private val _chipKinds = MutableStateFlow(prefs.getBoolean(KEY_CHIP_KINDS, true))
+    /** 按鈕依用途分色（綠＝開始／確認、藍＝進入另一頁、紅＝刪除）。預設：開 */
+    val chipKinds: StateFlow<Boolean> = _chipKinds.asStateFlow()
+
+    fun setChipKinds(v: Boolean) {
+        _chipKinds.value = v
+        prefs.edit().putBoolean(KEY_CHIP_KINDS, v).apply()
+    }
+
     private val _matchCompare = MutableStateFlow(prefs.getBoolean(KEY_MATCH_COMPARE, true))
     /** 記錄頁顯示「比賽對比」入口。預設：開 */
     val matchCompare: StateFlow<Boolean> = _matchCompare.asStateFlow()
@@ -629,6 +638,7 @@ class AppSettings(private val prefs: SharedPreferences) {
         setSoundEnd(true)
         setCompScoreEntry(true)
         setMatchCompare(true)
+        setChipKinds(true)
         setSensitivityAdvice(true)
         setQuickCheck(true)
         setTileLaunch(true)
@@ -677,6 +687,7 @@ class AppSettings(private val prefs: SharedPreferences) {
         private const val KEY_SOUND_END = "sound_end"
         private const val KEY_COMP_SCORE_ENTRY = "comp_score_entry"
         private const val KEY_MATCH_COMPARE = "match_compare"
+        private const val KEY_CHIP_KINDS = "chip_kinds"
         private const val KEY_SENSITIVITY_ADVICE = "sensitivity_advice"
         private const val KEY_QUICK_CHECK = "quick_check"
         private const val KEY_TILE_LAUNCH = "tile_launch"

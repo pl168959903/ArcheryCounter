@@ -87,6 +87,7 @@ fun SettingsScreen(
     var confirmDeleteFormat by remember { mutableStateOf(false) }
     val compColors by s.compColors.collectAsStateWithLifecycle()
     val matchCompare by s.matchCompare.collectAsStateWithLifecycle()
+    val chipKinds by s.chipKinds.collectAsStateWithLifecycle()
     val sensitivityAdvice by s.sensitivityAdvice.collectAsStateWithLifecycle()
     val quickCheck by s.quickCheck.collectAsStateWithLifecycle()
     val tileLaunch by s.tileLaunch.collectAsStateWithLifecycle()
@@ -127,8 +128,8 @@ fun SettingsScreen(
                 item {
                     Chip(
                         onClick = { onOpenCategory(c) },
-                        label = { Text(SettingsCategories.name(c), maxLines = 1) },
-                        colors = ChipDefaults.secondaryChipColors(),
+                        label = { Text(SettingsCategories.name(c) + navMark(), maxLines = 1) },
+                        colors = kindColors(ChipKind.NAV, ChipDefaults.secondaryChipColors()),
                         modifier = Modifier.fillMaxWidth(0.9f),
                     )
                 }
@@ -141,7 +142,7 @@ fun SettingsScreen(
                         onClick = { s.setLanguage(I18n.next(language)) },
                         label = { Text(tr("語言", "Language"), maxLines = 1) },
                         secondaryLabel = { Text(I18n.label(language), maxLines = 1) },
-                        colors = ChipDefaults.primaryChipColors(),
+                        colors = kindColors(ChipKind.NORMAL, ChipDefaults.primaryChipColors()),
                         modifier = Modifier.fillMaxWidth(0.9f),
                     )
                 }
@@ -178,7 +179,7 @@ fun SettingsScreen(
                             onClick = { s.setDimLevel(Brightness.next(dimLevel)) },
                             label = { Text(tr("亮度", "Brightness"), maxLines = 1) },
                             secondaryLabel = { Text(Brightness.label(dimLevel), maxLines = 1) },
-                            colors = ChipDefaults.primaryChipColors(),
+                            colors = kindColors(ChipKind.NORMAL, ChipDefaults.primaryChipColors()),
                             modifier = Modifier.fillMaxWidth(0.9f),
                         )
                     }
@@ -193,7 +194,7 @@ fun SettingsScreen(
                         onClick = { s.setSamplingHz(SamplingRate.next(samplingHz)) },
                         label = { Text(tr("取樣頻率", "Sampling rate"), maxLines = 1) },
                         secondaryLabel = { Text("$samplingHz Hz", maxLines = 1) },
-                        colors = ChipDefaults.primaryChipColors(),
+                        colors = kindColors(ChipKind.NORMAL, ChipDefaults.primaryChipColors()),
                         modifier = Modifier.fillMaxWidth(0.9f),
                     )
                 }
@@ -252,7 +253,7 @@ fun SettingsScreen(
                         },
                         label = { Text(tr("閾值建議", "Threshold advice"), maxLines = 1) },
                         secondaryLabel = { Text(tr("目前閾值 ${threshold.toInt()}", "Current threshold ${threshold.toInt()}"), maxLines = 1) },
-                        colors = ChipDefaults.secondaryChipColors(),
+                        colors = kindColors(ChipKind.NORMAL, ChipDefaults.secondaryChipColors()),
                         modifier = Modifier.fillMaxWidth(0.9f),
                     )
                 }
@@ -283,7 +284,7 @@ fun SettingsScreen(
                                     adviceApplied = true
                                 },
                                 label = { Text(if (adviceApplied) tr("已套用 ${advice.suggested}", "Applied ${advice.suggested}") else tr("套用 ${advice.suggested}", "Apply ${advice.suggested}"), maxLines = 1) },
-                                colors = if (adviceApplied) ChipDefaults.secondaryChipColors() else ChipDefaults.primaryChipColors(),
+                                colors = if (adviceApplied) ChipDefaults.secondaryChipColors() else kindColors(ChipKind.GO, ChipDefaults.primaryChipColors()),
                                 modifier = Modifier.fillMaxWidth(0.9f),
                             )
                         }
@@ -313,7 +314,7 @@ fun SettingsScreen(
                                         stillApplied = true
                                     },
                                     label = { Text(if (stillApplied) tr("已套用 ${still.suggested}", "Applied ${still.suggested}") else tr("套用 ${still.suggested}", "Apply ${still.suggested}"), maxLines = 1) },
-                                    colors = if (stillApplied) ChipDefaults.secondaryChipColors() else ChipDefaults.primaryChipColors(),
+                                    colors = if (stillApplied) ChipDefaults.secondaryChipColors() else kindColors(ChipKind.GO, ChipDefaults.primaryChipColors()),
                                     modifier = Modifier.fillMaxWidth(0.9f),
                                 )
                             }
@@ -341,7 +342,7 @@ fun SettingsScreen(
                                         cooldownApplied = true
                                     },
                                     label = { Text(if (cooldownApplied) tr("已套用 ${cool.suggested} 秒", "Applied ${cool.suggested} s") else tr("套用 ${cool.suggested} 秒", "Apply ${cool.suggested} s"), maxLines = 1) },
-                                    colors = if (cooldownApplied) ChipDefaults.secondaryChipColors() else ChipDefaults.primaryChipColors(),
+                                    colors = if (cooldownApplied) ChipDefaults.secondaryChipColors() else kindColors(ChipKind.GO, ChipDefaults.primaryChipColors()),
                                     modifier = Modifier.fillMaxWidth(0.9f),
                                 )
                             }
@@ -354,9 +355,9 @@ fun SettingsScreen(
                 item {
                     Chip(
                         onClick = onOpenCalibration,
-                        label = { Text(tr("校準錄製", "Calibration recording"), maxLines = 1) },
+                        label = { Text(tr("校準錄製", "Calibration recording") + navMark(), maxLines = 1) },
                         secondaryLabel = { Text(if (running) tr("請先暫停偵測", "Pause detection first") else tr("引導錄三段動作", "Guided 3-step recording"), maxLines = 1) },
-                        colors = ChipDefaults.secondaryChipColors(),
+                        colors = kindColors(ChipKind.NAV, ChipDefaults.secondaryChipColors()),
                         enabled = !running,
                         modifier = Modifier.fillMaxWidth(0.9f),
                     )
@@ -486,7 +487,7 @@ fun SettingsScreen(
                             },
                             label = { Text(tr("賽制", "Format"), maxLines = 1) },
                             secondaryLabel = { Text(CompFormat.labelOf(compFormat, savedFormats), maxLines = 1) },
-                            colors = ChipDefaults.primaryChipColors(),
+                            colors = kindColors(ChipKind.NORMAL, ChipDefaults.primaryChipColors()),
                             modifier = Modifier.fillMaxWidth(0.9f),
                         )
                     }
@@ -551,7 +552,7 @@ fun SettingsScreen(
                                     }
                                 },
                                 label = { Text(if (confirmDeleteFormat) tr("再按一次確認刪除", "Tap again to delete") else tr("刪除這組賽制", "Delete this format"), maxLines = 1) },
-                                colors = ChipDefaults.secondaryChipColors(),
+                                colors = kindColors(ChipKind.DANGER, ChipDefaults.secondaryChipColors()),
                                 modifier = Modifier.fillMaxWidth(0.9f),
                             )
                         }
@@ -597,7 +598,7 @@ fun SettingsScreen(
                                     maxLines = 1,
                                 )
                             },
-                            colors = ChipDefaults.primaryChipColors(),
+                            colors = kindColors(ChipKind.NORMAL, ChipDefaults.primaryChipColors()),
                             modifier = Modifier.fillMaxWidth(0.9f),
                         )
                     }
@@ -611,7 +612,7 @@ fun SettingsScreen(
                                 onClick = { s.setSoundVolume(MatchSound.nextVolume(soundVolume)); vm.previewSound() },
                                 label = { Text(tr("音量", "Volume"), maxLines = 1) },
                                 secondaryLabel = { Text(MatchSound.volumeLabel(soundVolume), maxLines = 1) },
-                                colors = ChipDefaults.primaryChipColors(),
+                                colors = kindColors(ChipKind.NORMAL, ChipDefaults.primaryChipColors()),
                                 modifier = Modifier.fillMaxWidth(0.9f),
                             )
                         }
@@ -620,7 +621,7 @@ fun SettingsScreen(
                                 onClick = { s.setSoundStyle(MatchSound.nextStyle(soundStyle)); vm.previewSound() },
                                 label = { Text(tr("音色", "Tone"), maxLines = 1) },
                                 secondaryLabel = { Text(MatchSound.styleLabel(soundStyle), maxLines = 1) },
-                                colors = ChipDefaults.primaryChipColors(),
+                                colors = kindColors(ChipKind.NORMAL, ChipDefaults.primaryChipColors()),
                                 modifier = Modifier.fillMaxWidth(0.9f),
                             )
                         }
@@ -645,6 +646,9 @@ fun SettingsScreen(
                 item { ToggleChip(tr("比賽對比", "Match comparison"), matchCompare) { s.setMatchCompare(it) } }
                 item { Note(tr("記錄列表多一個「比賽對比」，把比賽紀錄的日期、總環數、平均晃動、時間到的趟數放在一起比，並畫趨勢圖。只影響顯示，立即生效", "Adds Match comparison to the records list: date, total score, average shake and timed-out ends side by side, with trend charts. Display only. Takes effect immediately")) }
 
+                item { ToggleChip(tr("按鈕分色", "Colored buttons"), chipKinds) { s.setChipKinds(it) } }
+                item { Note(tr("按鈕依用途上色：綠＝開始／確認，藍＝點進去是另一頁（標籤尾巴有 ›），紅＝刪除或結束，灰＝一般操作。關閉則全部維持原本配色。立即生效", "Buttons are colored by purpose: green = start/confirm, blue = opens another page (label ends with ›), red = delete or end, gray = ordinary actions. Off keeps the original look. Takes effect immediately")) }
+
                 item { ToggleChip(tr("即時波形", "Live waveform"), liveWaveform) { s.setLiveWaveform(it) } }
                 item { Note(tr("偵測中在主畫面顯示即時加速度波形。只影響顯示，但最耗電，立即生效", "Shows a live accel waveform on the main screen while detecting. Display only, but uses the most battery. Takes effect immediately")) }
 
@@ -657,7 +661,7 @@ fun SettingsScreen(
                             scope.launch { exportResult = vm.exportSummary() }
                         },
                         label = { Text(tr("匯出摘要", "Export summary"), maxLines = 1) },
-                        colors = ChipDefaults.secondaryChipColors(),
+                        colors = kindColors(ChipKind.NORMAL, ChipDefaults.secondaryChipColors()),
                         modifier = Modifier.fillMaxWidth(0.9f),
                     )
                 }
@@ -680,7 +684,7 @@ fun SettingsScreen(
                             }
                         },
                         label = { Text(tr("查看佔用空間", "Check storage used"), maxLines = 1) },
-                        colors = ChipDefaults.secondaryChipColors(),
+                        colors = kindColors(ChipKind.NORMAL, ChipDefaults.secondaryChipColors()),
                         modifier = Modifier.fillMaxWidth(0.9f),
                     )
                 }
@@ -698,7 +702,7 @@ fun SettingsScreen(
                                 Chip(
                                     onClick = { confirmRawDelete = true },
                                     label = { Text(tr("只刪除原始資料", "Delete raw data only"), maxLines = 1) },
-                                    colors = ChipDefaults.secondaryChipColors(),
+                                    colors = kindColors(ChipKind.DANGER, ChipDefaults.secondaryChipColors()),
                                     modifier = Modifier.fillMaxWidth(0.9f),
                                 )
                             }
@@ -716,7 +720,7 @@ fun SettingsScreen(
                                         }
                                     },
                                     label = { Text(tr("確定刪除", "Delete"), maxLines = 1) },
-                                    colors = ChipDefaults.primaryChipColors(),
+                                    colors = kindColors(ChipKind.DANGER, ChipDefaults.primaryChipColors()),
                                     modifier = Modifier.fillMaxWidth(0.9f),
                                 )
                             }
@@ -724,7 +728,7 @@ fun SettingsScreen(
                                 Chip(
                                     onClick = { confirmRawDelete = false },
                                     label = { Text(tr("取消", "Cancel"), maxLines = 1) },
-                                    colors = ChipDefaults.secondaryChipColors(),
+                                    colors = kindColors(ChipKind.NORMAL, ChipDefaults.secondaryChipColors()),
                                     modifier = Modifier.fillMaxWidth(0.9f),
                                 )
                             }
@@ -747,7 +751,7 @@ fun SettingsScreen(
                         Chip(
                             onClick = { confirmReset = true },
                             label = { Text(tr("恢復預設設定", "Restore default settings"), maxLines = 1) },
-                            colors = ChipDefaults.secondaryChipColors(),
+                            colors = kindColors(ChipKind.DANGER, ChipDefaults.secondaryChipColors()),
                             modifier = Modifier.fillMaxWidth(0.9f),
                         )
                     }
@@ -761,7 +765,7 @@ fun SettingsScreen(
                                 confirmReset = false
                             },
                             label = { Text(tr("確定還原", "Reset"), maxLines = 1) },
-                            colors = ChipDefaults.primaryChipColors(),
+                            colors = kindColors(ChipKind.DANGER, ChipDefaults.primaryChipColors()),
                             modifier = Modifier.fillMaxWidth(0.9f),
                         )
                     }
@@ -769,7 +773,7 @@ fun SettingsScreen(
                         Chip(
                             onClick = { confirmReset = false },
                             label = { Text(tr("取消", "Cancel"), maxLines = 1) },
-                            colors = ChipDefaults.secondaryChipColors(),
+                            colors = kindColors(ChipKind.NORMAL, ChipDefaults.secondaryChipColors()),
                             modifier = Modifier.fillMaxWidth(0.9f),
                         )
                     }

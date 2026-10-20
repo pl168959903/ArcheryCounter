@@ -102,7 +102,7 @@ private fun QuickCheckContent(vm: CounterViewModel, session: Session, isActive: 
                         pos = QuickCheck.afterMark(count, target)
                     },
                     label = { Text(if (shot.cancelled) tr("恢復為有效", "Restore as valid") else tr("標記誤判", "Mark false"), maxLines = 1) },
-                    colors = if (shot.cancelled) ChipDefaults.primaryChipColors() else ChipDefaults.secondaryChipColors(),
+                    colors = if (shot.cancelled) kindColors(ChipKind.GO, ChipDefaults.primaryChipColors()) else ChipDefaults.secondaryChipColors(),
                     modifier = Modifier.fillMaxWidth(0.9f),
                 )
             }

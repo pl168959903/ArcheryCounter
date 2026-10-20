@@ -164,7 +164,7 @@ private fun DetailContent(
                         },
                         label = { Text(tr("距離", "Distance"), maxLines = 1) },
                         secondaryLabel = { Text(Tags.distanceOf(session.tags)?.let { Tags.display(it) } ?: tr("未設定", "Not set"), maxLines = 1) },
-                        colors = ChipDefaults.secondaryChipColors(),
+                        colors = kindColors(ChipKind.NORMAL, ChipDefaults.secondaryChipColors()),
                         modifier = Modifier.fillMaxWidth(0.9f),
                     )
                 }
@@ -176,7 +176,7 @@ private fun DetailContent(
                         },
                         label = { Text(tr("弓種", "Bow"), maxLines = 1) },
                         secondaryLabel = { Text(Tags.bowOf(session.tags)?.let { Tags.display(it) } ?: tr("未設定", "Not set"), maxLines = 1) },
-                        colors = ChipDefaults.secondaryChipColors(),
+                        colors = kindColors(ChipKind.NORMAL, ChipDefaults.secondaryChipColors()),
                         modifier = Modifier.fillMaxWidth(0.9f),
                     )
                 }
@@ -232,9 +232,9 @@ private fun DetailContent(
                 item {
                     Chip(
                         onClick = onOpenQuickCheck,
-                        label = { Text(tr("快速檢查", "Quick check"), maxLines = 1) },
+                        label = { Text(tr("快速檢查", "Quick check") + navMark(), maxLines = 1) },
                         secondaryLabel = { Text(tr("逐箭滑動，一鍵標記誤判", "Step through shots, one-tap marking"), maxLines = 2) },
-                        colors = ChipDefaults.primaryChipColors(),
+                        colors = kindColors(ChipKind.NAV, ChipDefaults.primaryChipColors()),
                         modifier = Modifier.fillMaxWidth(0.9f),
                     )
                 }
@@ -249,7 +249,7 @@ private fun DetailContent(
                     Chip(
                         onClick = { onOpenShot(row.shotIndex) },
                         label = { Text(shotText(session, row, shot), style = MaterialTheme.typography.caption1, maxLines = 5) },
-                        colors = if (shot.cancelled) ChipDefaults.childChipColors() else ChipDefaults.secondaryChipColors(),
+                        colors = if (shot.cancelled) ChipDefaults.childChipColors() else kindColors(ChipKind.NAV, ChipDefaults.secondaryChipColors()),
                         modifier = Modifier.fillMaxWidth(0.95f),
                     )
                 }
@@ -267,7 +267,7 @@ private fun DetailContent(
                 !confirmDelete -> Chip(
                     onClick = { confirmDelete = true },
                     label = { Text(tr("刪除此記錄", "Delete this record"), maxLines = 1) },
-                    colors = ChipDefaults.secondaryChipColors(),
+                    colors = kindColors(ChipKind.DANGER, ChipDefaults.secondaryChipColors()),
                     modifier = Modifier.fillMaxWidth(0.9f),
                 )
                 else -> Note(tr("確定要刪除這筆記錄嗎？無法復原", "Delete this record? This cannot be undone"))
@@ -278,7 +278,7 @@ private fun DetailContent(
                 Chip(
                     onClick = onDelete,
                     label = { Text(tr("確定刪除", "Delete"), maxLines = 1) },
-                    colors = ChipDefaults.primaryChipColors(),
+                    colors = kindColors(ChipKind.DANGER, ChipDefaults.primaryChipColors()),
                     modifier = Modifier.fillMaxWidth(0.9f),
                 )
             }
@@ -286,7 +286,7 @@ private fun DetailContent(
                 Chip(
                     onClick = { confirmDelete = false },
                     label = { Text(tr("取消", "Cancel"), maxLines = 1) },
-                    colors = ChipDefaults.secondaryChipColors(),
+                    colors = kindColors(ChipKind.NORMAL, ChipDefaults.secondaryChipColors()),
                     modifier = Modifier.fillMaxWidth(0.9f),
                 )
             }
