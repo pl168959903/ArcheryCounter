@@ -370,7 +370,7 @@ internal object SessionJson {
     }
 
     /** 只支援我们自己写出的这种 JSON：对象、数组、数字、布尔、字符串、null。 */
-    private class Parser(private val s: String) {
+    internal class Parser(private val s: String) {
         private var i = 0
 
         fun parseDocument(): Any? {

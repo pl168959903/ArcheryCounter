@@ -352,6 +352,25 @@ class AppSettings(private val prefs: SharedPreferences) {
         prefs.edit().putBoolean(KEY_SOUND_END, value).apply()
     }
 
+    private val _updateAuto = MutableStateFlow(prefs.getBoolean(KEY_UPDATE_AUTO, false))
+    /** 啟動時自動檢查更新（最多一天一次）。預設：關 */
+    val updateAuto: StateFlow<Boolean> = _updateAuto.asStateFlow()
+
+    fun setUpdateAuto(v: Boolean) {
+        _updateAuto.value = v
+        prefs.edit().putBoolean(KEY_UPDATE_AUTO, v).apply()
+    }
+
+    /** 上次檢查更新的時間（毫秒）；不屬於「恢復預設設定」 */
+    var updateLastCheck: Long
+        get() = prefs.getLong(KEY_UPDATE_LAST, 0L)
+        set(v) { prefs.edit().putLong(KEY_UPDATE_LAST, v).apply() }
+
+    /** 使用者按「略過這個版本」的版本標籤；不屬於「恢復預設設定」 */
+    var updateSkipped: String
+        get() = prefs.getString(KEY_UPDATE_SKIPPED, "") ?: ""
+        set(v) { prefs.edit().putString(KEY_UPDATE_SKIPPED, v).apply() }
+
     private val _discSize = MutableStateFlow(DiscSize.valid(prefs.getInt(KEY_DISC_SIZE, DiscSize.DEFAULT)))
     /** 圓盤大小（0 小、1 中、2 大）。預設：大 */
     val discSize: StateFlow<Int> = _discSize.asStateFlow()
@@ -687,6 +706,7 @@ class AppSettings(private val prefs: SharedPreferences) {
         setChipKinds(true)
         setLive2d(false)
         setDiscSize(DiscSize.DEFAULT)
+        setUpdateAuto(false)
         setDiscFullscreen(true)
         setRecordTrace(false)
         setTraceGyro(false)
@@ -741,6 +761,9 @@ class AppSettings(private val prefs: SharedPreferences) {
         private const val KEY_CHIP_KINDS = "chip_kinds"
         private const val KEY_LIVE_2D = "live_2d"
         private const val KEY_DISC_SIZE = "disc_size"
+        private const val KEY_UPDATE_AUTO = "update_auto"
+        private const val KEY_UPDATE_LAST = "update_last_check"
+        private const val KEY_UPDATE_SKIPPED = "update_skipped"
         private const val KEY_DISC_FULLSCREEN = "disc_fullscreen"
         private const val KEY_RECORD_TRACE = "record_trace"
         private const val KEY_TRACE_GYRO = "trace_gyro"

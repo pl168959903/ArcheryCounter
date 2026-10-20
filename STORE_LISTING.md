@@ -26,7 +26,7 @@ Archery Assistant runs on your Wear OS watch, worn on the bow arm. It detects ea
 • Fatigue alert – a buzz when your recent ends get clearly shakier than your first ends
 • Training tools – daily goal, end feedback, auto-pause, low-battery alert, touch lock
 • Adjustable sampling rate (50 / 100 / 200 Hz) and sensitivity
-• Private by design – no internet permission, no ads, everything stays on your watch
+• Private by design – no ads or trackers, your data stays on your watch (the network is used only to check for app updates on GitHub)
 • English and Traditional Chinese
 
 Requires a Wear OS watch with an accelerometer. Works standalone, no phone needed.
@@ -41,7 +41,7 @@ Archery Assistant 在 Wear OS 手錶上運作，戴在持弓手臂上。它用�
 • 疲勞提醒：最近幾趟比剛開始明顯更抖時震動提醒
 • 訓練輔助：今日目標、每趟回饋、自動暫停、低電量提醒、觸控鎖
 • 可調整取樣頻率（50／100／200 Hz）與靈敏度
-• 重視隱私：不需要網路權限、沒有廣告，資料都只留在手錶上
+• 重視隱私：沒有廣告和追蹤，資料都只留在手錶上（網路只用於到 GitHub 檢查應用更新）
 • 支援繁體中文與英文
 
 需要有加速度感測器的 Wear OS 手錶。可獨立使用，不需要手機。

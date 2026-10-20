@@ -37,6 +37,7 @@ fun MainScreen(
     val lastShot by vm.lastShot.collectAsStateWithLifecycle()
     val liveOn by vm.settings.liveWaveform.collectAsStateWithLifecycle()
     val live2dOn by vm.settings.live2d.collectAsStateWithLifecycle()
+    val updateUi by vm.update.collectAsStateWithLifecycle()
     val traceGyro by vm.settings.traceGyro.collectAsStateWithLifecycle()
     val discSize by vm.settings.discSize.collectAsStateWithLifecycle()
     val discFullscreen by vm.settings.discFullscreen.collectAsStateWithLifecycle()
@@ -243,6 +244,11 @@ fun MainScreen(
             Chip(
                 onClick = onOpenSettings,
                 label = { Text(tr("設定", "Settings") + navMark(), maxLines = 1) },
+                secondaryLabel = if (updateUi.kind == UpdateKind.AVAILABLE) {
+                    { Text(tr("有新版本", "Update available"), maxLines = 1) }
+                } else {
+                    null
+                },
                 colors = kindColors(ChipKind.NAV, ChipDefaults.secondaryChipColors()),
                 modifier = Modifier.fillMaxWidth(0.85f),
             )

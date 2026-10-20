@@ -9,6 +9,11 @@
     <!-- 設定頁的「CPU 喚醒鎖」開啟時，偵測中保持 CPU 運作 -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
+    <!-- 檢查更新（v1.13）：只連 GitHub，讀公開的版本資訊並下載更新檔 -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 把下載好的更新檔交給系統安裝程式（安裝時仍需使用者確認） -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
     <application
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher"
@@ -30,6 +35,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- 接收系統安裝程式的結果（更新用） -->
+        <receiver
+            android:name=".UpdateInstallReceiver"
+            android:exported="false" />
 
         <!-- 磁貼：今日箭數與「開始偵測」「開始比賽」按鈕 -->
         <service

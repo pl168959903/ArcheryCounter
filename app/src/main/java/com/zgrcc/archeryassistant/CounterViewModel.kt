@@ -217,6 +217,70 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         viewModelScope.launch { settings.cooldownSec.collect { detector.cooldownMs = it * 1000L } }
     }
 
+    // ---- 檢查更新（v1.13） ----
+
+    private val updater = UpdateManager(appContext)
+    private val _update = MutableStateFlow(UpdateUi())
+    val update: StateFlow<UpdateUi> = _update.asStateFlow()
+
+    /**
+     * 檢查 GitHub 最新發布。[manual] 為 false 是啟動時的自動檢查：沒有新版本或失敗都不吭聲，
+     * 也不提示使用者已略過的版本。
+     */
+    fun checkUpdate(manual: Boolean) {
+        val kind = _update.value.kind
+        if (kind == UpdateKind.CHECKING || kind == UpdateKind.DOWNLOADING || kind == UpdateKind.INSTALLING) return
+        if (manual) _update.value = UpdateUi(UpdateKind.CHECKING)
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val info = updater.fetchLatest()
+                settings.updateLastCheck = System.currentTimeMillis()
+                _update.value = when {
+                    info == null -> if (manual) UpdateUi(UpdateKind.ERROR, error = UpdateError.NO_APK) else UpdateUi()
+                    UpdatePolicy.shouldOffer(info.tag, versionName, settings.updateSkipped, manual) ->
+                        UpdateUi(UpdateKind.AVAILABLE, info)
+                    manual -> UpdateUi(UpdateKind.UP_TO_DATE)
+                    else -> UpdateUi()
+                }
+            } catch (e: UpdateException) {
+                _update.value = if (manual) UpdateUi(UpdateKind.ERROR, error = e.error) else UpdateUi()
+            } catch (e: Exception) {
+                _update.value = if (manual) UpdateUi(UpdateKind.ERROR, error = UpdateError.SERVER) else UpdateUi()
+            }
+        }
+    }
+
+    /** 下載並交給系統安裝程式。只有在有新版本、且系統允許安裝時才會動作。 */
+    fun downloadAndInstall() {
+        val state = _update.value
+        val info = state.info
+        if (state.kind != UpdateKind.AVAILABLE || info == null) return
+        if (!updater.canInstall()) {
+            _update.value = UpdateUi(UpdateKind.ERROR, info, error = UpdateError.NOT_ALLOWED)
+            updater.openInstallSettings()
+            return
+        }
+        _update.value = UpdateUi(UpdateKind.DOWNLOADING, info, percent = 0)
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val file = updater.download(info) { p -> _update.value = UpdateUi(UpdateKind.DOWNLOADING, info, percent = p) }
+                _update.value = UpdateUi(UpdateKind.INSTALLING, info)
+                updater.install(file)
+            } catch (e: UpdateException) {
+                _update.value = UpdateUi(UpdateKind.ERROR, info, error = e.error)
+            } catch (e: Exception) {
+                _update.value = UpdateUi(UpdateKind.ERROR, info, error = UpdateError.INSTALL_FAILED)
+            }
+        }
+    }
+
+    /** 略過目前提示的版本：之後自動檢查不再提示這個版本。 */
+    fun skipUpdate() {
+        val info = _update.value.info ?: return
+        settings.updateSkipped = info.tag
+        _update.value = UpdateUi()
+    }
+
     // ---- 侦测与记录 ----
 
     fun start() = begin(calibration = false)
@@ -1028,5 +1092,23 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         const val MAX_THRESHOLD = 40f
         const val RAD_TO_DEG = 57.29578f
         const val MAX_WAKE_LOCK_MS = 4L * 60 * 60 * 1000 // 安全上限 4 小时
+    }
+
+    // 要放在所有屬性之後，這時 _update、versionName 都已初始化
+    init {
+        // 安裝程式回報失敗（被取消、簽章不符等）
+        viewModelScope.launch {
+            var seen = UpdateBus.installFailed.value
+            UpdateBus.installFailed.collect { n ->
+                if (n != seen) {
+                    seen = n
+                    _update.value = UpdateUi(UpdateKind.ERROR, _update.value.info, error = UpdateError.INSTALL_FAILED)
+                }
+            }
+        }
+        // 自動檢查更新：開啟時，距上次超過一天才查
+        if (settings.updateAuto.value && UpdatePolicy.due(settings.updateLastCheck, System.currentTimeMillis())) {
+            checkUpdate(manual = false)
+        }
     }
 }
