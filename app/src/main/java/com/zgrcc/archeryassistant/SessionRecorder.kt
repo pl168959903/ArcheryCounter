@@ -145,6 +145,22 @@ class SessionRecorder(private val store: SessionStore) {
         return true
     }
 
+    /** 這次記錄裡，時間落在 [startRelMs, endRelMs] 的有效（沒被取消）箭在 shots 裡的位置。 */
+    @Synchronized
+    fun validShotIndices(startRelMs: Long, endRelMs: Long): List<Int> =
+        shots.indices.filter { !shots[it].cancelled && shots[it].relMs in startRelMs..endRelMs }
+
+    @Synchronized
+    fun scoreAt(index: Int): Int? = shots.getOrNull(index)?.score
+
+    /** 進行中輸入或清除某一箭的環數（0～10）；位置不存在就什麼都不做。 */
+    @Synchronized
+    fun setScore(index: Int, score: Int?) {
+        if (id == null || index !in shots.indices) return
+        shots[index] = shots[index].copy(score = score?.coerceIn(0, 10))
+        saveLocked(null)
+    }
+
     /** 校准录制：一段动作开始。上一段若还没结束，先把它结束在同一时间。 */
     @Synchronized
     fun startMark(relMs: Long, label: String) {

@@ -7,10 +7,15 @@ import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -45,6 +50,9 @@ fun CompetitionScreen(vm: CounterViewModel, onOpenRecord: (String) -> Unit) {
     val locked by vm.locked.collectAsStateWithLifecycle()
     val finishedId by vm.compFinishedId.collectAsStateWithLifecycle()
     val useColors by vm.settings.compColors.collectAsStateWithLifecycle()
+    val scoreEntryOn by vm.settings.compScoreEntry.collectAsStateWithLifecycle()
+    var entering by remember { mutableStateOf(false) }
+    LaunchedEffect(ui?.phase) { if (ui?.phase != CompPhase.REST) entering = false }
 
     val c = ui
     if (c == null) {
@@ -61,6 +69,11 @@ fun CompetitionScreen(vm: CounterViewModel, onOpenRecord: (String) -> Unit) {
     val fg = scheme?.let { Color(it.text) }
     if (locked && running && busy) {
         LockedMatch(c, bg, fg) { vm.unlockTouch() }
+        return
+    }
+
+    if (entering && c.phase == CompPhase.REST) {
+        ScoreEntryList(vm) { entering = false }
         return
     }
 
@@ -100,6 +113,15 @@ fun CompetitionScreen(vm: CounterViewModel, onOpenRecord: (String) -> Unit) {
                         color = fg ?: Color.Unspecified,
                     )
                 }
+                if (c.arrowLimitSec > 0) {
+                    item {
+                        Text(
+                            tr("本箭 ${clockText(c.arrowRemainingMs)}", "This arrow ${clockText(c.arrowRemainingMs)}"),
+                            style = MaterialTheme.typography.caption1,
+                            color = fg ?: Color.Unspecified,
+                        )
+                    }
+                }
                 item { MatchNote(tr("射滿箭數或時間到，這一趟自動結束", "The end finishes when the arrows are used or time runs out"), fg) }
             }
             CompPhase.REST -> {
@@ -120,6 +142,16 @@ fun CompetitionScreen(vm: CounterViewModel, onOpenRecord: (String) -> Unit) {
                 }
                 if (c.autoNext) {
                     item { Note(tr("${clockText(c.remainingMs)} 後自動開始下一趟", "Next end starts automatically in ${clockText(c.remainingMs)}")) }
+                }
+                if (scoreEntryOn && last != null && last.arrows > 0) {
+                    item {
+                        Chip(
+                            onClick = { entering = true },
+                            label = { Text(tr("輸入環數", "Enter scores"), maxLines = 1) },
+                            colors = ChipDefaults.secondaryChipColors(),
+                            modifier = Modifier.fillMaxWidth(0.85f),
+                        )
+                    }
                 }
                 item {
                     Chip(
@@ -198,6 +230,13 @@ private fun LockedMatch(c: CompUi, bg: Color, fg: Color?, onUnlock: () -> Unit) 
                     style = MaterialTheme.typography.title3,
                     color = fg ?: Color.Unspecified,
                 )
+                if (c.arrowLimitSec > 0) {
+                    Text(
+                        tr("本箭 ${clockText(c.arrowRemainingMs)}", "This arrow ${clockText(c.arrowRemainingMs)}"),
+                        style = MaterialTheme.typography.caption1,
+                        color = fg ?: Color.Unspecified,
+                    )
+                }
             } else {
                 Text(tr("準備", "Get ready"), style = MaterialTheme.typography.title3, color = fg ?: Color.Unspecified)
             }
@@ -219,5 +258,48 @@ private fun MatchNote(text: String, fg: Color?) {
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth(0.85f),
         )
+    }
+}
+
+/** 休息時逐箭輸入這一趟的環數。規則和單箭頁相同：第一次按 + 是 10，再按 − 往下減，減到 0 再按 − 清除。 */
+@Composable
+private fun ScoreEntryList(vm: CounterViewModel, onDone: () -> Unit) {
+    var rows by remember { mutableStateOf(vm.compEndScores()) }
+    ScalingLazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        item { Text(tr("輸入環數", "Enter scores"), style = MaterialTheme.typography.title3) }
+        if (rows.isEmpty()) item { Note(tr("這一趟沒有箭", "No arrows in this end")) }
+        rows.forEach { r ->
+            item {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    SmallRoundButton("−") {
+                        vm.compSetScore(r.index, ScoreInput.minus(r.score))
+                        rows = vm.compEndScores()
+                    }
+                    Text(
+                        tr("第 ${r.number} 箭　${r.score?.toString() ?: "—"}", "Arrow ${r.number}  ${r.score?.toString() ?: "—"}"),
+                        style = MaterialTheme.typography.caption1,
+                    )
+                    SmallRoundButton("+") {
+                        vm.compSetScore(r.index, ScoreInput.plus(r.score))
+                        rows = vm.compEndScores()
+                    }
+                }
+            }
+        }
+        item {
+            Chip(
+                onClick = onDone,
+                label = { Text(tr("完成", "Done"), maxLines = 1) },
+                colors = ChipDefaults.primaryChipColors(),
+                modifier = Modifier.fillMaxWidth(0.85f),
+            )
+        }
     }
 }

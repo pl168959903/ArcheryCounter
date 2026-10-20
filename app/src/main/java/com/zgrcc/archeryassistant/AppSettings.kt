@@ -182,12 +182,12 @@ class AppSettings(private val prefs: SharedPreferences) {
         prefs.edit().putBoolean(KEY_COMP_ENABLED, value).apply()
     }
 
-    private val _compFormat = MutableStateFlow(prefs.getInt(KEY_COMP_FORMAT, CompFormat.INDOOR_18).coerceIn(0, CompFormat.COUNT - 1))
+    private val _compFormat = MutableStateFlow(prefs.getInt(KEY_COMP_FORMAT, CompFormat.INDOOR_18).coerceIn(0, CompFormat.MAX_ID))
     /** 比賽賽制：0 室內18米、1 室外70米、2 自訂。預設：室內18米 */
     val compFormat: StateFlow<Int> = _compFormat.asStateFlow()
 
     fun setCompFormat(v: Int) {
-        val value = v.coerceIn(0, CompFormat.COUNT - 1)
+        val value = v.coerceIn(0, CompFormat.MAX_ID)
         _compFormat.value = value
         prefs.edit().putInt(KEY_COMP_FORMAT, value).apply()
     }
@@ -350,6 +350,45 @@ class AppSettings(private val prefs: SharedPreferences) {
         val value = v
         _soundEnd.value = value
         prefs.edit().putBoolean(KEY_SOUND_END, value).apply()
+    }
+
+    private val _compScoreEntry = MutableStateFlow(prefs.getBoolean(KEY_COMP_SCORE_ENTRY, true))
+    /** 比賽休息時可輸入該趟各箭環數。預設：開 */
+    val compScoreEntry: StateFlow<Boolean> = _compScoreEntry.asStateFlow()
+
+    fun setCompScoreEntry(v: Boolean) {
+        val value = v
+        _compScoreEntry.value = value
+        prefs.edit().putBoolean(KEY_COMP_SCORE_ENTRY, value).apply()
+    }
+
+    private val _compArrowTimer = MutableStateFlow(prefs.getBoolean(KEY_COMP_ARROW_TIMER, false))
+    /** 單箭限時提醒。預設：關 */
+    val compArrowTimer: StateFlow<Boolean> = _compArrowTimer.asStateFlow()
+
+    fun setCompArrowTimer(v: Boolean) {
+        val value = v
+        _compArrowTimer.value = value
+        prefs.edit().putBoolean(KEY_COMP_ARROW_TIMER, value).apply()
+    }
+
+    private val _compArrowSec = MutableStateFlow(prefs.getInt(KEY_COMP_ARROW_SEC, CompLimits.DEFAULT_ARROW_SEC).coerceIn(CompLimits.MIN_ARROW_SEC, CompLimits.MAX_ARROW_SEC))
+    /** 單箭限時秒數。預設：40 */
+    val compArrowSec: StateFlow<Int> = _compArrowSec.asStateFlow()
+
+    fun setCompArrowSec(v: Int) {
+        val value = v.coerceIn(CompLimits.MIN_ARROW_SEC, CompLimits.MAX_ARROW_SEC)
+        _compArrowSec.value = value
+        prefs.edit().putInt(KEY_COMP_ARROW_SEC, value).apply()
+    }
+
+    private val _compSaved = MutableStateFlow(prefs.getString(KEY_COMP_SAVED, "").orEmpty())
+    /** 我的賽制（見 [SavedFormats]）存成的文字。恢復預設設定不會清掉它。 */
+    val compSaved: StateFlow<String> = _compSaved.asStateFlow()
+
+    fun setCompSaved(v: String) {
+        _compSaved.value = v
+        prefs.edit().putString(KEY_COMP_SAVED, v).apply()
     }
 
     fun setSplashTap(v: Boolean) {
@@ -552,6 +591,9 @@ class AppSettings(private val prefs: SharedPreferences) {
         setSoundGo(true)
         setSoundWarn(true)
         setSoundEnd(true)
+        setCompScoreEntry(true)
+        setCompArrowTimer(false)
+        setCompArrowSec(CompLimits.DEFAULT_ARROW_SEC)
     }
 
     companion object {
@@ -593,6 +635,10 @@ class AppSettings(private val prefs: SharedPreferences) {
         private const val KEY_SOUND_GO = "sound_go"
         private const val KEY_SOUND_WARN = "sound_warn"
         private const val KEY_SOUND_END = "sound_end"
+        private const val KEY_COMP_SCORE_ENTRY = "comp_score_entry"
+        private const val KEY_COMP_ARROW_TIMER = "comp_arrow_timer"
+        private const val KEY_COMP_ARROW_SEC = "comp_arrow_sec"
+        private const val KEY_COMP_SAVED = "comp_saved"
         private const val KEY_SPLASH = "splash"
         private const val KEY_SPLASH_TAP = "splash_tap"
         private const val KEY_KEEP_SCREEN_ON = "keep_screen_on"

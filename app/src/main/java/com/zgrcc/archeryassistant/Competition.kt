@@ -27,6 +27,80 @@ data class CompFormat(val id: Int, val arrowsPerEnd: Int, val ends: Int, val sec
         }
 
         fun next(id: Int): Int = (id + 1) % COUNT
+
+        /** 我的賽制（v1.10）的編號從這裡開始：SAVED_BASE + 第幾組 */
+        const val SAVED_BASE = 3
+        const val MAX_ID = SAVED_BASE + SavedFormats.MAX - 1
+
+        /** 依編號取得賽制：0、1 是預設賽制，2 是自訂，3 起是「我的賽制」；找不到的編號退回自訂。 */
+        fun resolve(id: Int, custom: CompFormat, saved: List<CompFormat>): CompFormat =
+            if (id >= SAVED_BASE) {
+                saved.getOrNull(id - SAVED_BASE)?.copy(id = id) ?: custom.copy(id = CUSTOM)
+            } else {
+                preset(id, custom)
+            }
+
+        /** 切換賽制：預設 → 預設 → 自訂 → 我的賽制各組 → 回到第一個。 */
+        fun nextId(id: Int, savedCount: Int): Int {
+            val last = if (savedCount > 0) SAVED_BASE + savedCount - 1 else CUSTOM
+            return if (id >= last) INDOOR_18 else id + 1
+        }
+
+        /** 顯示名稱；「我的賽制」顯示成「我的 1 · 3×20 · 120 秒」。 */
+        fun labelOf(id: Int, saved: List<CompFormat>): String {
+            if (id < SAVED_BASE) return label(id)
+            val f = saved.getOrNull(id - SAVED_BASE) ?: return label(CUSTOM)
+            return tr("我的 ${id - SAVED_BASE + 1} · ${SavedFormats.describe(f)}", "Mine ${id - SAVED_BASE + 1} · ${SavedFormats.describe(f)}")
+        }
+    }
+}
+
+/** 我的賽制（v1.10）：最多 [MAX] 組，存成一串文字「每趟箭數x趟數x每趟秒數」用分號隔開。純 Kotlin。 */
+object SavedFormats {
+    const val MAX = 5
+
+    fun describe(f: CompFormat): String = tr("${f.arrowsPerEnd}箭×${f.ends}趟 · ${f.secondsPerEnd} 秒", "${f.arrowsPerEnd}×${f.ends} · ${f.secondsPerEnd} s")
+
+    fun encode(list: List<CompFormat>): String =
+        list.joinToString(";") { "${it.arrowsPerEnd}x${it.ends}x${it.secondsPerEnd}" }
+
+    /** 解析失敗的項目略過，數字夾在合法範圍內，最多取 [MAX] 組。 */
+    fun decode(text: String): List<CompFormat> =
+        text.split(';').mapNotNull { part ->
+            val n = part.trim().split('x')
+            if (n.size != 3) return@mapNotNull null
+            val a = n[0].toIntOrNull() ?: return@mapNotNull null
+            val e = n[1].toIntOrNull() ?: return@mapNotNull null
+            val s = n[2].toIntOrNull() ?: return@mapNotNull null
+            CompFormat(
+                CompFormat.CUSTOM,
+                a.coerceIn(CompLimits.MIN_ARROWS, CompLimits.MAX_ARROWS),
+                e.coerceIn(CompLimits.MIN_ENDS, CompLimits.MAX_ENDS),
+                s.coerceIn(CompLimits.MIN_SECONDS, CompLimits.MAX_SECONDS),
+            )
+        }.take(MAX)
+
+    private fun same(a: CompFormat, b: CompFormat) =
+        a.arrowsPerEnd == b.arrowsPerEnd && a.ends == b.ends && a.secondsPerEnd == b.secondsPerEnd
+
+    fun canAdd(list: List<CompFormat>, f: CompFormat): Boolean = list.size < MAX && list.none { same(it, f) }
+
+    /** 加入一組；已滿或已有相同的就原樣回傳。 */
+    fun add(list: List<CompFormat>, f: CompFormat): List<CompFormat> =
+        if (canAdd(list, f)) list + f.copy(id = CompFormat.CUSTOM) else list
+
+    fun remove(list: List<CompFormat>, index: Int): List<CompFormat> =
+        if (index in list.indices) list.filterIndexed { i, _ -> i != index } else list
+}
+
+/** 環數輸入的加減規則，和單箭頁一致：第一次按 + 是 10，再按 − 往下減，減到 0 再按 − 清除。 */
+object ScoreInput {
+    fun plus(cur: Int?): Int = if (cur == null) 10 else minOf(cur + 1, 10)
+
+    fun minus(cur: Int?): Int? = when {
+        cur == null -> null
+        cur <= 0 -> null
+        else -> cur - 1
     }
 }
 
@@ -46,6 +120,10 @@ object CompLimits {
     const val DEFAULT_PRACTICE = 2
     const val MAX_PREPARE = 30
     const val DEFAULT_PREPARE = 10
+    const val MIN_ARROW_SEC = 10
+    const val MAX_ARROW_SEC = 120
+    const val STEP_ARROW_SEC = 5
+    const val DEFAULT_ARROW_SEC = 40
     val AUTO_NEXT_OPTIONS = listOf(0, 30, 60, 90, 120)
     const val DEFAULT_AUTO_NEXT = 0
 
@@ -59,6 +137,8 @@ enum class CompEvent {
     GO,
     /** 準備倒數最後 3 秒，每秒一次（只用來發出聲音） */
     COUNT_TICK,
+    /** 單箭限時到了（這一箭還沒射出），只提醒一次，射出下一箭後重新計時 */
+    ARROW_TIME_UP,
     REMIND_30,
     REMIND_10,
     /** 時間到，這一趟結束 */
@@ -88,6 +168,8 @@ class CompetitionRound(
     val remind30: Boolean,
     val remind10: Boolean,
     val autoNextSec: Int = 0,
+    /** 單箭限時（秒）；0 = 關閉。只提醒，不會自動結束這一趟。 */
+    val arrowLimitSec: Int = 0,
 ) {
     var phase: CompPhase = CompPhase.PREPARE
         private set
@@ -104,6 +186,8 @@ class CompetitionRound(
     private var sent30 = false
     private var sent10 = false
     private var lastTickSec = Int.MAX_VALUE
+    private var arrowStartMs = 0L
+    private var arrowTimedOut = false
     private val _results = ArrayList<CompEndResult>()
     val results: List<CompEndResult> get() = _results
 
@@ -136,6 +220,8 @@ class CompetitionRound(
         phase = CompPhase.SHOOTING
         shootStartMs = nowMs
         phaseStartMs = nowMs
+        arrowStartMs = nowMs
+        arrowTimedOut = false
         return listOf(CompEvent.GO)
     }
 
@@ -146,6 +232,14 @@ class CompetitionRound(
         CompPhase.REST -> if (autoNextSec > 0) autoNextSec * 1000L - (nowMs - phaseStartMs) else 0L
         CompPhase.DONE -> 0L
     }.coerceAtLeast(0L)
+
+    /** 這一箭剩餘的毫秒（單箭限時開啟且在射擊中才有意義，否則為 0）。 */
+    fun arrowRemainingMs(nowMs: Long): Long =
+        if (arrowLimitSec > 0 && phase == CompPhase.SHOOTING) {
+            (arrowLimitSec * 1000L - (nowMs - arrowStartMs)).coerceAtLeast(0L)
+        } else {
+            0L
+        }
 
     /** 定時呼叫（約每 200 毫秒一次）。回傳這段時間發生的事件。 */
     fun tick(nowMs: Long): List<CompEvent> {
@@ -163,7 +257,11 @@ class CompetitionRound(
                 val total = format.secondsPerEnd * 1000L
                 val left = total - (nowMs - shootStartMs)
                 if (left <= 0) return closeEnd(shootStartMs + total, timedOut = true)
-                val out = ArrayList<CompEvent>(2)
+                val out = ArrayList<CompEvent>(3)
+                if (arrowLimitSec > 0 && !arrowTimedOut && nowMs - arrowStartMs >= arrowLimitSec * 1000L) {
+                    arrowTimedOut = true
+                    out.add(CompEvent.ARROW_TIME_UP)
+                }
                 if (remind30 && !sent30 && total > 30_000L && left <= 30_000L) {
                     sent30 = true
                     out.add(CompEvent.REMIND_30)
@@ -188,6 +286,8 @@ class CompetitionRound(
             CompPhase.SHOOTING -> {
                 arrowsInEnd++
                 if (arrowsInEnd >= format.arrowsPerEnd) return closeEnd(nowMs, timedOut = false)
+                arrowStartMs = nowMs // 下一箭重新計時
+                arrowTimedOut = false
             }
             CompPhase.REST, CompPhase.DONE -> {
                 val last = _results.lastOrNull()
@@ -319,6 +419,10 @@ data class CompUi(
     val autoNext: Boolean,
     /** 最近一趟結束的結果（休息畫面顯示用） */
     val lastEnd: CompEndResult?,
+    /** 單箭限時（秒），0 = 關閉 */
+    val arrowLimitSec: Int = 0,
+    /** 這一箭剩餘的毫秒 */
+    val arrowRemainingMs: Long = 0L,
 )
 
 fun CompetitionRound.ui(nowMs: Long): CompUi = CompUi(
@@ -334,6 +438,8 @@ fun CompetitionRound.ui(nowMs: Long): CompUi = CompUi(
     formatId = format.id,
     autoNext = autoNextSec > 0,
     lastEnd = results.lastOrNull(),
+    arrowLimitSec = arrowLimitSec,
+    arrowRemainingMs = arrowRemainingMs(nowMs),
 )
 
 /** 一趟結果存進記錄時的標籤："P1" 是練習趟，"1" 是正式趟。 */

@@ -39,6 +39,7 @@ object EndVibration {
     val COMP_GO = longArrayOf(0, 600)
     val COMP_30 = longArrayOf(0, 120)
     val COMP_10 = longArrayOf(0, 120, 100, 120)
+    val COMP_ARROW = longArrayOf(0, 250)
     val COMP_TIME_UP = longArrayOf(0, 500, 150, 120, 150, 500)
 
     /** 设定页「下一个样式」，循环切换。 */

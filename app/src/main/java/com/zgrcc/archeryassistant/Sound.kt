@@ -4,7 +4,7 @@ package com.zgrcc.archeryassistant
  * 比賽模式的聲音（v1.9.1）。純 Kotlin，不依賴 Android，方便單元測試；
  * 實際播放（ToneGenerator）在 CounterViewModel。
  */
-enum class SoundCue { COUNT, GO, WARN30, WARN10, TIME_UP, END_FULL }
+enum class SoundCue { COUNT, GO, WARN30, WARN10, TIME_UP, END_FULL, ARROW_UP }
 
 /** 一聲：響 [durationMs] 毫秒，之後停 [gapMs] 毫秒再響下一聲。 */
 data class BeepStep(val durationMs: Int, val gapMs: Int)
@@ -37,13 +37,14 @@ object MatchSound {
         SoundCue.WARN10 -> listOf(BeepStep(200, 150), BeepStep(200, 0))
         SoundCue.TIME_UP -> listOf(BeepStep(300, 150), BeepStep(300, 150), BeepStep(300, 0))
         SoundCue.END_FULL -> listOf(BeepStep(250, 0))
+        SoundCue.ARROW_UP -> listOf(BeepStep(150, 100), BeepStep(150, 0))
     }
 
     /** 這個事件的聲音有沒有被使用者開啟（總開關另外判斷）。 */
     fun cueEnabled(cue: SoundCue, count: Boolean, go: Boolean, warn: Boolean, end: Boolean): Boolean = when (cue) {
         SoundCue.COUNT -> count
         SoundCue.GO -> go
-        SoundCue.WARN30, SoundCue.WARN10 -> warn
+        SoundCue.WARN30, SoundCue.WARN10, SoundCue.ARROW_UP -> warn
         SoundCue.TIME_UP, SoundCue.END_FULL -> end
     }
 }

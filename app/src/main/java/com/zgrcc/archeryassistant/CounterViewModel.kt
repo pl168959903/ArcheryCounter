@@ -226,7 +226,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         val custom = CompFormat(
             CompFormat.CUSTOM, settings.compArrows.value, settings.compEnds.value, settings.compSeconds.value,
         )
-        val format = CompFormat.preset(settings.compFormat.value, custom)
+        val format = CompFormat.resolve(settings.compFormat.value, custom, SavedFormats.decode(settings.compSaved.value))
         val practice = settings.compPractice.value
         val meta = CompMeta(format.secondsPerEnd, format.arrowsPerEnd, practice)
         begin(calibration = false, comp = meta)
@@ -239,6 +239,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
             remind30 = settings.compRemind30.value,
             remind10 = settings.compRemind10.value,
             autoNextSec = settings.compAutoNext.value,
+            arrowLimitSec = if (settings.compArrowTimer.value) settings.compArrowSec.value else 0,
         )
         synchronized(compLock) {
             round = r
@@ -267,6 +268,20 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         }
     }
 
+    /** 比賽休息時輸入環數用：最近結束那一趟的各箭（位置、第幾箭、目前環數）。 */
+    class EndShotScore(val index: Int, val number: Int, val score: Int?)
+
+    fun compEndScores(): List<EndShotScore> {
+        val res = synchronized(compLock) { round?.results?.lastOrNull() } ?: return emptyList()
+        val start = (res.startMs - baseElapsedMs).coerceAtLeast(0L)
+        val end = (res.endMs - baseElapsedMs).coerceAtLeast(0L)
+        return recorder.validShotIndices(start, end).mapIndexed { i, ix ->
+            EndShotScore(ix, i + 1, recorder.scoreAt(ix))
+        }
+    }
+
+    fun compSetScore(index: Int, score: Int?) = recorder.setScore(index, score)
+
     /** 休息中按「下一趟」。 */
     fun compNextEnd() {
         synchronized(compLock) {
@@ -285,6 +300,10 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         for (e in events) {
             when (e) {
                 CompEvent.COUNT_TICK -> playCue(SoundCue.COUNT)
+                CompEvent.ARROW_TIME_UP -> {
+                    playCue(SoundCue.ARROW_UP)
+                    buzzPattern(EndVibration.COMP_ARROW)
+                }
                 CompEvent.GO -> {
                     playCue(SoundCue.GO)
                     buzzPattern(EndVibration.COMP_GO)

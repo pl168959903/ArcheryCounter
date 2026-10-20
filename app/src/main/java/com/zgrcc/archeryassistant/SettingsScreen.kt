@@ -79,6 +79,12 @@ fun SettingsScreen(
     val compRemind30 by s.compRemind30.collectAsStateWithLifecycle()
     val compRemind10 by s.compRemind10.collectAsStateWithLifecycle()
     val compAutoNext by s.compAutoNext.collectAsStateWithLifecycle()
+    val compSavedText by s.compSaved.collectAsStateWithLifecycle()
+    val compScoreEntry by s.compScoreEntry.collectAsStateWithLifecycle()
+    val compArrowTimer by s.compArrowTimer.collectAsStateWithLifecycle()
+    val compArrowSec by s.compArrowSec.collectAsStateWithLifecycle()
+    val savedFormats = SavedFormats.decode(compSavedText)
+    var confirmDeleteFormat by remember { mutableStateOf(false) }
     val compColors by s.compColors.collectAsStateWithLifecycle()
     val soundEnabled by s.soundEnabled.collectAsStateWithLifecycle()
     val soundVolume by s.soundVolume.collectAsStateWithLifecycle()
@@ -398,14 +404,17 @@ fun SettingsScreen(
                 if (compEnabled) {
                     item {
                         Chip(
-                            onClick = { s.setCompFormat(CompFormat.next(compFormat)) },
+                            onClick = {
+                                confirmDeleteFormat = false
+                                s.setCompFormat(CompFormat.nextId(compFormat, savedFormats.size))
+                            },
                             label = { Text(tr("賽制", "Format"), maxLines = 1) },
-                            secondaryLabel = { Text(CompFormat.label(compFormat), maxLines = 1) },
+                            secondaryLabel = { Text(CompFormat.labelOf(compFormat, savedFormats), maxLines = 1) },
                             colors = ChipDefaults.primaryChipColors(),
                             modifier = Modifier.fillMaxWidth(0.9f),
                         )
                     }
-                    item { Note(tr("室內18米：每趟 3 箭、20 趟、120 秒；室外70米：每趟 6 箭、12 趟、240 秒；自訂：下面自己設", "Indoor 18 m: 3 arrows, 20 ends, 120 s; Outdoor 70 m: 6 arrows, 12 ends, 240 s; Custom: set below")) }
+                    item { Note(tr("室內18米：每趟 3 箭、20 趟、120 秒；室外70米：每趟 6 箭、12 趟、240 秒；自訂：下面自己設；我的賽制：存下來的自訂賽制，最多 5 組，點一下依序切換", "Indoor 18 m: 3 arrows, 20 ends, 120 s; Outdoor 70 m: 6 arrows, 12 ends, 240 s; Custom: set below; Mine: saved custom formats, up to 5, tap to cycle")) }
                     if (compFormat == CompFormat.CUSTOM) {
                         item {
                             StepRow(
@@ -428,6 +437,48 @@ fun SettingsScreen(
                                 onPlus = { s.setCompSeconds(compSeconds + CompLimits.STEP_SECONDS) },
                             )
                         }
+                        // 把目前的自訂賽制存成「我的賽制」
+                        val current = CompFormat(CompFormat.CUSTOM, compArrows, compEnds, compSeconds)
+                        item {
+                            Chip(
+                                onClick = { s.setCompSaved(SavedFormats.encode(SavedFormats.add(savedFormats, current))) },
+                                label = { Text(tr("存成我的賽制", "Save as my format"), maxLines = 1) },
+                                secondaryLabel = {
+                                    Text(
+                                        when {
+                                            savedFormats.size >= SavedFormats.MAX -> tr("已滿 ${SavedFormats.MAX} 組", "Full (${SavedFormats.MAX})")
+                                            !SavedFormats.canAdd(savedFormats, current) -> tr("已經存過", "Already saved")
+                                            else -> SavedFormats.describe(current)
+                                        },
+                                        maxLines = 1,
+                                    )
+                                },
+                                colors = ChipDefaults.secondaryChipColors(),
+                                enabled = SavedFormats.canAdd(savedFormats, current),
+                                modifier = Modifier.fillMaxWidth(0.9f),
+                            )
+                        }
+                    }
+                    // 選到「我的賽制」時：顯示內容，可刪除（要再按一次確認）
+                    if (compFormat >= CompFormat.SAVED_BASE && compFormat - CompFormat.SAVED_BASE in savedFormats.indices) {
+                        item { Note(SavedFormats.describe(savedFormats[compFormat - CompFormat.SAVED_BASE])) }
+                        item {
+                            Chip(
+                                onClick = {
+                                    if (!confirmDeleteFormat) {
+                                        confirmDeleteFormat = true
+                                    } else {
+                                        val idx = compFormat - CompFormat.SAVED_BASE
+                                        s.setCompSaved(SavedFormats.encode(SavedFormats.remove(savedFormats, idx)))
+                                        s.setCompFormat(CompFormat.CUSTOM)
+                                        confirmDeleteFormat = false
+                                    }
+                                },
+                                label = { Text(if (confirmDeleteFormat) tr("再按一次確認刪除", "Tap again to delete") else tr("刪除這組賽制", "Delete this format"), maxLines = 1) },
+                                colors = ChipDefaults.secondaryChipColors(),
+                                modifier = Modifier.fillMaxWidth(0.9f),
+                            )
+                        }
                     }
                     item {
                         StepRow(
@@ -436,6 +487,19 @@ fun SettingsScreen(
                             onPlus = { s.setCompPractice(compPractice + 1) },
                         )
                     }
+                    item { ToggleChip(tr("單箭限時", "Per-arrow limit"), compArrowTimer) { s.setCompArrowTimer(it) } }
+                    item { Note(tr("每一箭限時：射擊開始或射出一箭後重新倒數，超時震動並響兩聲提醒一次。只提醒，不會結束這一趟，每趟總時間照舊。預設關。立即生效", "Time limit for each arrow: restarts when shooting begins or after each arrow; going over buzzes and beeps twice, once. Only a reminder; it does not end the end, and the end clock is unchanged. Off by default. Takes effect immediately")) }
+                    if (compArrowTimer) {
+                        item {
+                            StepRow(
+                                text = tr("每箭 $compArrowSec 秒", "$compArrowSec s per arrow"),
+                                onMinus = { s.setCompArrowSec(compArrowSec - CompLimits.STEP_ARROW_SEC) },
+                                onPlus = { s.setCompArrowSec(compArrowSec + CompLimits.STEP_ARROW_SEC) },
+                            )
+                        }
+                    }
+                    item { ToggleChip(tr("休息時輸入環數", "Score entry at breaks"), compScoreEntry) { s.setCompScoreEntry(it) } }
+                    item { Note(tr("每趟結束進入休息畫面時，多一個「輸入環數」按鈕，逐箭輸入該趟環數（可跳過，賽後在詳情頁也能補）。最後一趟射完後比賽直接結束，那一趟請賽後在詳情頁輸入。立即生效", "At each break an Enter scores button lets you score that end's arrows (skippable; you can also add them later in record details). The match ends right after the last end, so score that one in record details. Takes effect immediately")) }
                     item { Note(tr("正式開始前的練習趟，不計入正式箭數與統計", "Practice ends before the match proper; not counted in match arrows or statistics")) }
                     item {
                         StepRow(
