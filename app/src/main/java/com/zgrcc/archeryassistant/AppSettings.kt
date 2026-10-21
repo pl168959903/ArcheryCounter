@@ -414,6 +414,22 @@ class AppSettings(private val prefs: SharedPreferences) {
         prefs.edit().putBoolean(KEY_SHOT_FEEL, v).apply()
     }
 
+    private val _advancedDetect = MutableStateFlow(prefs.getBoolean(KEY_ADVANCED_DETECT, true))
+    /** 進階放箭判定（v1.16 試用）：穩定檢查緩衝加長、加上角速度穩定條件。預設：開 */
+    val advancedDetect: StateFlow<Boolean> = _advancedDetect.asStateFlow()
+    fun setAdvancedDetect(v: Boolean) {
+        _advancedDetect.value = v
+        prefs.edit().putBoolean(KEY_ADVANCED_DETECT, v).apply()
+    }
+
+    private val _reportExport = MutableStateFlow(prefs.getBoolean(KEY_REPORT_EXPORT, true))
+    /** 資料頁提供「匯出報告」（網頁報告 report.html）。預設：開 */
+    val reportExport: StateFlow<Boolean> = _reportExport.asStateFlow()
+    fun setReportExport(v: Boolean) {
+        _reportExport.value = v
+        prefs.edit().putBoolean(KEY_REPORT_EXPORT, v).apply()
+    }
+
     private val _calAdvice = MutableStateFlow(prefs.getBoolean(KEY_CAL_ADVICE, true))
     /** 校準錄製完成後與校準記錄詳情提供「分析校準資料」。預設：開 */
     val calAdvice: StateFlow<Boolean> = _calAdvice.asStateFlow()
@@ -785,6 +801,8 @@ class AppSettings(private val prefs: SharedPreferences) {
         setAutoCleanDays(AutoClean.DEFAULT_DAYS)
         setShotFeel(false)
         setCalAdvice(true)
+        setAdvancedDetect(true)
+        setReportExport(true)
         setDiscFullscreen(true)
         setRecordTrace(false)
         setTraceGyro(false)
@@ -849,6 +867,8 @@ class AppSettings(private val prefs: SharedPreferences) {
         private const val KEY_CLEAN_LAST = "clean_last"
         private const val KEY_SHOT_FEEL = "shot_feel"
         private const val KEY_CAL_ADVICE = "cal_advice"
+        private const val KEY_ADVANCED_DETECT = "advanced_detect"
+        private const val KEY_REPORT_EXPORT = "report_export"
         private const val KEY_UPDATE_LAST = "update_last_check"
         private const val KEY_UPDATE_SKIPPED = "update_skipped"
         private const val KEY_DISC_FULLSCREEN = "disc_fullscreen"

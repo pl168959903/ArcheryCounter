@@ -203,6 +203,12 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         viewModelScope.launch { settings.wakeLock.collect { updateWakeLock() } }
         viewModelScope.launch { settings.stillThreshold.collect { detector.stillThreshold = it.toFloat() } }
         viewModelScope.launch { settings.cooldownSec.collect { detector.cooldownMs = it * 1000L } }
+        viewModelScope.launch {
+            settings.advancedDetect.collect { on ->
+                detector.gapMs = if (on) ShotDetector.ADVANCED_GAP_MS else ShotDetector.GAP_MS
+                detector.gyroStill = if (on) ShotDetector.ADVANCED_GYRO_STILL else 0f
+            }
+        }
     }
 
     // ---- 自動清理與校準分析（v1.14） ----
@@ -836,6 +842,27 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
     /** 匯出 summary.csv 和 shots.csv 到 sessions 資料夾。回傳是否成功。 */
     suspend fun exportSummary(): Boolean = withContext(Dispatchers.IO) { store.exportAll() }
 
+    /** 匯出網頁報告 report.html（v1.16）：頁首含作者、版本、簽章與 App 圖示。 */
+    suspend fun exportReport(): Boolean = withContext(Dispatchers.IO) {
+        val icon = try {
+            appContext.resources.openRawResource(R.raw.report_icon).use {
+                android.util.Base64.encodeToString(it.readBytes(), android.util.Base64.NO_WRAP)
+            }
+        } catch (_: Exception) {
+            null
+        }
+        val meta = ReportMeta(
+            author = AppInfo.AUTHOR,
+            versionLabel = versionLabel,
+            signature = signatureShort,
+            signatureNote = AppInfo.signatureStatus(signatureShort),
+            generatedAtMs = System.currentTimeMillis(),
+            iconBase64 = icon,
+            arrowsPerEnd = settings.arrowsPerEnd.value,
+        )
+        store.exportReport { ReportBuilder.build(it, meta) }
+    }
+
     /** 即時波形：最近幾秒的加速度合力大小（m/s²），由舊到新。 */
     fun liveSnapshot(): FloatArray = live.snapshot()
 
@@ -902,6 +929,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
             lastGy = v[1] * RAD_TO_DEG
             lastGz = v[2] * RAD_TO_DEG
             tracker.addGyro(lastGx, lastGy, lastGz, timeMs)
+            detector.onGyro(sqrt(lastGx * lastGx + lastGy * lastGy + lastGz * lastGz))
             if (settings.live2d.value && settings.traceGyro.value) liveTrace.add(timeMs, lastGx, lastGy)
             return
         }

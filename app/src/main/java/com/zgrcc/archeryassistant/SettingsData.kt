@@ -33,6 +33,8 @@ fun SettingsData(vm: CounterViewModel) {
     val cleanLast by vm.cleanLast.collectAsStateWithLifecycle()
     // null = 還沒按過；true / false = 匯出成功 / 失敗
     var exportResult by remember { mutableStateOf<Boolean?>(null) }
+    val reportExport by s.reportExport.collectAsStateWithLifecycle()
+    var reportResult by remember { mutableStateOf<Boolean?>(null) }
 
     // 儲存空間：按下才查；刪除原始資料要再確認一次
     var usage by remember { mutableStateOf<StorageUsage?>(null) }
@@ -77,6 +79,29 @@ fun SettingsData(vm: CounterViewModel) {
                 null -> Note(tr("把全部記錄整理成 summary.csv（每次一行）和 shots.csv（每箭一行），放在 sessions 資料夾，用 adb 一起取出", "Writes summary.csv (one row per session) and shots.csv (one row per shot) into the sessions folder; pull them with adb"))
                 true -> Note(tr("已匯出 summary.csv 和 shots.csv 到 sessions 資料夾", "Exported summary.csv and shots.csv to the sessions folder"))
                 false -> Note(tr("匯出失敗，請確認手錶儲存空間", "Export failed; check the watch storage"))
+            }
+        }
+
+        item { ToggleChip(tr("匯出報告", "Export report"), reportExport) { s.setReportExport(it) } }
+        item { Note(tr("開啟後，這一頁多一個「匯出報告」按鈕，把全部記錄做成一份網頁報告 report.html（含總覽、圖表、逐趟與逐箭明細，頁首有作者、版本與圖示），放在 sessions 資料夾，用 adb 取出後在電腦瀏覽器直接打開。只影響這個按鈕，立即生效", "When on, this page gets an Export report button that turns all records into one web report, report.html (overview, charts, per-end and per-shot details, with author, version and icon in the header), written to the sessions folder; pull it with adb and open it in a browser. Only affects this button. Takes effect immediately")) }
+        if (reportExport) {
+            item {
+                Chip(
+                    onClick = {
+                        reportResult = null
+                        scope.launch { reportResult = vm.exportReport() }
+                    },
+                    label = { Text(tr("匯出報告", "Export report"), maxLines = 1) },
+                    colors = kindColors(ChipKind.GO, ChipDefaults.primaryChipColors()),
+                    modifier = Modifier.fillMaxWidth(0.9f),
+                )
+            }
+            item {
+                when (reportResult) {
+                    null -> Note(tr("產生報告需要幾秒鐘，記錄很多時會更久", "Building the report takes a few seconds, longer with many records"))
+                    true -> Note(tr("已匯出 report.html 到 sessions 資料夾", "Exported report.html to the sessions folder"))
+                    false -> Note(tr("匯出失敗，請確認手錶儲存空間", "Export failed; check the watch storage"))
+                }
             }
         }
 

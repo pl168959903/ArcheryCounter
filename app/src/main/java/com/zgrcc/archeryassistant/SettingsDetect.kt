@@ -36,6 +36,7 @@ fun SettingsDetect(vm: CounterViewModel, onOpenCalibration: () -> Unit) {
     val samplingHz by s.samplingHz.collectAsStateWithLifecycle()
     val measuredHz by vm.measuredHz.collectAsStateWithLifecycle()
     val calAdvice by s.calAdvice.collectAsStateWithLifecycle()
+    val advancedDetect by s.advancedDetect.collectAsStateWithLifecycle()
     val sensitivityAdvice by s.sensitivityAdvice.collectAsStateWithLifecycle()
     // 閾值建議：按下才計算；套用後顯示已套用
     var showAdvice by remember { mutableStateOf(false) }
@@ -102,6 +103,9 @@ fun SettingsDetect(vm: CounterViewModel, onOpenCalibration: () -> Unit) {
             }
             item { Note(tr("超過這麼久沒有放箭就暫停（5～30 分鐘）。中間休息比較久的話請調長", "Pause after this long without an arrow (5-30 min). Use a longer time if you rest for long")) }
         }
+
+        item { ToggleChip(tr("進階放箭判定（試用）", "Advanced release check (trial)"), advancedDetect) { s.setAdvancedDetect(it) } }
+        item { Note(tr("試用中，之後版本可能移除這個開關。開啟後：放箭前的穩定檢查和衝擊之間留 0.25 秒緩衝（原本 0.1 秒），避免雙峰放箭被漏掉；並要求放箭前手腕轉動不能太大（陀螺儀 40°/s 以內），擋掉碰撞、放下弓這類誤判。關閉就是舊判定。對之後新開始的偵測生效", "Trial; this switch may be removed in a later version. When on: the stillness check leaves a 0.25 s buffer before the impact (was 0.1 s) so double-peak releases are not missed, and wrist rotation before release must stay small (gyro within 40°/s), which rejects bumps and putting the bow down. Off is the old check. Applies to detections started afterwards")) }
 
         item { ToggleChip(tr("校準自動建議", "Calibration advice"), calAdvice) { s.setCalAdvice(it) } }
         item { Note(tr("校準儲存後，以及校準記錄的詳情頁會多一個「分析校準資料」，用拉弓、走動和正常射擊三段資料給閾值與靜止的建議。只建議，由你決定要不要套用。立即生效", "After a calibration is saved, and on a calibration record's detail page, adds Analyze calibration: it suggests threshold and Still from the three movements. Advice only. Takes effect immediately")) }

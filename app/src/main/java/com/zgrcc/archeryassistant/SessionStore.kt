@@ -29,7 +29,7 @@ class SessionStore(baseDir: File) {
     private val pendingIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
     private companion object {
-        val EXPORT_FILES = setOf(ExportCsv.SUMMARY_FILE, ExportCsv.SHOTS_FILE)
+        val EXPORT_FILES = setOf(ExportCsv.SUMMARY_FILE, ExportCsv.SHOTS_FILE, ReportBuilder.FILE_NAME)
     }
 
     fun exists(id: String): Boolean = id in pendingIds || jsonFile(id).exists()
@@ -141,6 +141,28 @@ class SessionStore(baseDir: File) {
             dir.mkdirs()
             File(dir, ExportCsv.SUMMARY_FILE).writeText(ExportCsv.summary(all), Charsets.UTF_8)
             File(dir, ExportCsv.SHOTS_FILE).writeText(ExportCsv.shots(all), Charsets.UTF_8)
+            true
+        } catch (e: IOException) {
+            false
+        }
+    }
+
+    /**
+     * 把全部記錄做成網頁報告 report.html（v1.16），放在 sessions 資料夾。[build] 收到全部記錄、回傳網頁內容。
+     * 先寫暫存檔再改名，寫到一半失敗不會留下壞檔。回傳是否成功。
+     */
+    fun exportReport(build: (List<Session>) -> String): Boolean = onIo(false) {
+        try {
+            val all = dir.listFiles { f -> f.isFile && f.name.endsWith(".json") }
+                .orEmpty().mapNotNull { readFile(it) }
+            dir.mkdirs()
+            val target = File(dir, ReportBuilder.FILE_NAME)
+            val tmp = File(dir, ReportBuilder.FILE_NAME + ".tmp")
+            tmp.writeText(build(all), Charsets.UTF_8)
+            if (!tmp.renameTo(target)) {
+                target.writeText(tmp.readText(Charsets.UTF_8), Charsets.UTF_8)
+                tmp.delete()
+            }
             true
         } catch (e: IOException) {
             false
