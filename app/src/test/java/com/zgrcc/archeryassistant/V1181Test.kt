@@ -116,7 +116,7 @@ class V1181Test {
         try {
             val first = HttpSource("http://127.0.0.1:18196", "4321", appUa)
             val list = first.list()
-            assertEquals(listOf("a.json"), list.map { it.name })
+            assertEquals(listOf("a.json", "shots.csv", "summary.csv"), list.map { it.name })
             assertTrue(first.token.isNotEmpty())
             assertEquals(1, data.devices.value.size)
             // 下次只帶憑證，PIN 留空
