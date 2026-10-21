@@ -105,7 +105,7 @@ object PositionTrend {
         append(tr("每趟第 ${r.pos} 箭（${r.n} 支）", "Shot ${r.pos} of each end (${r.n})"))
         append(tr("\n平均晃動 ${Fmt.numOrDash(r.accel)}", "\nAvg shake ${Fmt.numOrDash(r.accel)}"))
         if (hasGyro) append(tr("　角速度 ${Fmt.numOrDash(r.gyro, 1)}", "  gyro ${Fmt.numOrDash(r.gyro, 1)}"))
-        if (r.follow != null) append(tr("　放箭後 ${Fmt.num(r.follow)}", "  after release ${Fmt.num(r.follow)}"))
+        if (r.follow != null) append(tr("　余姿 ${Fmt.num(r.follow)}", "  follow-through ${Fmt.num(r.follow)}"))
     }
 
     /** 標題下的說明，詳情與跨次趨勢共用。 */

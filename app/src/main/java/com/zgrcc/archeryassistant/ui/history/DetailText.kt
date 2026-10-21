@@ -45,7 +45,7 @@ internal fun statsText(s: Session, st: SessionStats): String = buildString {
     append(if (st.intervalAvgSec == null) "—" else tr("${Fmt.num(st.intervalAvgSec, 0)} 秒", "${Fmt.num(st.intervalAvgSec, 0)} s"))
 
     if (st.followAvg != null || st.followGyroAvg != null) {
-        append(tr("\n\n放箭後晃動（0.3～1 秒）", "\n\nShake after release (0.3-1 s)"))
+        append(tr("\n\n余姿（放箭後 0.3～1 秒晃動）", "\n\nFollow-through (shake 0.3-1 s after release)"))
         if (st.followAvg != null) append(tr("\n加速度 平均 ${Fmt.num(st.followAvg)} m/s²", "\nAccel avg ${Fmt.num(st.followAvg)} m/s²"))
         if (s.hasGyro && st.followGyroAvg != null) append(tr("\n角速度 平均 ${Fmt.num(st.followGyroAvg, 1)} °/s", "\nGyro avg ${Fmt.num(st.followGyroAvg, 1)} °/s"))
     }
@@ -102,8 +102,20 @@ internal fun endText(s: Session, e: EndStats, prev: EndStats? = null): String = 
     if (prev != null) append(tr("\n休息 ${Fmt.duration(e.startRelMs - prev.endRelMs)}（距上一趟）", "\nRest ${Fmt.duration(e.startRelMs - prev.endRelMs)} (since previous end)"))
     append(tr("\n加速度晃動 ${Fmt.numOrDash(e.accelAvg)} m/s²", "\nAccel shake ${Fmt.numOrDash(e.accelAvg)} m/s²"))
     if (s.hasGyro) append(tr("\n角速度晃動 ${Fmt.numOrDash(e.gyroAvg, 1)} °/s", "\nGyro shake ${Fmt.numOrDash(e.gyroAvg, 1)} °/s"))
-    if (e.followAvg != null) append(tr("\n放箭後晃動 ${Fmt.num(e.followAvg)} m/s²", "\nShake after release ${Fmt.num(e.followAvg)} m/s²"))
+    if (e.followAvg != null) append(tr("\n余姿 ${Fmt.num(e.followAvg)} m/s²", "\nFollow-through ${Fmt.num(e.followAvg)} m/s²"))
+    endDrawAverage(s, e)?.let { (prep, hold) ->
+        append(tr("\n平均準備 ${Fmt.num(prep, 1)} 秒　瞄準保持 ${Fmt.num(hold, 1)} 秒（估計）", "\nAvg preparation ${Fmt.num(prep, 1)} s  hold ${Fmt.num(hold, 1)} s (estimate)"))
+    }
     if (e.scoreTotal != null) append(tr("\n環數合計 ${e.scoreTotal}", "\nScore total ${e.scoreTotal}"))
+}
+
+/** 這一趟各箭的準備動作與瞄準保持平均（秒）；沒有可分析的波形為 null。 */
+internal fun endDrawAverage(s: Session, e: EndStats): Pair<Float, Float>? {
+    val v = s.validShots()
+    val from = (e.firstShot - 1).coerceAtLeast(0)
+    val to = e.lastShot.coerceAtMost(v.size)
+    if (from >= to) return null
+    return DrawPhases.average(v.subList(from, to).mapNotNull { sh -> sh.waveform?.let { DrawPhases.analyze(it) } })
 }
 
 internal fun manualText(s: Session, row: TimelineRow): String {
@@ -124,7 +136,8 @@ internal fun shotText(s: Session, row: TimelineRow, shot: ShotEntry): String {
         if (s.hasGyro) {
             append(tr("\n角速度晃動 ${Fmt.numOrDash(shot.gyroRms, 1)} °/s", "\nGyro shake ${Fmt.numOrDash(shot.gyroRms, 1)} °/s"))
         }
-        if (shot.followAccelRms != null) append(tr("\n放箭後晃動 ${Fmt.num(shot.followAccelRms)} m/s²", "\nShake after release ${Fmt.num(shot.followAccelRms)} m/s²"))
+        if (shot.followAccelRms != null) append(tr("\n余姿 ${Fmt.num(shot.followAccelRms)} m/s²", "\nFollow-through ${Fmt.num(shot.followAccelRms)} m/s²"))
+        shot.waveform?.let { DrawPhases.analyze(it) }?.let { append("\n").append(DrawPhases.text(it)) }
         if (shot.score != null) append(tr("\n環數 ${shot.score}", "\nScore ${shot.score}"))
     }
 }

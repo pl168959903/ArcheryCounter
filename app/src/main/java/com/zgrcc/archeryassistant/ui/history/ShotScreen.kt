@@ -189,7 +189,7 @@ private fun ShotContent(vm: CounterViewModel, session: Session, index: Int, shot
                     if (session.hasGyro) appendLine(tr("角速度晃動 ${Fmt.numOrDash(shot.gyroRms, 1)} °/s", "Gyro shake ${Fmt.numOrDash(shot.gyroRms, 1)} °/s"))
                     append(tr("分析視窗 放箭前 ${session.windowSec} 秒", "Analysis window: ${session.windowSec} s before release"))
                     if (shot.followAccelRms != null || shot.followGyroRms != null) {
-                        append(tr("\n放箭後 0.3～1 秒晃動", "\nShake 0.3-1 s after release"))
+                        append(tr("\n余姿（放箭後 0.3～1 秒晃動）", "\nFollow-through (shake 0.3-1 s after release)"))
                         if (shot.followAccelRms != null) append(tr("\n加速度 ${Fmt.num(shot.followAccelRms)} m/s²", "\nAccel ${Fmt.num(shot.followAccelRms)} m/s²"))
                         if (session.hasGyro && shot.followGyroRms != null) append(tr("\n角速度 ${Fmt.num(shot.followGyroRms, 1)} °/s", "\nGyro ${Fmt.num(shot.followGyroRms, 1)} °/s"))
                     }
@@ -201,6 +201,7 @@ private fun ShotContent(vm: CounterViewModel, session: Session, index: Int, shot
         val wave = shot.waveform
         if (wave != null) {
             item { ShotWaveform(wave) }
+            DrawPhases.analyze(wave)?.let { ph -> item { Note(DrawPhases.text(ph)) } }
         } else {
             item { Note(tr("這一箭沒有波形：記錄時「單箭波形」是關閉的，或當時資料不足", "No waveform for this shot: Per-shot waveform was off, or there was not enough data")) }
         }

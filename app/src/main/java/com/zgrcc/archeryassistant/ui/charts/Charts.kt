@@ -128,6 +128,7 @@ fun TrendChart(
 fun ShotWaveform(wave: Waveform) {
     val preSec = wave.impactIndex * wave.stepMs / 1000f
     val postSec = (wave.accel.size - wave.impactIndex) * wave.stepMs / 1000f
+    val phase = remember(wave) { DrawPhases.analyze(wave) }
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -138,6 +139,7 @@ fun ShotWaveform(wave: Waveform) {
             values = wave.accel,
             impactIndex = wave.impactIndex,
             lineColor = MaterialTheme.colors.primary,
+            phase = phase,
         )
         if (wave.gyro.isNotEmpty()) {
             WaveLine(
@@ -145,12 +147,15 @@ fun ShotWaveform(wave: Waveform) {
                 values = wave.gyro,
                 impactIndex = wave.impactIndex,
                 lineColor = MaterialTheme.colors.secondary,
+                phase = phase,
             )
         }
         Text(
             text = tr(
-                "橫軸：放箭前 ${Fmt.num(preSec, 1)} 秒 ～ 放箭後 ${Fmt.num(postSec, 1)} 秒\n豎線 ＝ 放箭瞬間",
-                "X axis: ${Fmt.num(preSec, 1)} s before to ${Fmt.num(postSec, 1)} s after release\nVertical line = release",
+                "橫軸：放箭前 ${Fmt.num(preSec, 1)} 秒 ～ 放箭後 ${Fmt.num(postSec, 1)} 秒\n豎線 ＝ 放箭瞬間" +
+                    (if (phase != null) "\n橘 ＝ 準備動作　綠 ＝ 瞄準保持　藍 ＝ 余姿（估計）" else "\n藍 ＝ 余姿"),
+                "X axis: ${Fmt.num(preSec, 1)} s before to ${Fmt.num(postSec, 1)} s after release\nVertical line = release" +
+                    (if (phase != null) "\nOrange = preparation, green = hold, blue = follow-through (estimate)" else "\nBlue = follow-through"),
             ),
             style = MaterialTheme.typography.caption2,
             color = MaterialTheme.colors.onSurfaceVariant,
@@ -160,7 +165,7 @@ fun ShotWaveform(wave: Waveform) {
 }
 
 @Composable
-private fun WaveLine(label: String, values: List<Float>, impactIndex: Int, lineColor: Color) {
+private fun WaveLine(label: String, values: List<Float>, impactIndex: Int, lineColor: Color, phase: DrawPhase? = null) {
     val maxValue = values.maxOrNull() ?: 0f
     val gridColor = MaterialTheme.colors.onSurfaceVariant.copy(alpha = 0.35f)
     val impactColor = MaterialTheme.colors.error
@@ -177,6 +182,18 @@ private fun WaveLine(label: String, values: List<Float>, impactIndex: Int, lineC
         val ys = ChartMath.yFractions(values, lo = 0f, hi = if (maxValue < 1e-3f) 1f else maxValue)
 
         drawLine(gridColor, Offset(pad, pad + h), Offset(pad + w, pad + h), 1.dp.toPx())
+
+        // 分段色塊：準備動作、瞄準保持、余姿（放箭後）
+        fun band(fromBin: Int, toBin: Int, color: Color) {
+            val x0 = pad + w * ChartMath.xFraction(fromBin, values.size)
+            val x1 = pad + w * ChartMath.xFraction(toBin, values.size)
+            if (x1 > x0) drawRect(color, Offset(x0, pad), androidx.compose.ui.geometry.Size(x1 - x0, h))
+        }
+        if (phase != null) {
+            band(phase.startBin, phase.endBin, Color(0xFFFFB74D).copy(alpha = 0.28f))
+            band(phase.endBin, phase.impactBin, Color(0xFF81C784).copy(alpha = 0.28f))
+        }
+        band(impactIndex, values.size - 1, Color(0xFF64B5F6).copy(alpha = 0.28f))
 
         val points = values.indices.map { i ->
             Offset(

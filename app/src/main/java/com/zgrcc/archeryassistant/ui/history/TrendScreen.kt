@@ -66,7 +66,7 @@ fun TrendScreen(vm: CounterViewModel) {
             item { TrendBlock(tr("平均角速度晃動量", "Average gyro shake"), "°/s", gyro, decimals = 1) }
         }
         if (follow.size >= 2) {
-            item { TrendBlock(tr("平均放箭後晃動量", "Average shake after release"), "m/s²", follow, decimals = 2, rank = false) }
+            item { TrendBlock(tr("平均余姿晃動量", "Average follow-through shake"), "m/s²", follow, decimals = 2, rank = false) }
         }
         if (pace.size >= 2) {
             item { TrendBlock(tr("每箭節奏（趟內間隔中位數）", "Pace (median gap within ends)"), tr("秒", "s"), pace, decimals = 1, rank = false) }

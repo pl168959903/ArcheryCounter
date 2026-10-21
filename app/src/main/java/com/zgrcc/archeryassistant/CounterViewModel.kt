@@ -511,7 +511,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         val wave = if (settings.recordWaveform.value) {
             tracker.waveform(
                 triggerMs = triggerMs,
-                preMs = windowMs + ShotDetector.GAP_MS,
+                preMs = maxOf(windowMs + ShotDetector.GAP_MS, StabilityTracker.WAVE_PRE_MS),
                 postMs = ShotDetector.CAPTURE_MS,
             )
         } else {
@@ -620,7 +620,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
             val wave = if (settings.recordWaveform.value) {
                 tracker.waveform(
                     triggerMs = p.triggerMs,
-                    preMs = windowMs + ShotDetector.GAP_MS,
+                    preMs = maxOf(windowMs + ShotDetector.GAP_MS, StabilityTracker.WAVE_PRE_MS),
                     postMs = StabilityTracker.FOLLOW_END_MS,
                 )
             } else {

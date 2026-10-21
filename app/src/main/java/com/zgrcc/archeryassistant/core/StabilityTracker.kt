@@ -227,8 +227,10 @@ class StabilityTracker(capacity: Int = DEFAULT_CAPACITY) {
     }
 
     companion object {
-        /** 100Hz 下约 10 秒；比最长的 3 秒窗口加冲击收集时间绰绰有余 */
-        const val DEFAULT_CAPACITY = 1024
+        /** 200Hz 下约 20 秒；要装得下单箭波形放箭前 10 秒加冲击收集时间 */
+        const val DEFAULT_CAPACITY = 4096
+        /** 單箭波形放箭前取多久（毫秒）：涵蓋準備動作與瞄準保持（v1.22） */
+        const val WAVE_PRE_MS = 10_000L
         const val MIN_SAMPLES = 10
         /** 单箭波形每个点代表 40ms（25Hz） */
         const val DEFAULT_BIN_MS = 40

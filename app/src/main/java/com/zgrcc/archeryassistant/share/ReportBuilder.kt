@@ -257,8 +257,8 @@ object ReportBuilder {
         row(sb, tr("峰值（最大／最小）", "Peak (max / min)"), "${Fmt.numOrDash(st.peakMax, 1)} / ${Fmt.numOrDash(st.peakMin, 1)}")
         if (st.thresholdMin == st.thresholdMax) row(sb, tr("閾值", "Threshold"), Fmt.num(st.thresholdMin, 0))
         else row(sb, tr("閾值（中途有調整）", "Threshold (changed during the session)"), "${Fmt.num(st.thresholdMin, 0)} → ${Fmt.num(st.thresholdMax, 0)}")
-        if (st.followAvg != null) row(sb, tr("放箭後晃動（加速度）", "Shake after release (accel)"), "${Fmt.num(st.followAvg)} m/s²")
-        if (s.hasGyro && st.followGyroAvg != null) row(sb, tr("放箭後晃動（角速度）", "Shake after release (gyro)"), "${Fmt.num(st.followGyroAvg, 1)} °/s")
+        if (st.followAvg != null) row(sb, tr("余姿（加速度）", "Follow-through (accel)"), "${Fmt.num(st.followAvg)} m/s²")
+        if (s.hasGyro && st.followGyroAvg != null) row(sb, tr("余姿（角速度）", "Follow-through (gyro)"), "${Fmt.num(st.followGyroAvg, 1)} °/s")
         st.accelTrend?.let { row(sb, tr("加速度晃動 前 1/3 → 後 1/3", "Accel shake first → last third"), "${Fmt.num(it.first)} → ${Fmt.num(it.last)}") }
         st.gyroTrend?.let { if (s.hasGyro) row(sb, tr("角速度晃動 前 1/3 → 後 1/3", "Gyro shake first → last third"), "${Fmt.num(it.first, 1)} → ${Fmt.num(it.last, 1)}") }
         if (st.scoredCount > 0) {
@@ -332,7 +332,7 @@ object ReportBuilder {
         sb.append("<details><summary>${esc(tr("逐箭明細（${s.shots.size} 筆）", "Shot by shot (${s.shots.size})"))}</summary>\n<div class=\"scroll\"><table>\n")
         sb.append("<tr><th class=\"l\">#</th><th class=\"l\">${esc(tr("時間", "Time"))}</th><th>${esc(tr("距上一箭", "Since previous"))}</th><th>${esc(tr("峰值", "Peak"))}</th><th>${esc(tr("加速度晃動", "Accel shake"))}</th>")
         if (s.hasGyro) sb.append("<th>${esc(tr("角速度晃動", "Gyro shake"))}</th>")
-        sb.append("<th>${esc(tr("放箭後晃動", "After release"))}</th><th>${esc(tr("環數", "Score"))}</th><th>${esc(tr("自評", "Rating"))}</th></tr>\n")
+        sb.append("<th>${esc(tr("余姿", "Follow-through"))}</th><th>${esc(tr("環數", "Score"))}</th><th>${esc(tr("自評", "Rating"))}</th></tr>\n")
         var no = 0
         var prev: Long? = null
         for (sh in s.shots) {
