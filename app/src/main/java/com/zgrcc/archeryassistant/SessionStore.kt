@@ -150,20 +150,21 @@ class SessionStore(baseDir: File) {
     }
 
     /** 即時產生的 CSV 內容：summary.csv（每次一行）或 shots.csv（每箭一行）；其他名稱回傳 null。 */
-    fun csvBytes(name: String): ByteArray? = onIo(null) {
+    fun csvBytes(name: String): ByteArray? = onIo(null) { csvNow(name) }
+
+    /** 必須在 io 執行緒內呼叫（不可巢狀 onIo，單執行緒會卡死）。 */
+    private fun csvNow(name: String): ByteArray? {
+        if (name != ExportCsv.SUMMARY_FILE && name != ExportCsv.SHOTS_FILE) return null
         val all = dir.listFiles { f -> f.isFile && f.name.endsWith(".json") }.orEmpty().mapNotNull { readFile(it) }
-        when (name) {
-            ExportCsv.SUMMARY_FILE -> ExportCsv.summary(all).toByteArray(Charsets.UTF_8)
-            ExportCsv.SHOTS_FILE -> ExportCsv.shots(all).toByteArray(Charsets.UTF_8)
-            else -> null
-        }
+        return if (name == ExportCsv.SUMMARY_FILE) ExportCsv.summary(all).toByteArray(Charsets.UTF_8)
+        else ExportCsv.shots(all).toByteArray(Charsets.UTF_8)
     }
 
     /** 取分享用檔案；名稱必須是 [shareNames] 裡的，否則回傳 null。 */
     fun shareFile(name: String): ShareFile? = onIo(null) {
         if (name !in namesNow()) return@onIo null
         if (name == ExportCsv.SUMMARY_FILE || name == ExportCsv.SHOTS_FILE) {
-            val bytes = csvBytes(name) ?: return@onIo null
+            val bytes = csvNow(name) ?: return@onIo null
             return@onIo ShareFile(bytes.size.toLong()) { bytes.inputStream() }
         }
         val f = File(dir, name)
@@ -177,7 +178,7 @@ class SessionStore(baseDir: File) {
         val tmp = File.createTempFile("archery_share", ".zip")
         try {
             tmp.outputStream().use { out ->
-                ShareZip.write(out, names.map { n -> n to { (csvBytes(n)?.inputStream() ?: File(dir, n).takeIf { it.isFile }?.inputStream()) as java.io.InputStream? } })
+                ShareZip.write(out, names.map { n -> n to { (csvNow(n)?.inputStream() ?: File(dir, n).takeIf { it.isFile }?.inputStream()) as java.io.InputStream? } })
             }
         } catch (e: Exception) {
             tmp.delete()
