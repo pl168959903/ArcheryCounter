@@ -12,6 +12,12 @@ permissions:
   contents: write
   actions: read
 
+# 同一個分支（或標籤）、同一個提交重複觸發時只留最新的一個，舊的自動取消；
+# 不同提交（連續推送）和標籤與分支之間不互相取消
+concurrency:
+  group: build-${{ github.ref }}-${{ github.sha }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
