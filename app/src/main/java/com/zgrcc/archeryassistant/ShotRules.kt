@@ -102,11 +102,17 @@ object PositionTrend {
     }
 
     fun rowText(r: PosRow, hasGyro: Boolean): String = buildString {
-        append(tr("第 ${r.pos} 箭（${r.n} 筆）", "Shot ${r.pos} (${r.n})"))
-        append(tr("\n加速度 ${Fmt.numOrDash(r.accel)}", "\nAccel ${Fmt.numOrDash(r.accel)}"))
-        if (hasGyro) append(tr("　角速度 ${Fmt.numOrDash(r.gyro, 1)}", "  Gyro ${Fmt.numOrDash(r.gyro, 1)}"))
-        if (r.follow != null) append(tr("　放箭後 ${Fmt.num(r.follow)}", "  After ${Fmt.num(r.follow)}"))
+        append(tr("每趟第 ${r.pos} 箭（${r.n} 支）", "Shot ${r.pos} of each end (${r.n})"))
+        append(tr("\n平均晃動 ${Fmt.numOrDash(r.accel)}", "\nAvg shake ${Fmt.numOrDash(r.accel)}"))
+        if (hasGyro) append(tr("　角速度 ${Fmt.numOrDash(r.gyro, 1)}", "  gyro ${Fmt.numOrDash(r.gyro, 1)}"))
+        if (r.follow != null) append(tr("　放箭後 ${Fmt.num(r.follow)}", "  after release ${Fmt.num(r.follow)}"))
     }
+
+    /** 標題下的說明，詳情與跨次趨勢共用。 */
+    fun explain(): String = tr(
+        "把每一趟的第 1 箭、第 2 箭……分別平均，看越後面的箭是不是越抖（可能累了）。晃動越小越穩；每個順位至少 3 支才列",
+        "Averages the 1st, 2nd, 3rd… shot of every end to see if later shots get shakier (tiring). Lower shake is steadier; a position needs at least 3 shots",
+    )
 }
 
 /** 跨次趨勢的另外兩條線（v1.19.4）：節奏與放箭後跟隨量。 */

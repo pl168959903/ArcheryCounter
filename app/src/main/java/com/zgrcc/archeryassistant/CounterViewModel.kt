@@ -837,6 +837,11 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
     val shotReview: StateFlow<Boolean> = _shotReview.asStateFlow()
     fun setShotReview(v: Boolean) { _shotReview.value = v }
 
+    /** 單箭詳情是不是「輸入這趟環數」模式（v1.21）：環數輸入放最上面，換箭只在這一趟之內。 */
+    private val _shotScoreMode = MutableStateFlow(false)
+    val shotScoreMode: StateFlow<Boolean> = _shotScoreMode.asStateFlow()
+    fun setShotScoreMode(v: Boolean) { _shotScoreMode.value = v }
+
     suspend fun setShotCancelled(id: String, index: Int, cancelled: Boolean): Unit =
         updateShot(id, index) { it.copy(cancelled = cancelled) }
 

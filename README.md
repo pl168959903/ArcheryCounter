@@ -24,9 +24,7 @@
    - 網頁上沒有「新增資料夾」按鈕：點 **Add file → Create new file**，檔名欄輸入路徑（例如 `.github/workflows/build.yml`），輸入 `/` 就會自動建立資料夾，再把內容貼進去。
 3. 打開倉庫的 **Actions** 頁面，等 `Build APK` 跑完（約 3～5 分鐘，綠色勾表示成功）。
    - 沒有自動開始的話，點左邊的 Build APK，再點右邊的 Run workflow。
-4. 點進該次執行，在頁面最底部的 **Artifacts** 下載 `ArcheryCounter-apk`，解壓縮後有兩個檔案：
-   - `app-release.apk`：開啟較快，**建議使用這個**。
-   - `app-debug.apk`：備用。
+4. 點進該次執行，在頁面最底部的 **Artifacts** 下載 `ArcheryCounter-apk`，解壓縮後是 `app-release.apk`（開啟較快）。檔案保留 14 天；v1.21 起不再編 debug APK。
 5. 如果出現紅色叉叉（編譯失敗），點進去查看紅色的錯誤訊息，依訊息排查修正。
 
 ### 自動發布 Release（選用）

@@ -34,6 +34,8 @@ fun SettingsDisplay(vm: CounterViewModel) {
     val matchCompare by s.matchCompare.collectAsStateWithLifecycle()
     val paceAnalysis by s.paceAnalysis.collectAsStateWithLifecycle()
     val positionTrend by s.positionTrend.collectAsStateWithLifecycle()
+    val scoreShake by s.scoreShake.collectAsStateWithLifecycle()
+    val endChart by s.endChart.collectAsStateWithLifecycle()
     val trendExtra by s.trendExtra.collectAsStateWithLifecycle()
     val groupCompare by s.groupCompare.collectAsStateWithLifecycle()
     val personalBest by s.personalBest.collectAsStateWithLifecycle()
@@ -60,6 +62,12 @@ fun SettingsDisplay(vm: CounterViewModel) {
 
         item { ToggleChip(tr("跨次趨勢加節奏與跟隨", "Trend: pace and follow-through"), trendExtra) { s.setTrendExtra(it) } }
         item { Note(tr("跨次趨勢多兩張圖：每箭節奏（趟內間隔中位數）與放箭後晃動量。只影響顯示", "Adds two charts to the session trend: pace (median gap within ends) and shake after release. Display only")) }
+
+        item { ToggleChip(tr("逐趟趨勢圖", "Per-end trend chart"), endChart) { s.setEndChart(it) } }
+        item { Note(tr("記錄詳情的逐趟下面畫一張圖，每個點是一趟的平均晃動，兩趟以上才畫。只影響顯示", "Draws a chart under the per-end stats in details; each point is one end's average shake, shown with two or more ends. Display only")) }
+
+        item { ToggleChip(tr("環數與晃動分析", "Score vs shake analysis"), scoreShake) { s.setScoreShake(it) } }
+        item { Note(tr("記錄詳情比較 9～10 環和 8 環以下的箭，放箭前平均晃動差多少，找你自己的穩定度標準。有環數的箭至少 10 支、每組至少 3 支才會分析。只影響顯示", "Details compare the average pre-release shake of 9-10 shots with 8 or lower to find your own steadiness standard. Needs at least 10 scored shots and 3 in each group. Display only")) }
 
         item { ToggleChip(tr("箭序趨勢", "Shot-order trend"), positionTrend) { s.setPositionTrend(it) } }
         item { Note(tr("記錄詳情與跨次趨勢多一段「箭序趨勢」：每趟第 1、2、3… 箭的平均晃動，看後段是否變抖。只影響顯示", "Adds Shot-order trend to details and the session trend: average shake of the 1st, 2nd, 3rd… shot of each end, to see if later shots get shakier. Display only")) }

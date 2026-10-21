@@ -81,7 +81,37 @@ private fun ShotContent(vm: CounterViewModel, session: Session, index: Int, shot
     val ends = remember(session, autoEnds, arrowsPerEnd) { endsFor(session, autoEnds, arrowsPerEnd) }
     val endLabel = if (showEnds) shotEndLabel(session, ends, index) else null
     val reviewMode = review && fastShots.isNotEmpty()
-    val navList = if (reviewMode) fastShots else session.shots.indices.toList()
+    val scoreMode by vm.shotScoreMode.collectAsStateWithLifecycle()
+    val endIdx = remember(session, ends, index, scoreMode) { if (scoreMode) EndScore.endIndices(session, ends, index) else emptyList() }
+    val scoreNav = scoreMode && endIdx.isNotEmpty() && !isActive
+    val navList = when {
+        reviewMode -> fastShots
+        scoreNav -> endIdx
+        else -> session.shots.indices.toList()
+    }
+    // 環數的 − 數字 + 一列；單箭頁原本的位置和「輸入這趟環數」模式的最上面共用
+    val scoreRowUi: @Composable () -> Unit = {
+        val score = shot.score
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            SmallRoundButton("−") {
+                // 往下減到 0 之後再按一次就清除（回到沒輸入）
+                val next = when {
+                    score == null -> null
+                    score <= 0 -> null
+                    else -> score - 1
+                }
+                scope.launch { vm.setShotScore(session.id, index, next) }
+            }
+            Text(if (score == null) "—" else score.toString(), style = MaterialTheme.typography.display3)
+            SmallRoundButton("+") {
+                val next = if (score == null) 10 else minOf(score + 1, 10)
+                scope.launch { vm.setShotScore(session.id, index, next) }
+            }
+        }
+    }
     // 處理完（標正常或誤判）後跳到下一支可疑箭；沒有了就留在原處
     fun afterHandled() {
         if (review) {
@@ -112,6 +142,24 @@ private fun ShotContent(vm: CounterViewModel, session: Session, index: Int, shot
                 else tr("第 $validNo 箭", "Shot $validNo") + (endLabel?.let { "（$it）" } ?: ""),
                 style = MaterialTheme.typography.title3,
             )
+        }
+        if (scoreNav && !shot.cancelled) {
+            item { SectionTitle(tr("環數", "Score")) }
+            item { scoreRowUi() }
+            val (total, entered) = EndScore.total(session, endIdx)
+            item {
+                Note(tr("這趟 ${endIdx.size} 箭，已輸入 $entered 箭，合計 $total 環", "${endIdx.size} shots this end, $entered entered, total $total"))
+            }
+            if (ShotNav.step(endIdx, index, 1) != index) {
+                item {
+                    Chip(
+                        onClick = { vm.selectShot(ShotNav.step(endIdx, index, 1)) },
+                        label = { Text(tr("下一箭", "Next shot"), maxLines = 1) },
+                        colors = kindColors(ChipKind.GO, ChipDefaults.primaryChipColors()),
+                        modifier = Modifier.fillMaxWidth(0.9f),
+                    )
+                }
+            }
         }
         if (review && fastShots.isEmpty() && !isActive) {
             item { Note(tr("可疑箭都處理完了", "All suspicious shots are handled")) }
@@ -178,33 +226,12 @@ private fun ShotContent(vm: CounterViewModel, session: Session, index: Int, shot
         }
 
         // 環數：設定頁開啟，或這一箭已經有環數時才顯示；誤判的箭不用輸入
-        if ((recordScore || shot.score != null) && !shot.cancelled) {
+        if ((recordScore || shot.score != null) && !shot.cancelled && !scoreNav) {
             item { SectionTitle(tr("環數", "Score")) }
             if (isActive) {
                 item { Note(tr("進行中，暫停偵測後才能輸入環數", "In progress; pause detection before entering scores")) }
             } else {
-                item {
-                    val score = shot.score
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        SmallRoundButton("−") {
-                            // 往下減到 0 之後再按一次就清除（回到沒輸入）
-                            val next = when {
-                                score == null -> null
-                                score <= 0 -> null
-                                else -> score - 1
-                            }
-                            scope.launch { vm.setShotScore(session.id, index, next) }
-                        }
-                        Text(if (score == null) "—" else score.toString(), style = MaterialTheme.typography.display3)
-                        SmallRoundButton("+") {
-                            val next = if (score == null) 10 else minOf(score + 1, 10)
-                            scope.launch { vm.setShotScore(session.id, index, next) }
-                        }
-                    }
-                }
+                item { scoreRowUi() }
                 item { Note(tr("第一次按 + 是 10 環，再按 − 往下減；減到 0 再按 − 清除", "First press of + gives 10; press − to go down; at 0 press − again to clear")) }
             }
         }
@@ -257,7 +284,7 @@ private fun ShotContent(vm: CounterViewModel, session: Session, index: Int, shot
                 ) {
                     SmallRoundButton("‹") { vm.selectShot(ShotNav.step(navList, index, -1)) }
                     Text(
-                        (if (reviewMode) tr("可疑 ", "Suspicious ") else "") + ShotNav.progress(navList, index),
+                        (if (reviewMode) tr("可疑 ", "Suspicious ") else if (scoreNav) tr("這趟 ", "End ") else "") + ShotNav.progress(navList, index),
                         style = MaterialTheme.typography.caption2,
                     )
                     SmallRoundButton("›") { vm.selectShot(ShotNav.step(navList, index, 1)) }

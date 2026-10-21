@@ -33,6 +33,7 @@ fun MainScreen(
     onOpenUpdate: () -> Unit = {},
     onOpenImport: () -> Unit = {},
 ) {
+    val rateWarnOn by vm.settings.rateWarn.collectAsStateWithLifecycle()
     val phoneModeSetting by vm.settings.phoneMode.collectAsStateWithLifecycle()
     val phone = PhoneMode.resolve(phoneModeSetting, vm.isWatch)
     val count by vm.count.collectAsStateWithLifecycle()
@@ -272,6 +273,9 @@ fun MainScreen(
         }
 
         // 偵測中顯示實測取樣頻率
+        if (running && rateWarnOn && RateWarn.low(measuredHz, vm.samplingHzInUse)) {
+            item { Note(tr("⚠ 實測 ${Fmt.num(measuredHz, 0)} Hz，低於要求的 ${vm.samplingHzInUse} Hz，放箭峰值可能偏低", "⚠ Measured ${Fmt.num(measuredHz, 0)} Hz, below the requested ${vm.samplingHzInUse} Hz; release peaks may read low")) }
+        }
         if (running && measuredHz > 0f) {
             item { Note(tr("取樣 ${Fmt.num(measuredHz, 0)} Hz（要求 ${vm.samplingHzInUse} Hz）", "Sampling ${Fmt.num(measuredHz, 0)} Hz (requested ${vm.samplingHzInUse} Hz)")) }
         }

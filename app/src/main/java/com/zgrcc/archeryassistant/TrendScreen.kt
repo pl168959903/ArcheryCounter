@@ -73,6 +73,7 @@ fun TrendScreen(vm: CounterViewModel) {
         }
         if (posRows.isNotEmpty()) {
             item { SectionTitle(tr("箭序趨勢（全部記錄）", "Shot-order trend (all records)")) }
+            item { Note(PositionTrend.explain()) }
             PositionTrend.hint(posRows)?.let { h -> item { Note(h) } }
             posRows.forEach { r -> item { Body(PositionTrend.rowText(r, hasGyro = true)) } }
         }

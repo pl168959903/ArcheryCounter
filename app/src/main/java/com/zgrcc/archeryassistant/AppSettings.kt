@@ -511,6 +511,30 @@ class AppSettings(private val prefs: SharedPreferences) {
         prefs.edit().putBoolean(KEY_SHOT_TAP_NAV, v).apply()
     }
 
+    private val _scoreShake = MutableStateFlow(prefs.getBoolean(KEY_SCORE_SHAKE, true))
+    /** 環數與晃動分析（v1.21）：記錄詳情比較高環數與其他箭的平均晃動。 預設：開 */
+    val scoreShake: StateFlow<Boolean> = _scoreShake.asStateFlow()
+    fun setScoreShake(v: Boolean) {
+        _scoreShake.value = v
+        prefs.edit().putBoolean(KEY_SCORE_SHAKE, v).apply()
+    }
+
+    private val _endChart = MutableStateFlow(prefs.getBoolean(KEY_END_CHART, true))
+    /** 逐趟趨勢圖（v1.21）：記錄詳情畫出各趟平均晃動。 預設：開 */
+    val endChart: StateFlow<Boolean> = _endChart.asStateFlow()
+    fun setEndChart(v: Boolean) {
+        _endChart.value = v
+        prefs.edit().putBoolean(KEY_END_CHART, v).apply()
+    }
+
+    private val _rateWarn = MutableStateFlow(prefs.getBoolean(KEY_RATE_WARN, true))
+    /** 取樣率不足提醒（v1.21）：實測取樣率低於設定的 85% 時，主畫面提醒。 預設：開 */
+    val rateWarn: StateFlow<Boolean> = _rateWarn.asStateFlow()
+    fun setRateWarn(v: Boolean) {
+        _rateWarn.value = v
+        prefs.edit().putBoolean(KEY_RATE_WARN, v).apply()
+    }
+
     private val _historyFilter = MutableStateFlow(prefs.getBoolean(KEY_HISTORY_FILTER, true))
     /** 記錄頁篩選（v1.19）。 預設：開 */
     val historyFilter: StateFlow<Boolean> = _historyFilter.asStateFlow()
@@ -1043,6 +1067,9 @@ class AppSettings(private val prefs: SharedPreferences) {
         setShareZip(true)
         setHistoryFilter(true)
         setFlagSuspicious(true)
+        setScoreShake(true)
+        setEndChart(true)
+        setRateWarn(true)
         setShotTapNav(true)
         setPhoneMode(PhoneMode.AUTO)
         setAutoEnds(true)
@@ -1139,6 +1166,9 @@ class AppSettings(private val prefs: SharedPreferences) {
         private const val KEY_SHARE_ZIP = "share_zip"
         private const val KEY_HISTORY_FILTER = "history_filter"
         private const val KEY_FLAG_SUSPICIOUS = "flag_suspicious"
+        private const val KEY_SCORE_SHAKE = "score_shake"
+        private const val KEY_END_CHART = "end_chart"
+        private const val KEY_RATE_WARN = "rate_warn"
         private const val KEY_SHOT_TAP_NAV = "shot_tap_nav"
         private const val KEY_PHONE_MODE = "phone_mode"
         private const val KEY_AUTO_ENDS = "auto_ends"

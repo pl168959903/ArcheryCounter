@@ -35,6 +35,7 @@ fun SettingsDetect(vm: CounterViewModel, onOpenCalibration: () -> Unit) {
     val autoPause by s.autoPause.collectAsStateWithLifecycle()
     val autoPauseMin by s.autoPauseMin.collectAsStateWithLifecycle()
     val samplingHz by s.samplingHz.collectAsStateWithLifecycle()
+    val rateWarn by s.rateWarn.collectAsStateWithLifecycle()
     val measuredHz by vm.measuredHz.collectAsStateWithLifecycle()
     val calAdvice by s.calAdvice.collectAsStateWithLifecycle()
     val advancedDetect by s.advancedDetect.collectAsStateWithLifecycle()
@@ -73,6 +74,8 @@ fun SettingsDetect(vm: CounterViewModel, onOpenCalibration: () -> Unit) {
                 )
             )
         }
+        item { ToggleChip(tr("取樣率不足提醒", "Low sampling-rate warning"), rateWarn) { s.setRateWarn(it) } }
+        item { Note(tr("偵測中，實測取樣率低於設定的 85% 時，主畫面多一行提醒。放箭衝擊很短，取樣太低時峰值可能偏低", "While detecting, the main screen shows a warning when the measured sampling rate is below 85% of the setting. Releases are very short, so a low rate can under-read the peak")) }
         item {
             StepRow(
                 text = tr("閾值 ${threshold.toInt()}", "Threshold ${threshold.toInt()}"),

@@ -95,9 +95,11 @@ internal fun StringBuilder.appendStability(
     }
 }
 
-internal fun endText(s: Session, e: EndStats): String = buildString {
+internal fun endText(s: Session, e: EndStats, prev: EndStats? = null): String = buildString {
     append(tr("第 ${e.number} 趟　第 ${e.firstShot}～${e.lastShot} 箭（${e.count} 箭）", "End ${e.number}  shots ${e.firstShot}-${e.lastShot} (${e.count} arrows)"))
     append("\n${Fmt.clock(s.startMs + e.startRelMs)} ～ ${Fmt.clock(s.startMs + e.endRelMs)}")
+    if (e.count > 1) append(tr("\n用時 ${Fmt.duration(e.endRelMs - e.startRelMs)}", "\nTime used ${Fmt.duration(e.endRelMs - e.startRelMs)}"))
+    if (prev != null) append(tr("\n休息 ${Fmt.duration(e.startRelMs - prev.endRelMs)}（距上一趟）", "\nRest ${Fmt.duration(e.startRelMs - prev.endRelMs)} (since previous end)"))
     append(tr("\n加速度晃動 ${Fmt.numOrDash(e.accelAvg)} m/s²", "\nAccel shake ${Fmt.numOrDash(e.accelAvg)} m/s²"))
     if (s.hasGyro) append(tr("\n角速度晃動 ${Fmt.numOrDash(e.gyroAvg, 1)} °/s", "\nGyro shake ${Fmt.numOrDash(e.gyroAvg, 1)} °/s"))
     if (e.followAvg != null) append(tr("\n放箭後晃動 ${Fmt.num(e.followAvg)} m/s²", "\nShake after release ${Fmt.num(e.followAvg)} m/s²"))

@@ -49,7 +49,7 @@ private fun buildTimeline(s: Session): List<TimelineRow> {
 }
 
 @Composable
-fun DetailScreen(vm: CounterViewModel, onOpenShot: (Int) -> Unit, onDeleted: () -> Unit, onOpenReview: (Int) -> Unit) {
+fun DetailScreen(vm: CounterViewModel, onOpenShot: (Int) -> Unit, onDeleted: () -> Unit, onOpenReview: (Int) -> Unit, onOpenScoreEntry: (Int) -> Unit) {
     val id by vm.selectedId.collectAsStateWithLifecycle()
     val activeId by vm.activeSessionId.collectAsStateWithLifecycle()
     val sessions by vm.sessions.collectAsStateWithLifecycle()
@@ -78,6 +78,7 @@ fun DetailScreen(vm: CounterViewModel, onOpenShot: (Int) -> Unit, onDeleted: () 
             isActive = l.session.id == activeId,
             onOpenShot = onOpenShot,
             onOpenReview = onOpenReview,
+            onOpenScoreEntry = onOpenScoreEntry,
             onDelete = {
                 vm.deleteSession(l.session.id)
                 onDeleted()
@@ -93,6 +94,7 @@ private fun DetailContent(
     isActive: Boolean,
     onOpenShot: (Int) -> Unit,
     onOpenReview: (Int) -> Unit,
+    onOpenScoreEntry: (Int) -> Unit,
     onDelete: () -> Unit,
 ) {
     val showTrend by vm.settings.showTrendChart.collectAsStateWithLifecycle()
@@ -128,6 +130,10 @@ private fun DetailContent(
     val noteOn by vm.settings.recordNote.collectAsStateWithLifecycle()
     val flagOn by vm.settings.flagSuspicious.collectAsStateWithLifecycle()
     val fastOn by vm.settings.flagFastShots.collectAsStateWithLifecycle()
+    val recordScore by vm.settings.recordScore.collectAsStateWithLifecycle()
+    val endChartOn by vm.settings.endChart.collectAsStateWithLifecycle()
+    val scoreShakeOn by vm.settings.scoreShake.collectAsStateWithLifecycle()
+    val scoreShake = remember(session, scoreShakeOn) { if (scoreShakeOn) ScoreShakeAnalysis.compute(session) else null }
     val posOn by vm.settings.positionTrend.collectAsStateWithLifecycle()
     val fastShots = remember(session, fastOn) { if (fastOn) FastShot.flagged(session) else emptySet() }
     val suspectKind = remember(session, flagOn, fastOn, isActive) {
@@ -235,6 +241,10 @@ private fun DetailContent(
 
         item { SectionTitle(tr("統計", "Statistics")) }
         item { Body(statsText(session, stats)) }
+        scoreShake?.let { r ->
+            item { SectionTitle(tr("環數與晃動", "Score vs shake")) }
+            item { Body(ScoreShakeAnalysis.text(r)) }
+        }
 
         if (showTrend) {
             item { SectionTitle(tr("趨勢圖", "Trend charts")) }
@@ -270,11 +280,40 @@ private fun DetailContent(
         if (showEnds && ends.isNotEmpty()) {
             item { SectionTitle(if (autoEnds) tr("逐趟（依間隔自動分趟）", "Per end (auto by gaps)") else tr("逐趟（每趟 $arrowsPerEnd 箭）", "Per end ($arrowsPerEnd arrows each)")) }
             if (autoEnds) item { Body(AutoEnds.summary(ends)) }
-            ends.forEach { e -> item { Body(endText(session, e)) } }
+            ends.forEachIndexed { i, e ->
+                item { Body(endText(session, e, ends.getOrNull(i - 1))) }
+                if ((recordScore || e.scoreTotal != null) && !isActive && !session.calibration) {
+                    item {
+                        Chip(
+                            onClick = { onOpenScoreEntry(EndScore.validToIndex(session, e.firstShot)) },
+                            label = { Text(tr("輸入第 ${e.number} 趟環數", "Enter end ${e.number} scores") + navMark(), maxLines = 1) },
+                            secondaryLabel = e.scoreTotal?.let { t -> { Text(tr("目前合計 $t", "Total so far $t"), maxLines = 1) } },
+                            colors = kindColors(ChipKind.NAV, ChipDefaults.secondaryChipColors()),
+                            modifier = Modifier.fillMaxWidth(0.9f),
+                        )
+                    }
+                }
+            }
+            val endPoints = ends.mapNotNull { e -> e.accelAvg?.let { ShotRank(e.number, it) } }
+            if (endChartOn && endPoints.size >= 2) {
+                val (best, worst) = extremes(endPoints.map { it.value })
+                item {
+                    TrendChart(
+                        title = tr("各趟平均加速度晃動", "Average accel shake per end"),
+                        unit = "m/s²",
+                        series = endPoints,
+                        steadiest = best,
+                        shakiest = worst,
+                        decimals = 2,
+                        noun = tr("趟", "end"),
+                    )
+                }
+            }
         }
 
         if (posRows.isNotEmpty()) {
             item { SectionTitle(tr("箭序趨勢", "Shot-order trend")) }
+            item { Note(PositionTrend.explain()) }
             PositionTrend.hint(posRows)?.let { h -> item { Note(h) } }
             posRows.forEach { r -> item { Body(PositionTrend.rowText(r, session.hasGyro)) } }
         }

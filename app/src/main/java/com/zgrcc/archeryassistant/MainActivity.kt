@@ -225,14 +225,23 @@ private fun AppNav(vm: CounterViewModel, launch: String?, onLaunchHandled: () ->
                 vm = vm,
                 onOpenShot = { index ->
                     vm.setShotReview(false)
+                    vm.setShotScoreMode(false)
                     vm.selectShot(index)
                     nav.navigate(ROUTE_SHOT)
                 },
                 onDeleted = { nav.popBackStack() },
                 onOpenReview = { index ->
+                    vm.setShotScoreMode(false)
                     vm.setShotReview(true)
                     vm.selectShot(index)
                     nav.navigate(ROUTE_SHOT)
+                },
+                onOpenScoreEntry = { index ->
+                    if (index >= 0) {
+                        vm.setShotScoreMode(true)
+                        vm.selectShot(index)
+                        nav.navigate(ROUTE_SHOT)
+                    }
                 },
             )
         }

@@ -72,14 +72,34 @@ jobs:
           fi
           echo "找不到可沿用的編譯，改為完整編譯"
 
+      # 決定要不要編譯：標籤沿用到現成的 APK 就不編；一般推送如果只改了 .md 文件（例如更新日誌）也略過測試與編譯。
+      # 之後若有人替這種提交打標籤，因為沒有現成的 APK，會自動完整編譯一次
+      - name: Decide whether to build
+        id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          BUILD=true
+          if [ "${{ steps.reuse.outputs.reuse }}" = "true" ]; then
+            BUILD=false
+          elif [ "${{ github.event_name }}" = "push" ] && [[ "$GITHUB_REF" == refs/heads/* ]] && [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ]; then
+            FILES=$(gh api "repos/$GITHUB_REPOSITORY/compare/$BEFORE...$GITHUB_SHA" --jq '.files[].filename' 2>/dev/null || true)
+            if [ -n "$FILES" ] && ! echo "$FILES" | grep -qv '\.md$'; then
+              BUILD=false
+              echo "這次推送只改了 .md 文件，略過測試與編譯"
+            fi
+          fi
+          echo "build=$BUILD" >> "$GITHUB_OUTPUT"
+
       - uses: actions/setup-java@v5
-        if: steps.reuse.outputs.reuse != 'true'
+        if: steps.decide.outputs.build == 'true'
         with:
           distribution: temurin
           java-version: 17
 
       - uses: gradle/actions/setup-gradle@v4
-        if: steps.reuse.outputs.reuse != 'true'
+        if: steps.decide.outputs.build == 'true'
         with:
           gradle-version: 8.9
 
@@ -107,7 +127,7 @@ jobs:
 
       # 單元測試（v1.14.2 起）：失敗就停，並把失敗的測試名稱輸出成註解
       - name: Unit tests
-        if: steps.reuse.outputs.reuse != 'true'
+        if: steps.decide.outputs.build == 'true'
         run: |
           set -o pipefail
           gradle :app:testDebugUnitTest --no-daemon 2>&1 | tee test.log || {
@@ -116,9 +136,9 @@ jobs:
             exit 1
           }
 
-      # 同時編譯 release APK（較快，建議使用）、debug APK（備用），以及上架 Google Play 用的 AAB
+      # 編譯 release APK 以及上架 Google Play 用的 AAB（v1.21 起不再編 debug APK）
       - name: Build APKs and AAB
-        if: steps.reuse.outputs.reuse != 'true'
+        if: steps.decide.outputs.build == 'true'
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
@@ -126,24 +146,24 @@ jobs:
         run: |
           set -o pipefail
           # 編譯錯誤同時輸出成註解，日誌讀不到時也看得到是哪一行
-          gradle :app:assembleRelease :app:assembleDebug :app:bundleRelease --no-daemon 2>&1 | tee build.log || {
+          gradle :app:assembleRelease :app:bundleRelease --no-daemon 2>&1 | tee build.log || {
             grep -E "^e: " build.log | sed 's/^e: file:\/\/\/.*archerycounter\///; s/^/::error::/' | head -40
             exit 1
           }
 
       - uses: actions/upload-artifact@v4
-        if: steps.reuse.outputs.reuse != 'true'
+        if: steps.decide.outputs.build == 'true'
         with:
           name: ArcheryCounter-apk
-          path: |
-            app/build/outputs/apk/release/app-release.apk
-            app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
+          path: app/build/outputs/apk/release/app-release.apk
 
       # 上架 Google Play 用的 App Bundle（.aab），在 Actions 的 Artifacts 下載，不放進 GitHub Release
       - uses: actions/upload-artifact@v4
-        if: steps.reuse.outputs.reuse != 'true'
+        if: steps.decide.outputs.build == 'true'
         with:
           name: ArcheryAssistant-aab
+          retention-days: 14
           path: app/build/outputs/bundle/release/app-release.aab
 
       # 只有推送 v 開頭的標籤時才發布。只附 release 版，檔名帶版本號。
