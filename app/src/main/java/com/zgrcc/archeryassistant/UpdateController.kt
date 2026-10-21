@@ -20,7 +20,7 @@ class UpdateController(
     private val _update = MutableStateFlow(UpdateUi())
     val update: StateFlow<UpdateUi> = _update.asStateFlow()
 
-    /** 建立後呼叫一次：監聽安裝失敗，並在設定開啟且距上次超過一天時自動檢查。 */
+    /** 建立後呼叫一次：監聽安裝失敗，並在設定開啟時自動檢查（每次開啟或一天一次，見 [UpdatePolicy.shouldAutoCheck]）。 */
     fun start() {
         // 安裝程式回報失敗（被取消、簽章不符等）
         scope.launch {
@@ -32,8 +32,8 @@ class UpdateController(
                 }
             }
         }
-        // 自動檢查更新：開啟時，距上次超過一天才查
-        if (settings.updateAuto.value && UpdatePolicy.due(settings.updateLastCheck, System.currentTimeMillis())) {
+        // 自動檢查更新：開啟時，預設每次開啟查一次；關掉「每次開啟」則距上次超過一天才查
+        if (UpdatePolicy.shouldAutoCheck(settings.updateAuto.value, settings.updateEveryStart.value, settings.updateLastCheck, System.currentTimeMillis())) {
             checkUpdate(manual = false)
         }
     }

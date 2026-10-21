@@ -455,6 +455,15 @@ class AppSettings(private val prefs: SharedPreferences) {
         prefs.edit().putBoolean(KEY_UPDATE_AUTO, v).apply()
     }
 
+    private val _updateEveryStart = MutableStateFlow(prefs.getBoolean(KEY_UPDATE_EVERY_START, true))
+    /** 自動檢查時，每次開啟 App 都檢查一次（關閉則最多一天一次）。預設：開 */
+    val updateEveryStart: StateFlow<Boolean> = _updateEveryStart.asStateFlow()
+
+    fun setUpdateEveryStart(v: Boolean) {
+        _updateEveryStart.value = v
+        prefs.edit().putBoolean(KEY_UPDATE_EVERY_START, v).apply()
+    }
+
     /** 上次檢查更新的時間（毫秒）；不屬於「恢復預設設定」 */
     var updateLastCheck: Long
         get() = prefs.getLong(KEY_UPDATE_LAST, 0L)
@@ -801,6 +810,7 @@ class AppSettings(private val prefs: SharedPreferences) {
         setLive2d(false)
         setDiscSize(DiscSize.DEFAULT)
         setUpdateAuto(false)
+        setUpdateEveryStart(true)
         setPaceAnalysis(true)
         setGroupCompare(true)
         setPersonalBest(true)
@@ -867,6 +877,7 @@ class AppSettings(private val prefs: SharedPreferences) {
         private const val KEY_LIVE_2D = "live_2d"
         private const val KEY_DISC_SIZE = "disc_size"
         private const val KEY_UPDATE_AUTO = "update_auto"
+        private const val KEY_UPDATE_EVERY_START = "update_every_start"
         private const val KEY_PACE = "pace_analysis"
         private const val KEY_GROUP_COMPARE = "group_compare"
         private const val KEY_PERSONAL_BEST = "personal_best"

@@ -96,6 +96,10 @@ object UpdatePolicy {
     fun due(lastMs: Long, nowMs: Long): Boolean =
         lastMs <= 0L || nowMs < lastMs || nowMs - lastMs >= INTERVAL_MS
 
+    /** 啟動時要不要自動檢查：沒開自動就不查；「每次開啟」開著每次都查，否則依 [due] 一天一次。 */
+    fun shouldAutoCheck(auto: Boolean, everyStart: Boolean, lastMs: Long, nowMs: Long): Boolean =
+        auto && (everyStart || due(lastMs, nowMs))
+
     /** 要不要把這個版本提示給使用者。手動檢查一律提示；自動檢查略過使用者已略過的版本。 */
     fun shouldOffer(remoteTag: String, current: String, skipped: String, manual: Boolean): Boolean {
         if (!VersionCompare.isNewer(remoteTag, current)) return false
