@@ -487,14 +487,6 @@ class AppSettings(private val prefs: SharedPreferences) {
         prefs.edit().putInt(KEY_SHARE_AUTO_STOP, x).apply()
     }
 
-    private val _aboutIconAnim = MutableStateFlow(prefs.getBoolean(KEY_ABOUT_ICON_ANIM, true))
-    /** 「關於」頁的圖示動畫（v1.19.1）。關閉則圖示靜止。預設：開 */
-    val aboutIconAnim: StateFlow<Boolean> = _aboutIconAnim.asStateFlow()
-    fun setAboutIconAnim(v: Boolean) {
-        _aboutIconAnim.value = v
-        prefs.edit().putBoolean(KEY_ABOUT_ICON_ANIM, v).apply()
-    }
-
     private val _reportExport = MutableStateFlow(prefs.getBoolean(KEY_REPORT_EXPORT, true))
     /** 資料頁提供「匯出報告」（網頁報告 report.html）。預設：開 */
     val reportExport: StateFlow<Boolean> = _reportExport.asStateFlow()
@@ -997,7 +989,6 @@ class AppSettings(private val prefs: SharedPreferences) {
         setAdvancedDetect(true)
         setRecordDevice(true)
         setMainThreshold(false)
-        setAboutIconAnim(true)
         setShareAutoStopMin(ShareAutoStop.DEFAULT_MIN)
         setImportUndo(true)
         setShareZip(true)
@@ -1088,7 +1079,6 @@ class AppSettings(private val prefs: SharedPreferences) {
         private const val KEY_ADVANCED_DETECT = "advanced_detect"
         private const val KEY_RECORD_DEVICE = "record_device"
         private const val KEY_MAIN_THRESHOLD = "main_threshold"
-        private const val KEY_ABOUT_ICON_ANIM = "about_icon_anim"
         private const val KEY_SHARE_AUTO_STOP = "share_auto_stop_min"
         private const val KEY_IMPORT_UNDO = "import_undo"
         private const val KEY_SHARE_ZIP = "share_zip"

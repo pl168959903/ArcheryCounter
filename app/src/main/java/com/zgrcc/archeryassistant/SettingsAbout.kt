@@ -32,7 +32,6 @@ fun SettingsAbout(vm: CounterViewModel, onOpenChangelog: () -> Unit = {}) {
     val threshold by vm.threshold.collectAsStateWithLifecycle()
     val updateMode by s.updateMode.collectAsStateWithLifecycle()
     val updateUi by vm.update.collectAsStateWithLifecycle()
-    val iconAnim by s.aboutIconAnim.collectAsStateWithLifecycle()
     var confirmReset by remember { mutableStateOf(false) }
     val ctx = LocalContext.current
     var noBrowser by remember { mutableStateOf(false) }
@@ -46,8 +45,7 @@ fun SettingsAbout(vm: CounterViewModel, onOpenChangelog: () -> Unit = {}) {
         item { SectionTitle(tr("關於", "About")) }
         item {
             var t by remember { mutableLongStateOf(0L) }
-            LaunchedEffect(iconAnim) {
-                if (!iconAnim) return@LaunchedEffect
+            LaunchedEffect(Unit) {
                 var start = -1L
                 while (true) {
                     val now = withFrameNanos { it }
@@ -55,7 +53,7 @@ fun SettingsAbout(vm: CounterViewModel, onOpenChangelog: () -> Unit = {}) {
                     t = (now - start) / 1_000_000L
                 }
             }
-            AppIconBadge(t, size = 72.dp, breathing = iconAnim)
+            AppIconBadge(t, size = 104.dp)
         }
         item { Body(tr("版本 ${vm.versionLabel}", "Version ${vm.versionLabel}")) }
         item { Body(tr("裝置 ${vm.deviceModel()}", "Device ${vm.deviceModel()}")) }
@@ -83,8 +81,6 @@ fun SettingsAbout(vm: CounterViewModel, onOpenChangelog: () -> Unit = {}) {
                 modifier = Modifier.fillMaxWidth(0.9f),
             )
         }
-
-        item { ToggleChip(tr("圖示動畫", "Icon animation"), iconAnim) { s.setAboutIconAnim(it) } }
 
         item { SectionTitle(tr("更新", "Update")) }
         item {

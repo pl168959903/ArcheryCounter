@@ -124,15 +124,15 @@ fun SplashScreen(
 
 /**
  * App 圖示加一圈呼吸光圈（v1.19.1，啟動畫面與「關於」共用）。
- * [t] 是動畫開始後的毫秒數；[breathing] 為 false 時光圈不動、圖示直接顯示完整。
+ * [t] 是動畫開始後的毫秒數。
  */
 @Composable
-fun AppIconBadge(t: Long, size: androidx.compose.ui.unit.Dp = 84.dp, breathing: Boolean = true) {
-    val time = if (breathing) t else 10_000L
+fun AppIconBadge(t: Long, size: androidx.compose.ui.unit.Dp = 84.dp) {
+    val time = t
     Box(modifier = Modifier.size(size), contentAlignment = Alignment.Center) {
         Canvas(modifier = Modifier.fillMaxSize()) {
             drawCircle(
-                color = Color(0xFF9CCC3C).copy(alpha = if (breathing) SplashTiming.glowAlpha(time) else 0.7f),
+                color = Color(0xFF9CCC3C).copy(alpha = SplashTiming.glowAlpha(time)),
                 radius = this.size.minDimension / 2f - 1.5f,
                 style = Stroke(width = 3f),
             )
