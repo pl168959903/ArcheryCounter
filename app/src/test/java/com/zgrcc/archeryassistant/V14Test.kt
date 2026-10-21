@@ -389,11 +389,14 @@ class V14Test {
         store.saveAsync(session(listOf(shot(10)), start = t0 + 1_000_000L, id = "20261019_110000"))
         store.saveAsync(session(listOf(shot(10)), start = t0 + 2_000_000L, id = "20261019_120000"))
 
-        assertTrue(store.exportAll())
-        val dir = java.io.File(base, "sessions")
-        assertTrue(java.io.File(dir, "summary.csv").isFile)
-        assertTrue(java.io.File(dir, "shots.csv").isFile)
-        assertEquals(4, java.io.File(dir, "summary.csv").readLines().size) // 标题 + 3 笔
+        // v1.19.3：summary.csv／shots.csv 不再先寫成檔案，分享時即時產生
+        val names = store.shareNames()
+        assertTrue(names.contains("summary.csv") && names.contains("shots.csv"))
+        assertTrue(!java.io.File(java.io.File(base, "sessions"), "summary.csv").exists())
+        val summary = String(store.csvBytes("summary.csv")!!, Charsets.UTF_8)
+        assertEquals(4, summary.lines().filter { it.isNotEmpty() }.size) // 标题 + 3 笔
+        assertEquals(summary.toByteArray(Charsets.UTF_8).size.toLong(), store.shareFile("summary.csv")!!.length)
+        assertTrue(store.csvBytes("other.csv") == null)
 
         store.deleteMany(listOf("20261019_100000", "20261019_110000"))
         val left = store.listSessions()

@@ -208,7 +208,8 @@ class V15Test {
         for (i in 0 until 100) rec.writeRaw(i * 10L, 0.1f, 0.2f, 0.3f, 1f, 2f, 3f)
         rec.addShot(1000, 17f, 16f, 0.5f, 1f)
         rec.stop(t0 + 105_000)
-        store.exportAll()
+        // 舊版匯出過的檔案還留在資料夾時，佔用空間要算進匯出檔
+        File(File(base, "sessions"), "summary.csv").writeText(ExportCsv.summary(store.allSessions()), Charsets.UTF_8)
 
         val u = store.usage()
         assertEquals(2, u.sessionCount)

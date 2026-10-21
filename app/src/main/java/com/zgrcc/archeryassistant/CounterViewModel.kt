@@ -868,14 +868,6 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         }
     }
 
-    /** 匯出 summary.csv 和 shots.csv 到 sessions 資料夾。回傳是否成功。 */
-    suspend fun exportSummary(): Boolean = withContext(Dispatchers.IO) { store.exportAll() }
-
-    /** 匯出網頁報告 report.html（v1.16）：頁首含作者、版本、簽章與 App 圖示。 */
-    suspend fun exportReport(): Boolean = withContext(Dispatchers.IO) {
-        store.exportReport { ReportBuilder.build(it, reportMeta()) }
-    }
-
     private fun reportMeta(): ReportMeta {
         val icon = try {
             appContext.resources.openRawResource(R.raw.report_icon).use {

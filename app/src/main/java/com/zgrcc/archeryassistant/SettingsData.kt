@@ -32,9 +32,6 @@ fun SettingsData(vm: CounterViewModel) {
     val autoCleanDays by s.autoCleanDays.collectAsStateWithLifecycle()
     val cleanLast by vm.cleanLast.collectAsStateWithLifecycle()
     // null = 還沒按過；true / false = 匯出成功 / 失敗
-    var exportResult by remember { mutableStateOf<Boolean?>(null) }
-    val reportExport by s.reportExport.collectAsStateWithLifecycle()
-    var reportResult by remember { mutableStateOf<Boolean?>(null) }
 
     // 儲存空間：按下才查；刪除原始資料要再確認一次
     var usage by remember { mutableStateOf<StorageUsage?>(null) }
@@ -63,47 +60,6 @@ fun SettingsData(vm: CounterViewModel) {
         }
         item { Note(tr("開 App 時，超過設定天數、已結束的記錄會刪掉原始資料和波形／軌跡，統計與環數保留。校準記錄不動。無法復原。", "On launch, finished records older than the set days lose raw data and waveforms/traces; statistics and scores are kept. Calibration records are untouched. Cannot be undone.")) }
         item { Note(AutoClean.describe(cleanLast, ::formatBytes)) }
-
-        item {
-            Chip(
-                onClick = {
-                    scope.launch { exportResult = vm.exportSummary() }
-                },
-                label = { Text(tr("匯出摘要", "Export summary"), maxLines = 1) },
-                colors = kindColors(ChipKind.NORMAL, ChipDefaults.secondaryChipColors()),
-                modifier = Modifier.fillMaxWidth(0.9f),
-            )
-        }
-        item {
-            when (exportResult) {
-                null -> Note(tr("把全部記錄整理成 summary.csv（每次一行）和 shots.csv（每箭一行），放在 sessions 資料夾，用 adb 一起取出", "Writes summary.csv (one row per session) and shots.csv (one row per shot) into the sessions folder; pull them with adb"))
-                true -> Note(tr("已匯出 summary.csv 和 shots.csv 到 sessions 資料夾", "Exported summary.csv and shots.csv to the sessions folder"))
-                false -> Note(tr("匯出失敗，請確認手錶儲存空間", "Export failed; check the watch storage"))
-            }
-        }
-
-        item { ToggleChip(tr("匯出報告", "Export report"), reportExport) { s.setReportExport(it) } }
-        item { Note(tr("產生 report.html（總覽、圖表、逐趟逐箭明細），放在 sessions 資料夾，用 adb 取出在電腦瀏覽器開啟。記錄多時需數秒。", "Builds report.html (overview, charts, per-end and per-shot details) in the sessions folder; pull it with adb and open it in a desktop browser. Takes a few seconds with many records.")) }
-        if (reportExport) {
-            item {
-                Chip(
-                    onClick = {
-                        reportResult = null
-                        scope.launch { reportResult = vm.exportReport() }
-                    },
-                    label = { Text(tr("匯出報告", "Export report"), maxLines = 1) },
-                    colors = kindColors(ChipKind.GO, ChipDefaults.primaryChipColors()),
-                    modifier = Modifier.fillMaxWidth(0.9f),
-                )
-            }
-            item {
-                when (reportResult) {
-                    null -> Note(tr("產生報告需要幾秒鐘，記錄很多時會更久", "Building the report takes a few seconds, longer with many records"))
-                    true -> Note(tr("已匯出 report.html 到 sessions 資料夾", "Exported report.html to the sessions folder"))
-                    false -> Note(tr("匯出失敗，請確認手錶儲存空間", "Export failed; check the watch storage"))
-                }
-            }
-        }
 
         item {
             Chip(

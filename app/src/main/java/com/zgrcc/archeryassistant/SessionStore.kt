@@ -134,66 +134,50 @@ class SessionStore(baseDir: File) {
     fun deleteMany(ids: Collection<String>) = onIo(Unit) { ids.forEach { deleteFiles(it) } }
 
     /**
-     * 把全部记录匯出成 summary.csv 和 shots.csv，放在 sessions 文件夹里，
-     * 这样一次 adb pull 就能一起取出。回传是否成功。
+     * 區網分享可下載的檔名：記錄 JSON、原始資料 CSV、設定備份，以及即時產生的 summary.csv／shots.csv
+     * （有記錄時才有；v1.19.3 起不再先匯出成檔案）。report.html 另外即時產生。
      */
-    fun exportAll(): Boolean = onIo(false) {
-        try {
-            val all = dir.listFiles { f -> f.isFile && f.name.endsWith(".json") }
-                .orEmpty().mapNotNull { readFile(it) }
-            dir.mkdirs()
-            File(dir, ExportCsv.SUMMARY_FILE).writeText(ExportCsv.summary(all), Charsets.UTF_8)
-            File(dir, ExportCsv.SHOTS_FILE).writeText(ExportCsv.shots(all), Charsets.UTF_8)
-            true
-        } catch (e: IOException) {
-            false
-        }
-    }
-
-    /**
-     * 把全部記錄做成網頁報告 report.html（v1.16），放在 sessions 資料夾。[build] 收到全部記錄、回傳網頁內容。
-     * 先寫暫存檔再改名，寫到一半失敗不會留下壞檔。回傳是否成功。
-     */
-    fun exportReport(build: (List<Session>) -> String): Boolean = onIo(false) {
-        try {
-            val all = dir.listFiles { f -> f.isFile && f.name.endsWith(".json") }
-                .orEmpty().mapNotNull { readFile(it) }
-            dir.mkdirs()
-            val target = File(dir, ReportBuilder.FILE_NAME)
-            val tmp = File(dir, ReportBuilder.FILE_NAME + ".tmp")
-            tmp.writeText(build(all), Charsets.UTF_8)
-            if (!tmp.renameTo(target)) {
-                target.writeText(tmp.readText(Charsets.UTF_8), Charsets.UTF_8)
-                tmp.delete()
-            }
-            true
-        } catch (e: IOException) {
-            false
-        }
-    }
-
-    /** 區網分享可下載的檔名：記錄 JSON、原始資料 CSV、匯出的 summary／shots CSV（report.html 另外即時產生）。 */
     fun shareNames(): List<String> = onIo(emptyList()) { namesNow() }
 
-    private fun namesNow(): List<String> =
-        dir.listFiles().orEmpty().filter { it.isFile && (it.name.endsWith(".json") || isRawCsv(it) || it.name in EXPORT_FILES - ReportBuilder.FILE_NAME) }
-            .map { it.name }.sorted()
+    private fun diskNames(): List<String> =
+        dir.listFiles().orEmpty().filter { it.isFile && (it.name.endsWith(".json") || isRawCsv(it) || it.name == SettingsBackup.FILE_NAME) }
+            .map { it.name }
+
+    private fun namesNow(): List<String> {
+        val disk = diskNames()
+        val csv = if (disk.any { it.endsWith(".json") }) listOf(ExportCsv.SUMMARY_FILE, ExportCsv.SHOTS_FILE) else emptyList()
+        return (disk + csv).sorted()
+    }
+
+    /** 即時產生的 CSV 內容：summary.csv（每次一行）或 shots.csv（每箭一行）；其他名稱回傳 null。 */
+    fun csvBytes(name: String): ByteArray? = onIo(null) {
+        val all = dir.listFiles { f -> f.isFile && f.name.endsWith(".json") }.orEmpty().mapNotNull { readFile(it) }
+        when (name) {
+            ExportCsv.SUMMARY_FILE -> ExportCsv.summary(all).toByteArray(Charsets.UTF_8)
+            ExportCsv.SHOTS_FILE -> ExportCsv.shots(all).toByteArray(Charsets.UTF_8)
+            else -> null
+        }
+    }
 
     /** 取分享用檔案；名稱必須是 [shareNames] 裡的，否則回傳 null。 */
     fun shareFile(name: String): ShareFile? = onIo(null) {
         if (name !in namesNow()) return@onIo null
+        if (name == ExportCsv.SUMMARY_FILE || name == ExportCsv.SHOTS_FILE) {
+            val bytes = csvBytes(name) ?: return@onIo null
+            return@onIo ShareFile(bytes.size.toLong()) { bytes.inputStream() }
+        }
         val f = File(dir, name)
         if (f.isFile) ShareFile(f.length()) { f.inputStream() } else null
     }
 
     /** 「下載全部」zip（v1.19）：全部記錄 JSON 加設定備份，不含原始資料 CSV。沒有東西可打包回傳 null；串流讀完或關閉後刪掉暫存檔。 */
     fun shareZip(): ShareFile? = onIo(null) {
-        val names = namesNow().filter { it.endsWith(".json") || it == SettingsBackup.FILE_NAME }
+        val names = namesNow().filter { it.endsWith(".json") || it == SettingsBackup.FILE_NAME || it == ExportCsv.SUMMARY_FILE || it == ExportCsv.SHOTS_FILE }
         if (names.isEmpty()) return@onIo null
         val tmp = File.createTempFile("archery_share", ".zip")
         try {
             tmp.outputStream().use { out ->
-                ShareZip.write(out, names.map { n -> n to { File(dir, n).takeIf { it.isFile }?.inputStream() as java.io.InputStream? } })
+                ShareZip.write(out, names.map { n -> n to { (csvBytes(n)?.inputStream() ?: File(dir, n).takeIf { it.isFile }?.inputStream()) as java.io.InputStream? } })
             }
         } catch (e: Exception) {
             tmp.delete()

@@ -487,14 +487,6 @@ class AppSettings(private val prefs: SharedPreferences) {
         prefs.edit().putInt(KEY_SHARE_AUTO_STOP, x).apply()
     }
 
-    private val _reportExport = MutableStateFlow(prefs.getBoolean(KEY_REPORT_EXPORT, true))
-    /** 資料頁提供「匯出報告」（網頁報告 report.html）。預設：開 */
-    val reportExport: StateFlow<Boolean> = _reportExport.asStateFlow()
-    fun setReportExport(v: Boolean) {
-        _reportExport.value = v
-        prefs.edit().putBoolean(KEY_REPORT_EXPORT, v).apply()
-    }
-
     private val _lanShare = MutableStateFlow(prefs.getBoolean(KEY_LAN_SHARE, false))
     /** 資料頁提供「區網分享」（手機瀏覽器下載報告與資料）。預設：關 */
     val lanShare: StateFlow<Boolean> = _lanShare.asStateFlow()
@@ -995,7 +987,6 @@ class AppSettings(private val prefs: SharedPreferences) {
         setHistoryFilter(true)
         setFlagSuspicious(true)
         setRecordNote(true)
-        setReportExport(true)
         setLanShare(false)
         setShareRemember(true)
         setShareLog(true)
@@ -1085,7 +1076,6 @@ class AppSettings(private val prefs: SharedPreferences) {
         private const val KEY_HISTORY_FILTER = "history_filter"
         private const val KEY_FLAG_SUSPICIOUS = "flag_suspicious"
         private const val KEY_RECORD_NOTE = "record_note"
-        private const val KEY_REPORT_EXPORT = "report_export"
         private const val KEY_LAN_SHARE = "lan_share"
         private const val KEY_SHARE_REMEMBER = "share_remember"
         private const val KEY_SHARE_LOG = "share_log"
