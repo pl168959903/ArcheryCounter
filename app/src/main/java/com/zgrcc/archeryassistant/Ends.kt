@@ -88,3 +88,36 @@ class EndTracker(private val gapMs: Long = END_GAP_MS) {
         if (count > 0) count--
     }
 }
+
+/**
+ * 自動分趟（v1.19.4）：不看每趟固定箭數，只看兩箭的間隔。
+ * 門檻 = 趟內間隔中位數的 [RATIO] 倍，且至少 [MIN_GAP_MS]；趟內間隔樣本少於 [MIN_GAPS] 個時用 [END_GAP_MS]。
+ */
+object AutoEnds {
+    const val RATIO = 2.5f
+    const val MIN_GAP_MS = 35_000L
+    const val MIN_GAPS = 3
+
+    fun gapMs(s: Session): Long {
+        val v = s.validShots()
+        val gaps = (1 until v.size).map { v[it].relMs - v[it - 1].relMs }.filter { it in 1..END_GAP_MS }.sorted()
+        if (gaps.size < MIN_GAPS) return END_GAP_MS
+        val med = if (gaps.size % 2 == 1) gaps[gaps.size / 2].toFloat() else (gaps[gaps.size / 2 - 1] + gaps[gaps.size / 2]) / 2f
+        return maxOf(MIN_GAP_MS, (med * RATIO).toLong())
+    }
+
+    fun compute(s: Session): List<EndStats> = computeEnds(s, Int.MAX_VALUE / 2, gapMs(s))
+
+    /** 「共 12 趟：6、8、8… 箭」；沒有箭回傳空字串。 */
+    fun summary(ends: List<EndStats>): String =
+        if (ends.isEmpty()) "" else tr(
+            "共 ${ends.size} 趟：" + ends.joinToString("、") { it.count.toString() } + " 箭",
+            "${ends.size} ends: " + ends.joinToString(", ") { it.count.toString() } + " arrows",
+        )
+
+    /** 有效的第 [shotNo] 箭是「第幾趟-第幾箭」，例如「3-5」；找不到回傳 null。 */
+    fun label(ends: List<EndStats>, shotNo: Int): String? {
+        val e = ends.firstOrNull { shotNo in it.firstShot..it.lastShot } ?: return null
+        return "${e.number}-${shotNo - e.firstShot + 1}"
+    }
+}

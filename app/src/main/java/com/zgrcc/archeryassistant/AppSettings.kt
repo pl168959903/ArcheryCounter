@@ -486,6 +486,14 @@ class AppSettings(private val prefs: SharedPreferences) {
         prefs.edit().putBoolean(KEY_TREND_EXTRA, v).apply()
     }
 
+    private val _autoEnds = MutableStateFlow(prefs.getBoolean(KEY_AUTO_ENDS, true))
+    /** 自動分趟（v1.19.4）：詳情的逐趟只看兩箭間隔，不再用固定箭數切。 預設：開 */
+    val autoEnds: StateFlow<Boolean> = _autoEnds.asStateFlow()
+    fun setAutoEnds(v: Boolean) {
+        _autoEnds.value = v
+        prefs.edit().putBoolean(KEY_AUTO_ENDS, v).apply()
+    }
+
     private val _historyFilter = MutableStateFlow(prefs.getBoolean(KEY_HISTORY_FILTER, true))
     /** 記錄頁篩選（v1.19）。 預設：開 */
     val historyFilter: StateFlow<Boolean> = _historyFilter.asStateFlow()
@@ -1018,6 +1026,7 @@ class AppSettings(private val prefs: SharedPreferences) {
         setShareZip(true)
         setHistoryFilter(true)
         setFlagSuspicious(true)
+        setAutoEnds(true)
         setRecordMeasuredHz(true)
         setFlagFastShots(true)
         setPositionTrend(true)
@@ -1111,6 +1120,7 @@ class AppSettings(private val prefs: SharedPreferences) {
         private const val KEY_SHARE_ZIP = "share_zip"
         private const val KEY_HISTORY_FILTER = "history_filter"
         private const val KEY_FLAG_SUSPICIOUS = "flag_suspicious"
+        private const val KEY_AUTO_ENDS = "auto_ends"
         private const val KEY_RECORD_MEASURED_HZ = "record_measured_hz"
         private const val KEY_FLAG_FAST_SHOTS = "flag_fast_shots"
         private const val KEY_POSITION_TREND = "position_trend"

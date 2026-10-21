@@ -27,6 +27,7 @@ import kotlinx.coroutines.launch
 fun SettingsTrain(vm: CounterViewModel) {
     val s = vm.settings
     val showEnds by s.showEnds.collectAsStateWithLifecycle()
+    val autoEnds by s.autoEnds.collectAsStateWithLifecycle()
     val arrowsPerEnd by s.arrowsPerEnd.collectAsStateWithLifecycle()
     val endVibration by s.endVibration.collectAsStateWithLifecycle()
     val dailyGoal by s.dailyGoal.collectAsStateWithLifecycle()
@@ -43,6 +44,8 @@ fun SettingsTrain(vm: CounterViewModel) {
         item { ToggleChip(tr("分趟統計", "End statistics"), showEnds) { s.setShowEnds(it) } }
         item { Note(tr("詳情頁顯示逐趟統計，滿一趟時震動。兩箭間隔超過 60 秒也算新的一趟。", "Shows per-end statistics in details and buzzes when an end is full. A gap over 60 s between arrows also starts a new end.")) }
         if (showEnds) {
+            item { ToggleChip(tr("自動分趟（依間隔）", "Auto end detection"), autoEnds) { s.setAutoEnds(it) } }
+            item { Note(tr("記錄詳情的逐趟只看兩箭間隔：間隔超過趟內中位數的 2.5 倍（至少 35 秒）就是走去拔箭、換下一趟，每趟箭數不固定，並標出每箭是第幾趟第幾箭。關閉就用下面的「每趟箭數」切。滿趟震動不受影響", "Per-end stats in details use only the gap between arrows: a gap over 2.5x the in-end median (at least 35 s) means walking to the target and a new end, so ends can have any number of arrows, and each shot is labeled end-shot. Off uses the arrows-per-end value below. End vibration is unaffected")) }
             item {
                 StepRow(
                     text = tr("每趟 $arrowsPerEnd 箭", "$arrowsPerEnd arrows per end"),

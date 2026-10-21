@@ -101,7 +101,10 @@ private fun DetailContent(
     val arrowsPerEnd by vm.settings.arrowsPerEnd.collectAsStateWithLifecycle()
     val stats = remember(session) { computeStats(session) }
     val timeline = remember(session) { buildTimeline(session) }
-    val ends = remember(session, arrowsPerEnd) { computeEnds(session, arrowsPerEnd) }
+    val autoEnds by vm.settings.autoEnds.collectAsStateWithLifecycle()
+    val ends = remember(session, arrowsPerEnd, autoEnds) {
+        if (autoEnds) AutoEnds.compute(session) else computeEnds(session, arrowsPerEnd)
+    }
     val accelSeries = remember(session) { metricSeries(session, gyro = false) }
     val gyroSeries = remember(session) { metricSeries(session, gyro = true) }
     var confirmDelete by remember { mutableStateOf(false) }
@@ -267,7 +270,8 @@ private fun DetailContent(
         }
 
         if (showEnds && ends.isNotEmpty()) {
-            item { SectionTitle(tr("逐趟（每趟 $arrowsPerEnd 箭）", "Per end ($arrowsPerEnd arrows each)")) }
+            item { SectionTitle(if (autoEnds) tr("逐趟（依間隔自動分趟）", "Per end (auto by gaps)") else tr("逐趟（每趟 $arrowsPerEnd 箭）", "Per end ($arrowsPerEnd arrows each)")) }
+            if (autoEnds) item { Body(AutoEnds.summary(ends)) }
             ends.forEach { e -> item { Body(endText(session, e)) } }
         }
 
@@ -302,7 +306,7 @@ private fun DetailContent(
                 } else {
                     Chip(
                         onClick = { onOpenShot(row.shotIndex) },
-                        label = { Text(shotText(session, row, shot) + if (row.shotIndex in fastShots) "\n" + FastShot.shortText() else "", style = MaterialTheme.typography.caption1, maxLines = 5) },
+                        label = { Text((if (autoEnds && showEnds && row.shotNo > 0) AutoEnds.label(ends, row.shotNo)?.let { "[$it] " }.orEmpty() else "") + shotText(session, row, shot) + if (row.shotIndex in fastShots) "\n" + FastShot.shortText() else "", style = MaterialTheme.typography.caption1, maxLines = 5) },
                         colors = if (shot.cancelled) ChipDefaults.childChipColors() else kindColors(ChipKind.LIST, ChipDefaults.secondaryChipColors()),
                         modifier = Modifier.fillMaxWidth(0.95f),
                     )
