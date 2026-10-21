@@ -129,7 +129,8 @@ class V1181Test {
             // 沒憑證也沒 PIN → 被拒絕
             val bad = SessionImporter(SessionStore(tmp()), HttpSource("http://127.0.0.1:18196", "", appUa)).run(false, false)
             assertEquals(ImportError.WRONG_PIN, bad.error)
-            assertTrue(gate.seen.any { it.result == ShareResult.WRONG_PIN })
+            // 沒帶 PIN 不算輸錯（用過期憑證試探不會累積到鎖定）
+            assertTrue(!router.locked)
         } finally {
             server.stop()
         }

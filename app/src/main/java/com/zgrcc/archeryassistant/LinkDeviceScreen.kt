@@ -1,5 +1,6 @@
 package com.zgrcc.archeryassistant
 
+import kotlinx.coroutines.launch
 import android.view.View
 import android.webkit.CookieManager
 import android.webkit.WebView
@@ -65,7 +66,9 @@ private fun LinkField(value: String, hint: String, numeric: Boolean = false, onC
 @Composable
 fun LinkDeviceScreen(vm: CounterViewModel) {
     val ctx = LocalContext.current
+    val scope = rememberCoroutineScope()
     var openFailed by remember { mutableStateOf(false) }
+    var confirmRevoke by remember { mutableStateOf(false) }
     val link by vm.link.collectAsStateWithLifecycle()
     val importUi by vm.importUi.collectAsStateWithLifecycle()
     val overwrite by vm.settings.importOverwrite.collectAsStateWithLifecycle()
@@ -105,8 +108,10 @@ fun LinkDeviceScreen(vm: CounterViewModel) {
         item {
             Chip(
                 onClick = {
-                    val u = vm.remoteReportUrl()
-                    openFailed = u == null || !ExternalOpen.url(ctx, u)
+                    scope.launch {
+                        val u = vm.remoteReportUrl()
+                        openFailed = u == null || !ExternalOpen.url(ctx, u)
+                    }
                 },
                 label = { Text(tr("開啟網頁報告", "Open web report") + navMark(), maxLines = 1) },
                 secondaryLabel = { Text(tr("用瀏覽器開啟對方的資料", "Open its data in the browser"), maxLines = 1) },
@@ -162,6 +167,22 @@ fun LinkDeviceScreen(vm: CounterViewModel) {
                     modifier = Modifier.fillMaxWidth(0.9f),
                 )
             }
+        }
+        item {
+            Chip(
+                onClick = {
+                    if (confirmRevoke) {
+                        confirmRevoke = false
+                        vm.revokeLink()
+                    } else {
+                        confirmRevoke = true
+                    }
+                },
+                label = { Text(if (confirmRevoke) tr("確定取消信任", "Confirm") else tr("取消信任這台裝置", "Stop trusting this device"), maxLines = 1) },
+                secondaryLabel = { Text(tr("對方會移除這支裝置，之後要重新輸入 PIN", "It removes this device; the PIN is needed again"), maxLines = 2) },
+                colors = kindColors(ChipKind.DANGER, ChipDefaults.secondaryChipColors()),
+                modifier = Modifier.fillMaxWidth(0.9f),
+            )
         }
     }
 }

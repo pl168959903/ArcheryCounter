@@ -183,6 +183,16 @@ class ShareData(private val prefs: SharedPreferences, private val now: () -> Lon
         saveDevices(_devices.value.map { if (it.id == id) it.copy(name = n) else it })
     }
 
+    /** 這張憑證對應的裝置請求取消信任（v1.18.4）；找到並移除回傳 true。 */
+    @Synchronized
+    fun revoke(token: String): Boolean {
+        if (token.isEmpty() || token.length > 64) return false
+        val h = hash(token)
+        val d = _devices.value.firstOrNull { it.hash == h } ?: return false
+        saveDevices(_devices.value.filter { it.id != d.id })
+        return true
+    }
+
     @Synchronized
     fun remove(id: String) = saveDevices(_devices.value.filter { it.id != id })
 

@@ -30,6 +30,9 @@ interface TrustGate {
     fun verify(token: String): TrustedDevice?
     fun issue(ip: String, agent: String): String
     fun record(event: ShareEvent)
+
+    /** 這張憑證的裝置要求取消信任（v1.18.4）。預設不支援。 */
+    fun revoke(token: String): Boolean = false
 }
 
 /**
@@ -47,6 +50,7 @@ class ShareRouter(
     private val deviceName: String = "",
 ) {
     private var fails = 0
+    private val tickets = LinkedHashMap<String, Long>()
     val locked: Boolean get() = fails >= MAX_FAILS
 
     /** 被拒絕的非區網連線（伺服器在讀取請求前就關掉，只留記錄）。 */
@@ -75,7 +79,8 @@ class ShareRouter(
         val trusted = if (gate?.enabled == true && token != null) gate?.verify(token) else null
         var setCookie: String? = null
         val viaPin: Boolean
-        if (trusted != null) {
+        val ticketOk = trusted == null && params["ticket"]?.let { useTicket(it) } == true
+        if (trusted != null || ticketOk) {
             viaPin = false
             note(ShareResult.OK_TRUST)
         } else {
@@ -84,11 +89,12 @@ class ShareRouter(
                 return text(429, if (zh) "嘗試次數過多，請在手錶重新開始分享" else "Too many attempts; restart sharing on the watch")
             }
             val given = params["pin"]
-            if (given == null) return if (path == "/") page(pinForm(null)) else text(403, "Forbidden")
+            val formPath = path == "/" || path == "/" + ReportBuilder.FILE_NAME
+            if (given == null) return if (formPath) page(pinForm(null, path)) else text(403, "Forbidden")
             if (!pinOk(given)) {
                 fails++
                 note(ShareResult.WRONG_PIN)
-                return if (path == "/") ShareResponse(403, HTML, pinForm(if (zh) "PIN 不正確" else "Wrong PIN").toByteArray(Charsets.UTF_8))
+                return if (formPath) ShareResponse(403, HTML, pinForm(if (zh) "PIN 不正確" else "Wrong PIN", path).toByteArray(Charsets.UTF_8))
                 else text(403, "Forbidden")
             }
             fails = 0
@@ -106,6 +112,13 @@ class ShareRouter(
                 200, "text/plain; charset=utf-8",
                 deviceName.replace("\n", " ").take(40).toByteArray(Charsets.UTF_8), headers = extra,
             )
+            // 一次性通行票（60 秒、用一次）：已信任的 App 用它讓瀏覽器直接開報告，長期憑證不出現在網址
+            path == "/ticket" && trusted != null -> ShareResponse(200, "text/plain; charset=utf-8", newTicket().toByteArray(Charsets.UTF_8))
+            // 已信任的裝置要求取消自己的信任
+            path == "/revoke" && token != null && trusted != null -> {
+                val ok = gate?.revoke(token) == true
+                ShareResponse(if (ok) 200 else 404, "text/plain; charset=utf-8", (if (ok) "OK" else "Not Found").toByteArray(Charsets.UTF_8))
+            }
             path == "/list" -> ShareResponse(
                 200, "text/plain; charset=utf-8",
                 listFiles().joinToString("\n") { n -> n + "\t" + (lookup(n)?.length ?: 0L) }.toByteArray(Charsets.UTF_8), headers = extra,
@@ -120,15 +133,30 @@ class ShareRouter(
         }
     }
 
+    private fun newTicket(): String {
+        val now = clock()
+        tickets.entries.removeAll { it.value < now }
+        while (tickets.size >= MAX_TICKETS) tickets.remove(tickets.keys.first())
+        val bytes = ByteArray(12).also { java.security.SecureRandom().nextBytes(it) }
+        val t = bytes.joinToString("") { String.format("%02x", it) }
+        tickets[t] = now + TICKET_MS
+        return t
+    }
+
+    private fun useTicket(t: String): Boolean {
+        val exp = tickets.remove(t) ?: return false
+        return exp >= clock()
+    }
+
     private fun pinOk(given: String) =
         MessageDigest.isEqual(given.toByteArray(Charsets.UTF_8), pin.toByteArray(Charsets.UTF_8))
 
     private fun page(html: String) = ShareResponse(200, HTML, html.toByteArray(Charsets.UTF_8))
 
-    private fun pinForm(msg: String?): String =
+    private fun pinForm(msg: String?, action: String = "/"): String =
         head(if (zh) "輸入 PIN" else "Enter PIN") +
             (if (msg != null) "<p class=\"e\">${esc(msg)}</p>" else "") +
-            "<form method=\"get\" action=\"/\"><input name=\"pin\" inputmode=\"numeric\" autofocus> " +
+            "<form method=\"get\" action=\"${esc(action)}\"><input name=\"pin\" inputmode=\"numeric\" autofocus> " +
             "<button>${if (zh) "進入" else "Open"}</button>" +
             (if (gate?.enabled == true) "<p><label><input type=\"checkbox\" name=\"remember\" value=\"1\"> ${if (zh) "記住這個裝置（之後不用再輸入 PIN）" else "Remember this device (no PIN next time)"}</label></p>" else "") +
             "</form></body></html>"
@@ -158,6 +186,8 @@ class ShareRouter(
 
     companion object {
         const val MAX_FAILS = 10
+        const val MAX_TICKETS = 20
+        const val TICKET_MS = 60_000L
         const val COOKIE = "trust"
         const val COOKIE_AGE_S = 365L * 24 * 60 * 60
 

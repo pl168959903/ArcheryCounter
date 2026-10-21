@@ -77,8 +77,16 @@ object ImportAddress {
 
 /** 給外部瀏覽器開的對方報告網址（v1.18.3）：有 PIN 就帶上，沒有就開到 PIN 輸入頁。純字串。 */
 object ReportLink {
-    fun url(base: String, pin: String): String =
-        base.trimEnd('/') + "/" + ReportBuilder.FILE_NAME + (if (pin.isNotEmpty()) "?pin=" + pin.filter { it.isDigit() } else "")
+    fun url(base: String, pin: String, ticket: String = ""): String =
+        base.trimEnd('/') + "/" + ReportBuilder.FILE_NAME + when {
+            ticket.isNotEmpty() -> "?ticket=" + ticket.filter { it.isLetterOrDigit() }
+            pin.isNotEmpty() -> "?pin=" + pin.filter { it.isDigit() }
+            else -> ""
+        }
+
+    /** 憑證的嘗試順序：這個位址存過的先，其餘（位址變了也許還能用）接著，去重。 */
+    fun tokenOrder(forBase: String?, others: List<String>): List<String> =
+        (listOfNotNull(forBase?.takeIf { it.isNotEmpty() }) + others.filter { it.isNotEmpty() }).distinct()
 }
 
 object ImportPlanner {
@@ -203,7 +211,8 @@ class HttpSource(
     var token: String = token
         private set
     private fun connect(path: String): HttpURLConnection {
-        val c = URL("$base$path?pin=$pin").openConnection() as HttpURLConnection
+        // PIN 留空時不帶 pin 參數：對方不會把它算成輸錯，用過期憑證試探也不會累積到鎖定
+        val c = URL(if (pin.isEmpty()) "$base$path" else "$base$path?pin=$pin").openConnection() as HttpURLConnection
         c.connectTimeout = 6000
         c.readTimeout = 15000
         c.requestMethod = "GET"
@@ -240,6 +249,27 @@ class HttpSource(
         try {
             check(c)
             return c.inputStream.bufferedReader(Charsets.UTF_8).readText().trim().take(40)
+        } finally {
+            c.disconnect()
+        }
+    }
+
+    /** 向對方要一張一次性通行票（需要有效的信任憑證）。 */
+    fun ticket(): String {
+        val c = connect("/ticket")
+        try {
+            check(c)
+            return c.inputStream.bufferedReader(Charsets.UTF_8).readText().trim().take(64)
+        } finally {
+            c.disconnect()
+        }
+    }
+
+    /** 請對方把這張憑證的裝置移出已信任清單。 */
+    fun revoke() {
+        val c = connect("/revoke")
+        try {
+            check(c)
         } finally {
             c.disconnect()
         }

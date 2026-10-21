@@ -935,9 +935,23 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         get() = AgentLabel.userAgent(versionName, android.os.Build.MODEL ?: "")
 
     /** 這個位址以前通過 PIN 後，對方發給本 App 的信任憑證（沒有就空字串）。 */
-    private fun tokenFor(base: String): String =
-        (prefs.getString("app_tokens", "") ?: "").lines().map { it.split('\t') }
-            .firstOrNull { it.size == 2 && it[0] == base }?.get(1) ?: ""
+    private fun tokenMap(): LinkedHashMap<String, String> {
+        val m = LinkedHashMap<String, String>()
+        for (line in (prefs.getString("app_tokens", "") ?: "").lines()) {
+            val p = line.split('\t')
+            if (p.size == 2) m[p[0]] = p[1]
+        }
+        return m
+    }
+
+    private fun tokenFor(base: String): String = tokenMap()[base] ?: ""
+
+    private fun removeToken(token: String) {
+        if (token.isEmpty()) return
+        val m = tokenMap()
+        m.values.removeAll { it == token }
+        prefs.edit().putString("app_tokens", m.entries.joinToString("\n") { it.key + "\t" + it.value }).apply()
+    }
 
     private fun saveToken(base: String, token: String) {
         if (token.isEmpty()) return
@@ -957,6 +971,8 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
     fun openLinkDevice(address: String, name: String) {
         _import.value = ImportUi()
         _link.value = LinkDevice(address = address, name = name)
+        // 以前連過（存過憑證）就先靜默試一次，成功就直接跳過 PIN 頁（v1.18.4）
+        if (tokenMap().isNotEmpty()) verifyLink(address, "", silent = true)
     }
 
     /** 找不到時手動輸入位址。 */
@@ -966,7 +982,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
     }
 
     /** 驗證 PIN（或已有的信任憑證）。成功後這一頁才出現「開啟網頁報告」和「開始匯入」。 */
-    fun verifyLink(address: String, pin: String) {
+    fun verifyLink(address: String, pin: String, silent: Boolean = false) {
         val cur = _link.value
         if (cur.busy) return
         val base = ImportAddress.parse(address)
@@ -977,32 +993,80 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         lastImportAddress = address.trim()
         _link.value = cur.copy(address = address.trim(), busy = true, error = null)
         viewModelScope.launch(Dispatchers.IO) {
-            val source = sourceFor(base, pin.trim())
+            var source = sourceFor(base, pin.trim())
             try {
-                val name = source.deviceName()
+                val name: String
+                if (pin.isBlank()) {
+                    // 沒填 PIN：把存過的憑證逐一試（位址變了，舊憑證也許對方還認得），哪張通過就記到這個位址
+                    var found: String? = null
+                    var last: ImportException? = null
+                    for (tok in ReportLink.tokenOrder(tokenFor(base), tokenMap().values.toList())) {
+                        val s = HttpSource(base, "", appUserAgent, tok)
+                        try {
+                            found = s.deviceName()
+                            source = s
+                            break
+                        } catch (e: ImportException) {
+                            if (e.error != ImportError.WRONG_PIN) throw e
+                            last = e
+                        }
+                    }
+                    name = found ?: throw (last ?: ImportException(ImportError.WRONG_PIN))
+                } else {
+                    name = source.deviceName()
+                }
                 saveToken(base, source.token)
                 _link.value = LinkDevice(
                     address = address.trim(), name = name.ifBlank { cur.name }.ifBlank { base.removePrefix("http://") },
                     pin = pin.trim(), verified = true, manual = cur.manual,
                 )
             } catch (e: ImportException) {
-                _link.value = cur.copy(address = address.trim(), busy = false, error = e.error)
+                // 靜默嘗試沒通過：只是需要 PIN，不顯示「PIN 不正確」
+                val err = if (silent && e.error == ImportError.WRONG_PIN) null else e.error
+                _link.value = cur.copy(address = address.trim(), busy = false, error = err)
             } catch (e: Exception) {
-                _link.value = cur.copy(address = address.trim(), busy = false, error = ImportError.UNREACHABLE)
+                _link.value = cur.copy(address = address.trim(), busy = false, error = if (silent) null else ImportError.UNREACHABLE)
             }
+        }
+    }
+
+    /** 外部瀏覽器要開的對方報告網址：有憑證先要一次性通行票，否則帶 PIN，再不行開到 PIN 輸入頁。 */
+    suspend fun remoteReportUrl(): String? = withContext(Dispatchers.IO) {
+        val l = _link.value
+        val base = ImportAddress.parse(l.address) ?: return@withContext null
+        val token = tokenFor(base)
+        var ticket = ""
+        if (token.isNotEmpty()) {
+            ticket = try {
+                HttpSource(base, "", appUserAgent, token).ticket()
+            } catch (e: Exception) {
+                ""
+            }
+        }
+        ReportLink.url(base, l.pin, ticket)
+    }
+
+    /** 請對方取消這台裝置的信任，並刪掉本機存的憑證；之後再連要輸入 PIN。 */
+    fun revokeLink() {
+        val l = _link.value
+        val base = ImportAddress.parse(l.address) ?: return
+        val token = tokenFor(base)
+        viewModelScope.launch(Dispatchers.IO) {
+            if (token.isNotEmpty()) {
+                try {
+                    HttpSource(base, "", appUserAgent, token).revoke()
+                } catch (e: Exception) {
+                    // 對方連不上或已經不認得：本機憑證照樣刪掉
+                }
+                removeToken(token)
+            }
+            _link.value = LinkDevice(address = l.address, name = l.name, manual = l.manual)
         }
     }
 
     fun leaveLinkDevice() {
         _link.value = LinkDevice()
         if (!_import.value.running) _import.value = ImportUi()
-    }
-
-    /** 對方報告的網址與信任憑證（有憑證就不帶 PIN）。 */
-    fun remoteReportUrl(): String? {
-        val l = _link.value
-        val base = ImportAddress.parse(l.address) ?: return null
-        return ReportLink.url(base, l.pin)
     }
 
     /** 按「開始匯入」：預覽開著就先預覽（等確認），否則直接匯入。 */
@@ -1135,6 +1199,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         }
         val pin = String.format("%04d", java.security.SecureRandom().nextInt(10000))
         val gate = object : TrustGate {
+            override fun revoke(token: String): Boolean = shareData.revoke(token)
             override val enabled: Boolean get() = settings.shareRemember.value
             override fun verify(token: String) = shareData.verify(token)
             override fun issue(ip: String, agent: String) = shareData.issue(ip, agent)
