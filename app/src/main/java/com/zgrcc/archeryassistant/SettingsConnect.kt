@@ -27,7 +27,7 @@ import androidx.wear.compose.material.Text
  * 離開這一頁就停止分享；分享中螢幕保持亮著。
  */
 @Composable
-fun SettingsConnect(vm: CounterViewModel) {
+fun SettingsConnect(vm: CounterViewModel, onOpenReport: () -> Unit = {}) {
     val s = vm.settings
     val lanShare by s.lanShare.collectAsStateWithLifecycle()
     val rememberOn by s.shareRemember.collectAsStateWithLifecycle()
@@ -36,6 +36,13 @@ fun SettingsConnect(vm: CounterViewModel) {
     val share by vm.share.collectAsStateWithLifecycle()
     val devices by vm.trustedDevices.collectAsStateWithLifecycle()
     val events by vm.shareEvents.collectAsStateWithLifecycle()
+    val importOn by s.importEnabled.collectAsStateWithLifecycle()
+    val importOverwrite by s.importOverwrite.collectAsStateWithLifecycle()
+    val importRaw by s.importRaw.collectAsStateWithLifecycle()
+    val reportView by s.reportView.collectAsStateWithLifecycle()
+    val importUi by vm.importUi.collectAsStateWithLifecycle()
+    var addr by remember { mutableStateOf(vm.lastImportAddress) }
+    var pinDraft by remember { mutableStateOf("") }
     val view = LocalView.current
     // 正在管理的信任裝置（null = 看列表）與改名輸入
     var selectedId by remember { mutableStateOf<String?>(null) }
@@ -145,6 +152,72 @@ fun SettingsConnect(vm: CounterViewModel) {
         item { Note(tr("開啟後記錄今天誰連進來（位址、瀏覽器、成功或失敗），只存在這支裝置上，過了午夜自動清掉，最多 100 筆。預設開", "When on, records who connected today (address, browser, success or failure), stored only on this device, cleared after midnight, up to 100 entries. On by default")) }
         item { ToggleChip(tr("PIN 錯誤時震動", "Vibrate on wrong PIN"), alert) { s.setShareAlert(it) } }
         item { Note(tr("有人輸入錯誤 PIN 時震動兩下提醒。預設關閉", "Two short vibrations when someone enters a wrong PIN. Off by default")) }
+
+        // ── 網頁報告（在這台裝置上看）──
+        item { ToggleChip(tr("開啟網頁報告", "View web report"), reportView) { s.setReportView(it) } }
+        item { Note(tr("開啟後多一個按鈕，在這台裝置上直接看全部記錄的網頁報告（同 report.html，不含腳本）。手機上比手錶好讀。預設開", "When on, adds a button to view the web report of all records right on this device (same as report.html, no scripts). Easier to read on a phone than a watch. On by default")) }
+        if (reportView) {
+            item {
+                Chip(
+                    onClick = onOpenReport,
+                    label = { Text(tr("看網頁報告", "Open web report") + navMark(), maxLines = 1) },
+                    colors = kindColors(ChipKind.NAV, ChipDefaults.secondaryChipColors()),
+                    modifier = Modifier.fillMaxWidth(0.9f),
+                )
+            }
+        }
+
+        // ── 從別台匯入 ──
+        item { ToggleChip(tr("從別台匯入", "Import from another device"), importOn) { s.setImportEnabled(it) } }
+        item { Note(tr("開啟後，輸入另一台裝置「區網分享」畫面上的位址和 PIN，把它的記錄抓到這台（例如手錶 → 手機）。只讀取對方，不會改動對方；位址限區網。本機已有的同一筆預設略過，不會覆蓋。預設關閉", "When on, enter the address and PIN shown on another device's LAN share screen to pull its records onto this one (e.g. watch to phone). Read-only on the other side; LAN addresses only. A record that already exists here is skipped by default. Off by default")) }
+        if (importOn) {
+            item { ToggleChip(tr("覆蓋已有記錄", "Overwrite existing"), importOverwrite) { s.setImportOverwrite(it) } }
+            item { Note(tr("開啟：對方的版本會蓋掉本機同一筆（你在這台改過的自評等會被取代）。預設關", "On: the other device's copy replaces the local one (edits like self-ratings made here are lost). Off by default")) }
+            item { ToggleChip(tr("同時匯入原始資料", "Include raw data"), importRaw) { s.setImportRaw(it) } }
+            item { Note(tr("開啟：一併抓原始資料 CSV，檔案大、較慢。預設關", "On: also fetch raw data CSV; large and slower. Off by default")) }
+            item { Note(tr("對方位址（例如 192.168.1.23:8080）", "Other device address (e.g. 192.168.1.23:8080)")) }
+            item {
+                BasicTextField(
+                    value = addr,
+                    onValueChange = { addr = it.take(40) },
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.body1.copy(color = MaterialTheme.colors.onBackground),
+                    cursorBrush = SolidColor(MaterialTheme.colors.primary),
+                    modifier = Modifier.fillMaxWidth(0.9f),
+                )
+            }
+            item { Note(tr("PIN（4 位數）", "PIN (4 digits)")) }
+            item {
+                BasicTextField(
+                    value = pinDraft,
+                    onValueChange = { pinDraft = it.filter { c -> c.isDigit() }.take(4) },
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.body1.copy(color = MaterialTheme.colors.onBackground),
+                    cursorBrush = SolidColor(MaterialTheme.colors.primary),
+                    modifier = Modifier.fillMaxWidth(0.9f),
+                )
+            }
+            item {
+                Chip(
+                    onClick = { vm.startImport(addr, pinDraft) },
+                    enabled = !importUi.running,
+                    label = { Text(if (importUi.running) tr("匯入中 ${importUi.done}/${importUi.total}", "Importing ${importUi.done}/${importUi.total}") else tr("開始匯入", "Start import"), maxLines = 1) },
+                    colors = kindColors(ChipKind.GO, ChipDefaults.primaryChipColors()),
+                    modifier = Modifier.fillMaxWidth(0.9f),
+                )
+            }
+            importUi.result?.let { r ->
+                item { Note(ImportText.describe(r)) }
+                item {
+                    Chip(
+                        onClick = { vm.clearImportResult() },
+                        label = { Text(tr("清除結果", "Clear result"), maxLines = 1) },
+                        colors = kindColors(ChipKind.NORMAL, ChipDefaults.secondaryChipColors()),
+                        modifier = Modifier.fillMaxWidth(0.9f),
+                    )
+                }
+            }
+        }
 
         // ── 已信任的裝置 ──
         item { SectionTitle(tr("已信任的裝置", "Trusted devices")) }

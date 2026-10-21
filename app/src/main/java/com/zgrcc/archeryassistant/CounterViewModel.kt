@@ -866,6 +866,43 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         )
     }
 
+    // ── 從別台匯入與報告檢視（v1.17）──
+    private val _import = MutableStateFlow(ImportUi())
+    val importUi: StateFlow<ImportUi> = _import.asStateFlow()
+
+    /** 上次輸入的對方位址（方便下次）。不含 PIN。 */
+    var lastImportAddress: String
+        get() = prefs.getString("import_addr", "") ?: ""
+        set(v) { prefs.edit().putString("import_addr", v.take(40)).apply() }
+
+    fun startImport(address: String, pin: String) {
+        if (_import.value.running) return
+        val base = ImportAddress.parse(address)
+        if (base == null) {
+            _import.value = ImportUi(result = ImportResult(error = ImportError.BAD_ADDRESS))
+            return
+        }
+        lastImportAddress = address.trim()
+        _import.value = ImportUi(running = true)
+        viewModelScope.launch(Dispatchers.IO) {
+            val importer = SessionImporter(store, HttpSource(base, pin.trim()))
+            val r = importer.run(settings.importOverwrite.value, settings.importRaw.value) { d, t ->
+                _import.value = ImportUi(running = true, done = d, total = t)
+            }
+            _import.value = ImportUi(result = r)
+            publishSessions()
+        }
+    }
+
+    fun clearImportResult() {
+        if (!_import.value.running) _import.value = ImportUi()
+    }
+
+    /** 在這台裝置上直接看的網頁報告（全部記錄）。 */
+    suspend fun reportHtml(): String = withContext(Dispatchers.IO) {
+        ReportBuilder.build(store.allSessions(), reportMeta())
+    }
+
     // ── 區網分享（v1.16.1）──
     private var shareServer: ShareServer? = null
     private var shareTimer: kotlinx.coroutines.Job? = null

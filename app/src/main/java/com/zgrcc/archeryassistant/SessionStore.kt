@@ -28,7 +28,10 @@ class SessionStore(baseDir: File) {
     /** 已排队、但还没写到磁盘的记录 id，避免同一秒内重复取到同一个 id。 */
     private val pendingIds: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
-    private companion object {
+    companion object {
+        /** 匯出檔名（給匯入器排除用）。 */
+        val exportNames: Set<String> get() = EXPORT_FILES
+        const val MAX_IMPORT_BYTES = 20 * 1024 * 1024
         val EXPORT_FILES = setOf(ExportCsv.SUMMARY_FILE, ExportCsv.SHOTS_FILE, ReportBuilder.FILE_NAME)
     }
 
@@ -181,6 +184,65 @@ class SessionStore(baseDir: File) {
         if (name !in namesNow()) return@onIo null
         val f = File(dir, name)
         if (f.isFile) ShareFile(f.length()) { f.inputStream() } else null
+    }
+
+    /** 本機已有的記錄 id（匯入時用來略過重複）。 */
+    fun localIds(): Set<String> = onIo(emptySet()) {
+        dir.listFiles().orEmpty().filter { it.isFile && it.name.endsWith(".json") }.map { it.name.removeSuffix(".json") }.toSet()
+    }
+
+    /**
+     * 匯入一筆記錄 JSON（v1.17，從別台裝置抓回）。先確認能解析、id 安全，再用原文寫入（不重新編碼，保留未知欄位）。
+     * 已存在且 [overwrite] 為 false 時略過。
+     */
+    fun importJson(name: String, bytes: ByteArray, overwrite: Boolean): ImportOutcome = onIo(ImportOutcome.INVALID) {
+        val id = name.removeSuffix(".json")
+        if (!name.endsWith(".json") || !isSafeId(id) || bytes.size > MAX_IMPORT_BYTES) return@onIo ImportOutcome.INVALID
+        val text = try {
+            String(bytes, Charsets.UTF_8)
+        } catch (e: Exception) {
+            return@onIo ImportOutcome.INVALID
+        }
+        val ok = try {
+            SessionJson.decode(text, id) != null
+        } catch (e: Exception) {
+            false
+        }
+        if (!ok) return@onIo ImportOutcome.INVALID
+        val target = jsonFile(id)
+        if (target.exists() && !overwrite) return@onIo ImportOutcome.SKIPPED
+        try {
+            dir.mkdirs()
+            val tmp = File(dir, "$id.json.tmp")
+            tmp.writeBytes(bytes)
+            if (!tmp.renameTo(target)) {
+                target.writeBytes(bytes)
+                tmp.delete()
+            }
+            ImportOutcome.IMPORTED
+        } catch (e: IOException) {
+            ImportOutcome.INVALID
+        }
+    }
+
+    /** 匯入原始資料 CSV；必須是 `<安全 id>.csv`，不能是匯出檔。已存在且 [overwrite] 為 false 時略過。 */
+    fun importRaw(name: String, input: java.io.InputStream, overwrite: Boolean): ImportOutcome = onIo(ImportOutcome.INVALID) {
+        val id = name.removeSuffix(".csv")
+        if (!name.endsWith(".csv") || name in EXPORT_FILES || !isSafeId(id)) return@onIo ImportOutcome.INVALID
+        val target = File(dir, name)
+        if (target.exists() && !overwrite) return@onIo ImportOutcome.SKIPPED
+        try {
+            dir.mkdirs()
+            val tmp = File(dir, "$name.tmp")
+            tmp.outputStream().use { out -> input.copyTo(out) }
+            if (!tmp.renameTo(target)) {
+                tmp.copyTo(target, overwrite = true)
+                tmp.delete()
+            }
+            ImportOutcome.IMPORTED
+        } catch (e: IOException) {
+            ImportOutcome.INVALID
+        }
     }
 
     /** 全部記錄（最新在前），給網頁報告用。 */
@@ -580,3 +642,6 @@ data class StorageUsage(
 
 /** 刪除原始资料的结果。 */
 data class RawDeleteResult(val count: Int, val bytes: Long)
+
+/** 匯入一個檔案的結果。 */
+enum class ImportOutcome { IMPORTED, SKIPPED, INVALID }

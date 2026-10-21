@@ -462,6 +462,38 @@ class AppSettings(private val prefs: SharedPreferences) {
         prefs.edit().putBoolean(KEY_SHARE_ALERT, v).apply()
     }
 
+    private val _importEnabled = MutableStateFlow(prefs.getBoolean(KEY_IMPORT_ENABLED, false))
+    /** 「連線」頁提供「從別台匯入」。 預設：關 */
+    val importEnabled: StateFlow<Boolean> = _importEnabled.asStateFlow()
+    fun setImportEnabled(v: Boolean) {
+        _importEnabled.value = v
+        prefs.edit().putBoolean(KEY_IMPORT_ENABLED, v).apply()
+    }
+
+    private val _importOverwrite = MutableStateFlow(prefs.getBoolean(KEY_IMPORT_OVERWRITE, false))
+    /** 匯入時覆蓋本機已有的同一筆記錄。 預設：關 */
+    val importOverwrite: StateFlow<Boolean> = _importOverwrite.asStateFlow()
+    fun setImportOverwrite(v: Boolean) {
+        _importOverwrite.value = v
+        prefs.edit().putBoolean(KEY_IMPORT_OVERWRITE, v).apply()
+    }
+
+    private val _importRaw = MutableStateFlow(prefs.getBoolean(KEY_IMPORT_RAW, false))
+    /** 匯入時一併抓原始資料 CSV（檔案較大）。 預設：關 */
+    val importRaw: StateFlow<Boolean> = _importRaw.asStateFlow()
+    fun setImportRaw(v: Boolean) {
+        _importRaw.value = v
+        prefs.edit().putBoolean(KEY_IMPORT_RAW, v).apply()
+    }
+
+    private val _reportView = MutableStateFlow(prefs.getBoolean(KEY_REPORT_VIEW, true))
+    /** 「連線」頁提供「開啟網頁報告」（在這台裝置上直接看）。 預設：開 */
+    val reportView: StateFlow<Boolean> = _reportView.asStateFlow()
+    fun setReportView(v: Boolean) {
+        _reportView.value = v
+        prefs.edit().putBoolean(KEY_REPORT_VIEW, v).apply()
+    }
+
     private val _calAdvice = MutableStateFlow(prefs.getBoolean(KEY_CAL_ADVICE, true))
     /** 校準錄製完成後與校準記錄詳情提供「分析校準資料」。預設：開 */
     val calAdvice: StateFlow<Boolean> = _calAdvice.asStateFlow()
@@ -849,6 +881,10 @@ class AppSettings(private val prefs: SharedPreferences) {
         setShareRemember(false)
         setShareLog(true)
         setShareAlert(false)
+        setImportEnabled(false)
+        setImportOverwrite(false)
+        setImportRaw(false)
+        setReportView(true)
         setDiscFullscreen(true)
         setRecordTrace(false)
         setTraceGyro(false)
@@ -920,6 +956,10 @@ class AppSettings(private val prefs: SharedPreferences) {
         private const val KEY_SHARE_REMEMBER = "share_remember"
         private const val KEY_SHARE_LOG = "share_log"
         private const val KEY_SHARE_ALERT = "share_alert"
+        private const val KEY_IMPORT_ENABLED = "import_enabled"
+        private const val KEY_IMPORT_OVERWRITE = "import_overwrite"
+        private const val KEY_IMPORT_RAW = "import_raw"
+        private const val KEY_REPORT_VIEW = "report_view"
         private const val KEY_UPDATE_LAST = "update_last_check"
         private const val KEY_UPDATE_SKIPPED = "update_skipped"
         private const val KEY_DISC_FULLSCREEN = "disc_fullscreen"

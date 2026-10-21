@@ -99,6 +99,10 @@ class ShareRouter(
         val extra = if (setCookie != null) listOf("Set-Cookie: $setCookie") else emptyList()
         return when {
             path == "/" -> ShareResponse(200, HTML, index(auth).toByteArray(Charsets.UTF_8), headers = extra)
+            path == "/list" -> ShareResponse(
+                200, "text/plain; charset=utf-8",
+                listFiles().joinToString("\n") { n -> n + "\t" + (lookup(n)?.length ?: 0L) }.toByteArray(Charsets.UTF_8), headers = extra,
+            )
             path == "/" + ReportBuilder.FILE_NAME -> ShareResponse(200, HTML, buildReport().toByteArray(Charsets.UTF_8), headers = extra)
             path.startsWith("/f/") -> {
                 val name = path.removePrefix("/f/")
