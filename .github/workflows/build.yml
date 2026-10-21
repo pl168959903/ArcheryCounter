@@ -117,6 +117,12 @@ jobs:
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             gh release upload "$GITHUB_REF_NAME" "$FILE" --clobber
           else
-            gh release create "$GITHUB_REF_NAME" "$FILE" --title "$GITHUB_REF_NAME" --generate-notes
+            # 說明用 CHANGELOG.md 裡這個版本的段落；找不到就用 GitHub 自動產生的
+            awk -v v="### $GITHUB_REF_NAME" '$0==v{f=1;next} /^### /{f=0} f' CHANGELOG.md > "$RUNNER_TEMP/notes.md" || true
+            if [ -s "$RUNNER_TEMP/notes.md" ]; then
+              gh release create "$GITHUB_REF_NAME" "$FILE" --title "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/notes.md"
+            else
+              gh release create "$GITHUB_REF_NAME" "$FILE" --title "$GITHUB_REF_NAME" --generate-notes
+            fi
           fi
           echo "已發布 $GITHUB_REF_NAME：$FILE"

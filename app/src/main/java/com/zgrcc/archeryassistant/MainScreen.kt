@@ -30,6 +30,7 @@ fun MainScreen(
     onOpenSettings: () -> Unit,
     onOpenCompetition: () -> Unit,
     onOpenDisc: () -> Unit,
+    onOpenUpdate: () -> Unit = {},
 ) {
     val count by vm.count.collectAsStateWithLifecycle()
     val running by vm.running.collectAsStateWithLifecycle()
@@ -66,6 +67,20 @@ fun MainScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
+        // 只有檢查到有新版本才提醒，並顯示版號；已是最新不顯示（v1.17.1）
+        if (updateUi.kind == UpdateKind.AVAILABLE) {
+            updateUi.info?.let { info ->
+                item {
+                    Chip(
+                        onClick = onOpenUpdate,
+                        label = { Text(tr("有新版本 ${info.tag}", "New version ${info.tag}"), maxLines = 1) },
+                        secondaryLabel = { Text(tr("點一下查看與更新", "Tap to view and update"), maxLines = 1) },
+                        colors = kindColors(ChipKind.GO, ChipDefaults.primaryChipColors()),
+                        modifier = Modifier.fillMaxWidth(0.85f),
+                    )
+                }
+            }
+        }
         item {
             Text(tr("箭數", "Arrows"), style = MaterialTheme.typography.caption1)
         }

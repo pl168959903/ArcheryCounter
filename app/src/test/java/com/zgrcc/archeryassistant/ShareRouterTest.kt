@@ -145,34 +145,3 @@ class ShareRouterTest {
         assertFalse(s.lanShare.value)
     }
 }
-
-class UpdateAutoCheckTest {
-    private val day = UpdatePolicy.INTERVAL_MS
-
-    @Test
-    fun offNeverChecks() {
-        assertFalse(UpdatePolicy.shouldAutoCheck(false, true, 0, 1000))
-        assertFalse(UpdatePolicy.shouldAutoCheck(false, false, 0, 1000))
-    }
-
-    @Test
-    fun everyStartChecksEvenIfRecent() {
-        assertTrue(UpdatePolicy.shouldAutoCheck(true, true, 1000, 1000 + 5))
-    }
-
-    @Test
-    fun dailyModeWaitsADay() {
-        assertFalse(UpdatePolicy.shouldAutoCheck(true, false, 1000, 1000 + day - 1))
-        assertTrue(UpdatePolicy.shouldAutoCheck(true, false, 1000, 1000 + day))
-    }
-
-    @Test
-    fun settingDefaultsOnAndResets() {
-        val s = AppSettings(FakePrefs())
-        assertTrue(s.updateEveryStart.value)
-        s.setUpdateEveryStart(false)
-        assertFalse(s.updateEveryStart.value)
-        s.resetDefaults()
-        assertTrue(s.updateEveryStart.value)
-    }
-}

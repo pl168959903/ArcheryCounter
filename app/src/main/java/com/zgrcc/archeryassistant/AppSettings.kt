@@ -502,22 +502,21 @@ class AppSettings(private val prefs: SharedPreferences) {
         prefs.edit().putBoolean(KEY_CAL_ADVICE, v).apply()
     }
 
-    private val _updateAuto = MutableStateFlow(prefs.getBoolean(KEY_UPDATE_AUTO, false))
-    /** 啟動時自動檢查更新（最多一天一次）。預設：關 */
-    val updateAuto: StateFlow<Boolean> = _updateAuto.asStateFlow()
+    private val _updateMode = MutableStateFlow(readUpdateMode())
+    /** 自動檢查更新的方式：0 每次啟動、1 每天第一次啟動、2 無自動檢查。預設：0。舊版的兩個開關會轉換過來 */
+    val updateMode: StateFlow<Int> = _updateMode.asStateFlow()
 
-    fun setUpdateAuto(v: Boolean) {
-        _updateAuto.value = v
-        prefs.edit().putBoolean(KEY_UPDATE_AUTO, v).apply()
+    fun setUpdateMode(v: Int) {
+        val m = UpdateMode.valid(v)
+        _updateMode.value = m
+        prefs.edit().putInt(KEY_UPDATE_MODE, m).apply()
     }
 
-    private val _updateEveryStart = MutableStateFlow(prefs.getBoolean(KEY_UPDATE_EVERY_START, true))
-    /** 自動檢查時，每次開啟 App 都檢查一次（關閉則最多一天一次）。預設：開 */
-    val updateEveryStart: StateFlow<Boolean> = _updateEveryStart.asStateFlow()
-
-    fun setUpdateEveryStart(v: Boolean) {
-        _updateEveryStart.value = v
-        prefs.edit().putBoolean(KEY_UPDATE_EVERY_START, v).apply()
+    private fun readUpdateMode(): Int = when {
+        prefs.contains(KEY_UPDATE_MODE) -> UpdateMode.valid(prefs.getInt(KEY_UPDATE_MODE, UpdateMode.EVERY_START))
+        prefs.contains(KEY_UPDATE_AUTO) ->
+            UpdateMode.fromLegacy(prefs.getBoolean(KEY_UPDATE_AUTO, false), prefs.getBoolean(KEY_UPDATE_EVERY_START, true))
+        else -> UpdateMode.EVERY_START
     }
 
     /** 上次檢查更新的時間（毫秒）；不屬於「恢復預設設定」 */
@@ -865,8 +864,7 @@ class AppSettings(private val prefs: SharedPreferences) {
         setChipKinds(true)
         setLive2d(false)
         setDiscSize(DiscSize.DEFAULT)
-        setUpdateAuto(false)
-        setUpdateEveryStart(true)
+        setUpdateMode(UpdateMode.EVERY_START)
         setPaceAnalysis(true)
         setGroupCompare(true)
         setPersonalBest(true)
@@ -939,7 +937,8 @@ class AppSettings(private val prefs: SharedPreferences) {
         private const val KEY_CHIP_KINDS = "chip_kinds"
         private const val KEY_LIVE_2D = "live_2d"
         private const val KEY_DISC_SIZE = "disc_size"
-        private const val KEY_UPDATE_AUTO = "update_auto"
+        private const val KEY_UPDATE_MODE = "update_mode"
+        private const val KEY_UPDATE_AUTO = "update_auto"      // 舊版開關，只用來轉換
         private const val KEY_UPDATE_EVERY_START = "update_every_start"
         private const val KEY_PACE = "pace_analysis"
         private const val KEY_GROUP_COMPARE = "group_compare"

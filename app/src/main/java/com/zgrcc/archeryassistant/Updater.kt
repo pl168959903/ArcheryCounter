@@ -88,6 +88,26 @@ data class UpdateUi(
     val error: UpdateError? = null,
 )
 
+/** 自動檢查更新的方式（v1.17.1）：三選一。 */
+object UpdateMode {
+    const val EVERY_START = 0
+    const val DAILY = 1
+    const val OFF = 2
+    const val COUNT = 3
+
+    fun valid(m: Int) = if (m in 0 until COUNT) m else EVERY_START
+    fun next(m: Int) = (valid(m) + 1) % COUNT
+
+    /** 舊版（v1.13–v1.16.2）的兩個開關轉成新的三選一。 */
+    fun fromLegacy(auto: Boolean, everyStart: Boolean) = if (!auto) OFF else if (everyStart) EVERY_START else DAILY
+
+    fun label(m: Int): String = when (valid(m)) {
+        EVERY_START -> tr("每次啟動自動檢查", "Check on every start")
+        DAILY -> tr("每天第一次啟動自動檢查", "Check on first start each day")
+        else -> tr("無自動檢查", "No automatic check")
+    }
+}
+
 object UpdatePolicy {
     /** 自動檢查最多一天一次 */
     const val INTERVAL_MS = 24L * 60 * 60 * 1000
@@ -96,9 +116,12 @@ object UpdatePolicy {
     fun due(lastMs: Long, nowMs: Long): Boolean =
         lastMs <= 0L || nowMs < lastMs || nowMs - lastMs >= INTERVAL_MS
 
-    /** 啟動時要不要自動檢查：沒開自動就不查；「每次開啟」開著每次都查，否則依 [due] 一天一次。 */
-    fun shouldAutoCheck(auto: Boolean, everyStart: Boolean, lastMs: Long, nowMs: Long): Boolean =
-        auto && (everyStart || due(lastMs, nowMs))
+    /** 啟動時要不要自動檢查：每次啟動一律查；每天第一次啟動依 [due]；無自動檢查不查。 */
+    fun shouldAutoCheck(mode: Int, lastMs: Long, nowMs: Long): Boolean = when (mode) {
+        UpdateMode.EVERY_START -> true
+        UpdateMode.DAILY -> due(lastMs, nowMs)
+        else -> false
+    }
 
     /** 要不要把這個版本提示給使用者。手動檢查一律提示；自動檢查略過使用者已略過的版本。 */
     fun shouldOffer(remoteTag: String, current: String, skipped: String, manual: Boolean): Boolean {

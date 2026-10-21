@@ -86,7 +86,7 @@ class AppSettingsTest {
         assertEquals(true, s["lowBattery"])
         assertEquals(false, s["autoClean"])
         assertEquals(false, s["shotFeel"])
-        assertEquals(false, s["updateAuto"])
+        assertEquals(0, s["updateMode"])
         assertEquals(true, s["paceAnalysis"])
     }
 }

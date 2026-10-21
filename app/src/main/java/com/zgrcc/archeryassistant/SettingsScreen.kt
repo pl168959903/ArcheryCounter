@@ -34,6 +34,7 @@ fun SettingsScreen(
     onOpenCategory: (Int) -> Unit,
     onOpenCalibration: () -> Unit,
     onOpenReport: () -> Unit = {},
+    onOpenChangelog: () -> Unit = {},
 ) {
     when (category) {
         0 -> SettingsGeneral(vm)
@@ -44,7 +45,7 @@ fun SettingsScreen(
         5 -> SettingsDisplay(vm)
         6 -> SettingsData(vm)
         7 -> SettingsConnect(vm, onOpenReport)
-        8 -> SettingsAbout(vm)
+        8 -> SettingsAbout(vm, onOpenChangelog)
         else -> SettingsCategoryList(onOpenCategory)
     }
 }

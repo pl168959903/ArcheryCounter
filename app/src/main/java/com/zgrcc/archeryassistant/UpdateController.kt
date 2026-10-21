@@ -33,7 +33,7 @@ class UpdateController(
             }
         }
         // 自動檢查更新：開啟時，預設每次開啟查一次；關掉「每次開啟」則距上次超過一天才查
-        if (UpdatePolicy.shouldAutoCheck(settings.updateAuto.value, settings.updateEveryStart.value, settings.updateLastCheck, System.currentTimeMillis())) {
+        if (UpdatePolicy.shouldAutoCheck(settings.updateMode.value, settings.updateLastCheck, System.currentTimeMillis())) {
             checkUpdate(manual = false)
         }
     }

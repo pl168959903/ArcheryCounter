@@ -24,11 +24,10 @@ import kotlinx.coroutines.launch
 
 /** 設定「關於與重設」分類（SettingsCategories 7）。 */
 @Composable
-fun SettingsAbout(vm: CounterViewModel) {
+fun SettingsAbout(vm: CounterViewModel, onOpenChangelog: () -> Unit = {}) {
     val s = vm.settings
     val threshold by vm.threshold.collectAsStateWithLifecycle()
-    val updateAuto by s.updateAuto.collectAsStateWithLifecycle()
-    val updateEveryStart by s.updateEveryStart.collectAsStateWithLifecycle()
+    val updateMode by s.updateMode.collectAsStateWithLifecycle()
     val updateUi by vm.update.collectAsStateWithLifecycle()
     var confirmReset by remember { mutableStateOf(false) }
 
@@ -43,14 +42,26 @@ fun SettingsAbout(vm: CounterViewModel) {
         item { Body(tr("作者 ${AppInfo.AUTHOR}", "Author ${AppInfo.AUTHOR}")) }
         item { Body(tr("簽章 ${vm.signatureShort}", "Signature ${vm.signatureShort}")) }
         item { Note(AppInfo.signatureStatus(vm.signatureShort)) }
+        item {
+            Chip(
+                onClick = onOpenChangelog,
+                label = { Text("改版內容" + navMark(), maxLines = 1) },
+                colors = kindColors(ChipKind.NAV, ChipDefaults.secondaryChipColors()),
+                modifier = Modifier.fillMaxWidth(0.9f),
+            )
+        }
 
         item { SectionTitle(tr("更新", "Update")) }
-        item { ToggleChip(tr("啟動時自動檢查更新", "Check for updates on start"), updateAuto) { s.setUpdateAuto(it) } }
-        item { Note(tr("開啟後，開啟應用時會查 GitHub 有沒有新的發布，有就在這裡和主畫面的「設定」上提示。不會自己下載，也不會中斷射擊。需要網路（Wi-Fi 或行動網路）。立即生效", "When on, the app checks GitHub for a new release when opened, and shows a hint here and on Settings on the main screen. It never downloads by itself or interrupts shooting. Needs a network (Wi-Fi or mobile data). Takes effect immediately")) }
-        if (updateAuto) {
-            item { ToggleChip(tr("每次開啟都檢查", "Check on every start"), updateEveryStart) { s.setUpdateEveryStart(it) } }
-            item { Note(tr("開啟：每次開啟 App 都檢查一次（沒有新版本或連線失敗都不吭聲）。關閉：最多一天查一次。預設開。下次開啟 App 才生效", "On: check once every time the app is opened (silent when up to date or on failure). Off: at most once a day. Default on. Takes effect the next time the app is opened")) }
+        item {
+            Chip(
+                onClick = { s.setUpdateMode(UpdateMode.next(updateMode)) },
+                label = { Text(UpdateMode.label(updateMode), maxLines = 2) },
+                secondaryLabel = { Text(tr("點一下切換", "Tap to change"), maxLines = 1) },
+                colors = kindColors(ChipKind.NORMAL, ChipDefaults.secondaryChipColors()),
+                modifier = Modifier.fillMaxWidth(0.9f),
+            )
         }
+        item { Note(tr("每次啟動：每次開啟 App 都查一次 GitHub。每天第一次啟動：一天最多查一次。無自動檢查：只在你按「檢查更新」時查。有新版本才會在主畫面提醒並顯示版號；已是最新或連線失敗都不吭聲。不會自己下載，也不會中斷射擊。需要網路。預設「每次啟動」，下次開啟 App 才生效", "Every start: checks GitHub each time the app opens. First start each day: at most once a day. No automatic check: only when you tap Check for updates. Only a new version shows a reminder with its version number on the main screen; up to date or a failed check stay silent. Never downloads by itself or interrupts shooting. Needs a network. Default is Every start; takes effect the next time the app opens")) }
         item {
             val busy = updateUi.kind == UpdateKind.CHECKING || updateUi.kind == UpdateKind.DOWNLOADING || updateUi.kind == UpdateKind.INSTALLING
             Chip(

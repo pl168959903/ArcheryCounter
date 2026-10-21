@@ -866,6 +866,40 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         )
     }
 
+    // ── 改版內容（v1.17.1）──
+    private val _changelog = MutableStateFlow(ChangelogUi())
+    val changelog: StateFlow<ChangelogUi> = _changelog.asStateFlow()
+
+    /** 載入改版內容：先顯示上次存下來的，再抓 GitHub 上的 CHANGELOG.md；只列已發布的版本。 */
+    fun loadChangelog() {
+        if (_changelog.value.loading) return
+        val cached = prefs.getString("changelog_cache", "") ?: ""
+        val cachedTags = prefs.getString("changelog_tags", null)?.split(',')?.filter { it.isNotBlank() }?.toSet()
+        if (cached.isNotEmpty()) {
+            _changelog.value = ChangelogUi(loading = true, entries = Changelog.onlyPublished(Changelog.parse(cached), cachedTags), offline = true)
+        } else {
+            _changelog.value = ChangelogUi(loading = true)
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            val mgr = UpdateManager(appContext)
+            try {
+                val md = mgr.fetchText(Changelog.RAW_URL, json = false)
+                val tags = try {
+                    Changelog.publishedTags(mgr.fetchText(Changelog.RELEASES_URL, json = true))
+                } catch (e: Exception) {
+                    null
+                }
+                val ed = prefs.edit().putString("changelog_cache", md)
+                if (tags != null) ed.putString("changelog_tags", tags.joinToString(",")) else ed.remove("changelog_tags")
+                ed.apply()
+                _changelog.value = ChangelogUi(entries = Changelog.onlyPublished(Changelog.parse(md), tags))
+            } catch (e: Exception) {
+                val old = _changelog.value.entries
+                _changelog.value = ChangelogUi(entries = old, offline = old.isNotEmpty(), failed = old.isEmpty())
+            }
+        }
+    }
+
     // ── 從別台匯入與報告檢視（v1.17）──
     private val _import = MutableStateFlow(ImportUi())
     val importUi: StateFlow<ImportUi> = _import.asStateFlow()

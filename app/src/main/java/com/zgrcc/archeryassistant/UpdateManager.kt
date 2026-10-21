@@ -46,6 +46,21 @@ class UpdateManager(private val context: Context) {
         }
     }
 
+    /** 讀取一段文字（改版內容、releases 清單）。連不上或狀態不是 200 時丟 [UpdateException]。 */
+    fun fetchText(url: String, json: Boolean): String {
+        val conn = open(url, json)
+        try {
+            if (conn.responseCode != HttpURLConnection.HTTP_OK) throw UpdateException(UpdateError.SERVER)
+            return conn.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+        } catch (e: UpdateException) {
+            throw e
+        } catch (e: IOException) {
+            throw UpdateException(UpdateError.NO_NETWORK)
+        } finally {
+            conn.disconnect()
+        }
+    }
+
     /** 下載更新檔到應用的快取資料夾，並核對 SHA-256（若 GitHub 有提供）。回傳檔案。 */
     fun download(info: ReleaseInfo, onProgress: (Int) -> Unit): File {
         val dir = File(context.cacheDir, "update").apply { mkdirs() }
