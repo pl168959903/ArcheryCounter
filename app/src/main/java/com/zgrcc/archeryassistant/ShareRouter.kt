@@ -44,6 +44,7 @@ class ShareRouter(
     private val zh: Boolean = true,
     private val gate: TrustGate? = null,
     private val clock: () -> Long = { System.currentTimeMillis() },
+    private val deviceName: String = "",
 ) {
     private var fails = 0
     val locked: Boolean get() = fails >= MAX_FAILS
@@ -99,6 +100,10 @@ class ShareRouter(
         val extra = if (setCookie != null) listOf("Set-Cookie: $setCookie") else emptyList()
         return when {
             path == "/" -> ShareResponse(200, HTML, index(auth).toByteArray(Charsets.UTF_8), headers = extra)
+            path == "/info" -> ShareResponse(
+                200, "text/plain; charset=utf-8",
+                deviceName.replace("\n", " ").take(40).toByteArray(Charsets.UTF_8), headers = extra,
+            )
             path == "/list" -> ShareResponse(
                 200, "text/plain; charset=utf-8",
                 listFiles().joinToString("\n") { n -> n + "\t" + (lookup(n)?.length ?: 0L) }.toByteArray(Charsets.UTF_8), headers = extra,
@@ -167,6 +172,7 @@ class ShareRouter(
             n.endsWith(".json") -> "application/json; charset=utf-8"
             n.endsWith(".csv") -> "text/csv; charset=utf-8"
             n.endsWith(".html") -> HTML
+            n.endsWith(".txt") -> "text/plain; charset=utf-8"
             else -> "application/octet-stream"
         }
 

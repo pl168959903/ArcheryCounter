@@ -32,7 +32,7 @@ class SessionStore(baseDir: File) {
         /** 匯出檔名（給匯入器排除用）。 */
         val exportNames: Set<String> get() = EXPORT_FILES
         const val MAX_IMPORT_BYTES = 20 * 1024 * 1024
-        val EXPORT_FILES = setOf(ExportCsv.SUMMARY_FILE, ExportCsv.SHOTS_FILE, ReportBuilder.FILE_NAME)
+        val EXPORT_FILES = setOf(ExportCsv.SUMMARY_FILE, ExportCsv.SHOTS_FILE, ReportBuilder.FILE_NAME, SettingsBackup.FILE_NAME)
     }
 
     fun exists(id: String): Boolean = id in pendingIds || jsonFile(id).exists()
@@ -184,6 +184,29 @@ class SessionStore(baseDir: File) {
         if (name !in namesNow()) return@onIo null
         val f = File(dir, name)
         if (f.isFile) ShareFile(f.length()) { f.inputStream() } else null
+    }
+
+    /** 寫入設定備份檔（先寫暫存檔再改名）。回傳是否成功。 */
+    fun writeSettingsBackup(text: String): Boolean = onIo(false) {
+        try {
+            dir.mkdirs()
+            val target = File(dir, SettingsBackup.FILE_NAME)
+            val tmp = File(dir, SettingsBackup.FILE_NAME + ".tmp")
+            tmp.writeText(text, Charsets.UTF_8)
+            if (!tmp.renameTo(target)) {
+                target.writeText(text, Charsets.UTF_8)
+                tmp.delete()
+            }
+            true
+        } catch (e: IOException) {
+            false
+        }
+    }
+
+    /** 讀設定備份檔；沒有檔案或太大回傳 null。 */
+    fun readSettingsBackup(): String? = onIo(null) {
+        val f = File(dir, SettingsBackup.FILE_NAME)
+        if (f.isFile && f.length() <= 200_000) f.readText(Charsets.UTF_8) else null
     }
 
     /** 本機已有的記錄 id（匯入時用來略過重複）。 */

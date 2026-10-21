@@ -863,6 +863,8 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
             generatedAtMs = System.currentTimeMillis(),
             iconBase64 = icon,
             arrowsPerEnd = settings.arrowsPerEnd.value,
+            filterTag = settings.reportTag.value.takeIf { it.isNotBlank() },
+            origins = if (settings.importMark.value) ImportMarks(prefs).all() else emptyMap(),
         )
     }
 
@@ -909,6 +911,11 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         get() = prefs.getString("import_addr", "") ?: ""
         set(v) { prefs.edit().putString("import_addr", v.take(40)).apply() }
 
+    private var pendingBase: String? = null
+    private var pendingPin: String = ""
+    private var pendingName: String = ""
+
+    /** 按「開始匯入」：預覽開著就先預覽（等確認），否則直接匯入。 */
     fun startImport(address: String, pin: String) {
         if (_import.value.running) return
         val base = ImportAddress.parse(address)
@@ -917,15 +924,86 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
             return
         }
         lastImportAddress = address.trim()
+        pendingBase = base
+        pendingPin = pin.trim()
+        pendingName = ""
+        if (!settings.importPreview.value) {
+            runImport()
+            return
+        }
         _import.value = ImportUi(running = true)
         viewModelScope.launch(Dispatchers.IO) {
-            val importer = SessionImporter(store, HttpSource(base, pin.trim()))
-            val r = importer.run(settings.importOverwrite.value, settings.importRaw.value) { d, t ->
+            val p = SessionImporter(store, HttpSource(base, pendingPin)).preview(settings.importRaw.value)
+            pendingName = p.deviceName
+            _import.value = if (p.error != null) ImportUi(result = ImportResult(error = p.error)) else ImportUi(preview = p)
+        }
+    }
+
+    /** 預覽後按「確認匯入」。 */
+    fun confirmImport() {
+        if (_import.value.preview != null && !_import.value.running) runImport()
+    }
+
+    private fun runImport() {
+        val base = pendingBase ?: return
+        _import.value = ImportUi(running = true)
+        viewModelScope.launch(Dispatchers.IO) {
+            val source = HttpSource(base, pendingPin)
+            val importer = SessionImporter(store, source)
+            val r = importer.run(settings.importOverwrite.value, settings.importRaw.value, settings.importSettings.value) { d, t ->
                 _import.value = ImportUi(running = true, done = d, total = t)
+            }
+            if (r.error == null && settings.importMark.value && r.ids.isNotEmpty()) {
+                val label = pendingName.ifBlank {
+                    try {
+                        source.deviceName()
+                    } catch (e: Exception) {
+                        ""
+                    }
+                }.ifBlank { base.removePrefix("http://") }
+                ImportMarks(prefs).put(r.ids, label)
             }
             _import.value = ImportUi(result = r)
             publishSessions()
         }
+    }
+
+    /** 每筆匯入記錄的來源名稱（記錄列表用）；「標示匯入來源」關閉時為空。 */
+    fun importOrigins(): Map<String, String> = if (settings.importMark.value) ImportMarks(prefs).all() else emptyMap()
+
+    // ── 設定備份與還原（v1.18）──
+    /** 把目前的設定存成 sessions/settings_backup.txt。 */
+    suspend fun exportSettingsBackup(): Boolean = withContext(Dispatchers.IO) {
+        store.writeSettingsBackup(SettingsBackup.encode(prefs.all, versionLabel))
+    }
+
+    /** 備份檔裡有幾項設定可還原；沒有檔案或不是備份檔回傳 null。 */
+    suspend fun settingsBackupCount(): Int? = withContext(Dispatchers.IO) {
+        store.readSettingsBackup()?.let { SettingsBackup.decode(it)?.size }
+    }
+
+    /**
+     * 套用備份檔裡的設定。設定在記憶體裡有快取，所以寫入後必須重新開啟 App 才會生效。
+     * 回傳套用了幾項；沒有可用的備份回傳 null。
+     */
+    suspend fun restoreSettingsBackup(): Int? = withContext(Dispatchers.IO) {
+        val entries = store.readSettingsBackup()?.let { SettingsBackup.decode(it) } ?: return@withContext null
+        val ed = prefs.edit()
+        for (e in entries) {
+            when (e.type) {
+                'b' -> ed.putBoolean(e.key, e.value == "true")
+                'i' -> ed.putInt(e.key, e.value.toInt())
+                'l' -> ed.putLong(e.key, e.value.toLong())
+                'f' -> ed.putFloat(e.key, e.value.toFloat())
+                's' -> ed.putString(e.key, e.value)
+            }
+        }
+        if (ed.commit()) entries.size else null
+    }
+
+    /** 還原設定後關閉 App，讓新設定在下次開啟時生效。 */
+    fun exitApp() {
+        android.os.Process.killProcess(android.os.Process.myPid())
     }
 
     fun clearImportResult() {
@@ -940,6 +1018,19 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
     // ── 區網分享（v1.16.1）──
     private var shareServer: ShareServer? = null
     private var shareTimer: kotlinx.coroutines.Job? = null
+    private val nsd by lazy { NsdHelper(appContext) }
+    private val _found = MutableStateFlow<List<FoundDevice>>(emptyList())
+    /** 區網自動尋找到的裝置（v1.18）。 */
+    val foundDevices: StateFlow<List<FoundDevice>> = _found.asStateFlow()
+
+    fun startDiscovery() {
+        if (!settings.importDiscover.value) return
+        _found.value = emptyList()
+        nsd.startDiscovery { d -> _found.value = (_found.value.filter { it.address != d.address } + d) }
+    }
+
+    fun stopDiscovery() = nsd.stopDiscovery()
+
     private val shareData by lazy { ShareData(prefs) }
     /** 已信任的裝置與今天的連線記錄（v1.16.3）。 */
     val trustedDevices: StateFlow<List<TrustedDevice>> get() = shareData.devices
@@ -979,6 +1070,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
             buildReport = { ReportBuilder.build(store.allSessions(), reportMeta()) },
             zh = !I18n.english,
             gate = gate,
+            deviceName = android.os.Build.MODEL ?: "",
         )
         val server = ShareServer(router)
         if (!server.start()) {
@@ -987,6 +1079,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         }
         shareServer = server
         _share.value = ShareState(running = true, url = "http://$ip:${ShareServer.PORT}", pin = pin)
+        if (settings.importDiscover.value) nsd.advertise(android.os.Build.MODEL ?: "watch", ShareServer.PORT)
         shareTimer?.cancel()
         shareTimer = viewModelScope.launch {
             kotlinx.coroutines.delay(ShareState.AUTO_STOP_MS)
@@ -999,6 +1092,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         shareTimer = null
         shareServer?.stop()
         shareServer = null
+        nsd.stopAdvertise()
         _share.value = ShareState()
     }
 

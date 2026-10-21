@@ -494,6 +494,62 @@ class AppSettings(private val prefs: SharedPreferences) {
         prefs.edit().putBoolean(KEY_REPORT_VIEW, v).apply()
     }
 
+    private val _shareQr = MutableStateFlow(prefs.getBoolean(KEY_SHARE_QR, true))
+    /** 分享中顯示 QR Code，手機掃描就能開。 預設：開 */
+    val shareQr: StateFlow<Boolean> = _shareQr.asStateFlow()
+    fun setShareQr(v: Boolean) {
+        _shareQr.value = v
+        prefs.edit().putBoolean(KEY_SHARE_QR, v).apply()
+    }
+
+    private val _importDiscover = MutableStateFlow(prefs.getBoolean(KEY_IMPORT_DISCOVER, false))
+    /** 區網自動尋找：分享時讓別台找得到，匯入時列出找到的裝置。 預設：關 */
+    val importDiscover: StateFlow<Boolean> = _importDiscover.asStateFlow()
+    fun setImportDiscover(v: Boolean) {
+        _importDiscover.value = v
+        prefs.edit().putBoolean(KEY_IMPORT_DISCOVER, v).apply()
+    }
+
+    private val _importMark = MutableStateFlow(prefs.getBoolean(KEY_IMPORT_MARK, true))
+    /** 標示從別台匯入的記錄來源（記錄列表與報告）。 預設：開 */
+    val importMark: StateFlow<Boolean> = _importMark.asStateFlow()
+    fun setImportMark(v: Boolean) {
+        _importMark.value = v
+        prefs.edit().putBoolean(KEY_IMPORT_MARK, v).apply()
+    }
+
+    private val _importPreview = MutableStateFlow(prefs.getBoolean(KEY_IMPORT_PREVIEW, true))
+    /** 匯入前先預覽，確認後才寫入。 預設：開 */
+    val importPreview: StateFlow<Boolean> = _importPreview.asStateFlow()
+    fun setImportPreview(v: Boolean) {
+        _importPreview.value = v
+        prefs.edit().putBoolean(KEY_IMPORT_PREVIEW, v).apply()
+    }
+
+    private val _importSettings = MutableStateFlow(prefs.getBoolean(KEY_IMPORT_SETTINGS, false))
+    /** 匯入時一併取得對方的設定備份檔。 預設：關 */
+    val importSettings: StateFlow<Boolean> = _importSettings.asStateFlow()
+    fun setImportSettings(v: Boolean) {
+        _importSettings.value = v
+        prefs.edit().putBoolean(KEY_IMPORT_SETTINGS, v).apply()
+    }
+
+    private val _settingsBackup = MutableStateFlow(prefs.getBoolean(KEY_SETTINGS_BACKUP, true))
+    /** 「連線」頁提供設定備份與還原。 預設：開 */
+    val settingsBackup: StateFlow<Boolean> = _settingsBackup.asStateFlow()
+    fun setSettingsBackup(v: Boolean) {
+        _settingsBackup.value = v
+        prefs.edit().putBoolean(KEY_SETTINGS_BACKUP, v).apply()
+    }
+
+    private val _reportTag = MutableStateFlow(prefs.getString(KEY_REPORT_TAG, "") ?: "")
+    /** 網頁報告只包含帶這個標籤的記錄；空字串 = 全部。 預設：全部 */
+    val reportTag: StateFlow<String> = _reportTag.asStateFlow()
+    fun setReportTag(v: String) {
+        _reportTag.value = v
+        prefs.edit().putString(KEY_REPORT_TAG, v).apply()
+    }
+
     private val _calAdvice = MutableStateFlow(prefs.getBoolean(KEY_CAL_ADVICE, true))
     /** 校準錄製完成後與校準記錄詳情提供「分析校準資料」。預設：開 */
     val calAdvice: StateFlow<Boolean> = _calAdvice.asStateFlow()
@@ -883,6 +939,13 @@ class AppSettings(private val prefs: SharedPreferences) {
         setImportOverwrite(false)
         setImportRaw(false)
         setReportView(true)
+        setShareQr(true)
+        setImportDiscover(false)
+        setImportMark(true)
+        setImportPreview(true)
+        setImportSettings(false)
+        setSettingsBackup(true)
+        setReportTag("")
         setDiscFullscreen(true)
         setRecordTrace(false)
         setTraceGyro(false)
@@ -959,6 +1022,13 @@ class AppSettings(private val prefs: SharedPreferences) {
         private const val KEY_IMPORT_OVERWRITE = "import_overwrite"
         private const val KEY_IMPORT_RAW = "import_raw"
         private const val KEY_REPORT_VIEW = "report_view"
+        private const val KEY_SHARE_QR = "share_qr"
+        private const val KEY_IMPORT_DISCOVER = "import_discover"
+        private const val KEY_IMPORT_MARK = "import_mark"
+        private const val KEY_IMPORT_PREVIEW = "import_preview"
+        private const val KEY_IMPORT_SETTINGS = "import_settings"
+        private const val KEY_SETTINGS_BACKUP = "settings_backup"
+        private const val KEY_REPORT_TAG = "report_tag"
         private const val KEY_UPDATE_LAST = "update_last_check"
         private const val KEY_UPDATE_SKIPPED = "update_skipped"
         private const val KEY_DISC_FULLSCREEN = "disc_fullscreen"

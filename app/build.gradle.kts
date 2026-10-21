@@ -12,8 +12,8 @@ android {
         applicationId = "com.zgrcc.archeryassistant"
         minSdk = 30
         targetSdk = 35
-        versionCode = 29
-        versionName = "1.17.1"
+        versionCode = 30
+        versionName = "1.18"
     }
 
     // 固定簽章：GitHub 編譯時由 Secrets 提供金鑰（見 README），這樣每次編譯出來的 APK 簽章都一樣，
@@ -75,6 +75,8 @@ dependencies {
     implementation("com.google.guava:guava:33.3.1-android")
 
     implementation("androidx.profileinstaller:profileinstaller:1.4.1")
+    // QR Code 編碼（v1.18，區網分享的網址）
+    implementation("com.google.zxing:core:3.5.3")
     implementation("androidx.activity:activity-compose:1.9.3")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")

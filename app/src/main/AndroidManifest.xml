@@ -11,6 +11,9 @@
 
     <!-- 檢查更新（v1.13）：只連 GitHub，讀公開的版本資訊並下載更新檔 -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- 區網自動尋找（v1.18）：用系統的 mDNS 服務尋找與廣播，只在「區網自動尋找」開啟時使用 -->
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
     <!-- 把下載好的更新檔交給系統安裝程式（安裝時仍需使用者確認） -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 

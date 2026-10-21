@@ -7,7 +7,7 @@
 戴在手腕上，自動偵測每次放箭並計數；偵測到時手錶會震動一下，也可以用 − / + 手動修正。
 每次偵測都會自動存成一筆「記錄」，並分析每一箭放箭前**手臂的穩定度**，方便你比較每次射擊之間的差異。
 
-目前版本：**v1.17.1**。
+目前版本：**v1.18**。
 
 ---
 
@@ -34,15 +34,15 @@
 推送 `v` 開頭的標籤時，編譯完成後會自動在倉庫的 **Releases** 建立發布並附上 APK，不用再手動下載、上傳。平常 push 只編譯，不發布。
 
 ```
-git tag v1.17.1
-git push origin v1.17.1
+git tag v1.18
+git push origin v1.18
 ```
 
-- 標籤要和 `app/build.gradle.kts` 的 `versionName` 一致：`versionName = "1.17.1"` 就要打 `v1.17.1`。**不一致會直接失敗**，並說明原因。
+- 標籤要和 `app/build.gradle.kts` 的 `versionName` 一致：`versionName = "1.18"` 就要打 `v1.18`。**不一致會直接失敗**，並說明原因。
 - 必須已經設定好固定簽章（見下方〈固定簽章〉的四個 Secrets）。沒設定就**不會發布**並失敗，避免發布出簽章不對的 APK。
 - 附上的檔案是 `ArcheryAssistant-v版本號.apk`（只放 release 版），更新說明自動由 commit 產生。
 - 同一個標籤重跑時，會覆蓋已存在的 Release 裡的同名檔案。
-- 標籤打錯想刪掉：`git tag -d v1.17.1`，再 `git push origin :refs/tags/v1.17.1`；到 Releases 頁手動刪除已建立的發布。
+- 標籤打錯想刪掉：`git tag -d v1.18`，再 `git push origin :refs/tags/v1.18`；到 Releases 頁手動刪除已建立的發布。
 - 編譯超過 20 分鐘會自動失敗，不用手動取消。
 - 倉庫如果是公開的，Release 的 APK 任何人都能下載；金鑰和 Secrets 不會跟著發布。
 - 第一次打標籤後，請確認 Actions 成功、Releases 有出現；失敗的話，查看紅色的日誌排查原因。
@@ -267,6 +267,7 @@ manual: [{ rel, d }, ...]                     d = 實際加減的數量（+1 或
 | `MatchSoundPlayer.kt`、`BatteryMonitor.kt`、`Buzzer.kt` | 比賽聲音、電量監看與低電量提醒、震動輸出 |
 | `Insights.kt`、`Maintenance.kt`、`CalibrationAnalyzer.kt` | 節奏分析／條件對比／個人最佳／訓練總覽、自動清理與自評、校準分析。純 Kotlin |
 | `ReportBuilder.kt` / `ReportCharts.kt` / `ReportStyle.kt` | 網頁報告 report.html 的組裝、圖表與樣式。純 Kotlin |
+| `SettingsBackup.kt` / `NsdHelper.kt` / `QrCode.kt` | 設定備份編碼（純 Kotlin）／區網自動尋找（mDNS）／QR Code 顯示 |
 | `Changelog.kt` / `ChangelogScreen.kt` | 改版內容：解析 GitHub 上的 CHANGELOG.md 與畫面。純 Kotlin（畫面除外） |
 | `Importer.kt` / `ReportScreen.kt` | 從別台裝置匯入記錄（位址解析、規劃、HTTP 來源）／在本機看網頁報告 |
 | `ShareData.kt` | 區網分享的信任裝置與連線記錄儲存。純 Kotlin |

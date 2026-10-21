@@ -19,6 +19,10 @@ data class ReportMeta(
     /** 沒有分趟標記的記錄用它切趟 */
     val arrowsPerEnd: Int,
     val zone: ZoneId = ZoneId.systemDefault(),
+    /** 只報告帶這個標籤的記錄（v1.18）；null 或空白 = 全部。 */
+    val filterTag: String? = null,
+    /** 記錄 id → 匯入來源裝置名稱（v1.18）；報告裡標示「來自 X」。 */
+    val origins: Map<String, String> = emptyMap(),
 )
 
 /**
@@ -29,7 +33,8 @@ object ReportBuilder {
     const val FILE_NAME = "report.html"
 
     fun build(sessions: List<Session>, meta: ReportMeta): String {
-        val sorted = sessions.sortedByDescending { it.startMs }
+        val tag = meta.filterTag?.takeIf { it.isNotBlank() }
+        val sorted = sessions.filter { tag == null || tag in it.tags }.sortedByDescending { it.startMs }
         val real = sorted.filter { !it.calibration }
         val matchRows = MatchCompare.rows(sorted, limit = 200)
         val bestScore = PersonalBest.bestScoreIds(matchRows)
@@ -76,6 +81,9 @@ object ReportBuilder {
         if (sig != null && sig != "?") sb.append("<span class=\"badge\">${esc(tr("簽章", "Signature"))} <b>${esc(sig)}</b></span>")
         sb.append("<span class=\"badge\">${esc(tr("產生於", "Generated"))} <b>${esc(fullDate(meta.generatedAtMs, meta.zone))}</b></span>")
         sb.append("<span class=\"badge\">${esc(tr("記錄", "Records"))} <b>${sessions.size}</b></span>")
+        meta.filterTag?.takeIf { it.isNotBlank() }?.let {
+            sb.append("<span class=\"badge\">${esc(tr("篩選標籤", "Filtered by tag"))} <b>${esc(it)}</b></span>")
+        }
         sb.append("</div></div>\n</div></header>\n")
     }
 
@@ -92,6 +100,9 @@ object ReportBuilder {
     }
 
     // ---------- 總覽 ----------
+
+    private fun origin(meta: ReportMeta, id: String): String =
+        meta.origins[id]?.let { "<br><span class=\"star\">${esc(tr("來自 $it", "From $it"))}</span>" } ?: ""
 
     private fun kpi(sb: StringBuilder, value: String, label: String) {
         sb.append("<div class=\"kpi\"><div class=\"v\">${esc(value)}</div><div class=\"l\">${esc(label)}</div></div>")
@@ -144,7 +155,7 @@ object ReportBuilder {
             val star = if (s.id == steadiest || s.id in bestScore || s.id in bestSteady) "<span class=\"star\">★</span> " else ""
             sb.append("<tr><td class=\"l\">$star<a href=\"#s-${esc(s.id)}\">${esc(fullDate(s.startMs, meta.zone))}</a></td>")
             sb.append("<td class=\"l\">${typeTag(s)}</td>")
-            sb.append("<td class=\"l\">${esc(Tags.label(s.tags.filter { it != "比賽" }) ?: "—")}</td>")
+            sb.append("<td class=\"l\">${esc(Tags.label(s.tags.filter { it != "比賽" }) ?: "—")}${origin(meta, s.id)}</td>")
             sb.append("<td>${st.finalCount}</td><td>${esc(Fmt.duration(s.durationMs()))}</td>")
             sb.append("<td>${if (s.calibration) "—" else Fmt.numOrDash(st.accelAvg, 2)}</td><td>${Fmt.numOrDash(st.scoreAvg, 1)}</td></tr>\n")
         }
@@ -187,6 +198,7 @@ object ReportBuilder {
         sb.append("<section class=\"card sess\" id=\"s-${esc(s.id)}\">\n")
         sb.append("<div class=\"head\"><span class=\"t\">${esc(fullDate(s.startMs, meta.zone))}</span><span>${typeTag(s)}")
         Tags.label(s.tags.filter { it != "比賽" })?.let { sb.append("<span class=\"tag\">${esc(it)}</span>") }
+        meta.origins[s.id]?.let { sb.append("<span class=\"tag\">${esc(tr("來自 $it", "From $it"))}</span>") }
         sb.append("</span></div>\n")
         val stars = buildList {
             if (isSteadiest) add(tr("★ 個人最佳：最穩的一次練習", "★ Personal best: steadiest practice"))

@@ -28,6 +28,7 @@ fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrend: (
     val groupCompare by vm.settings.groupCompare.collectAsStateWithLifecycle()
     val overviewOn by vm.settings.overview.collectAsStateWithLifecycle()
     val bestOn by vm.settings.personalBest.collectAsStateWithLifecycle()
+    val origins = remember(sessions) { vm.importOrigins() }
     val steadiestId = remember(sessions, bestOn) { if (bestOn) PersonalBest.steadiestId(sessions) else null }
 
     var confirmClear by remember { mutableStateOf(false) }
@@ -189,6 +190,7 @@ fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrend: (
                     append(if (s.calibration) tr("校準 · ", "Calibration · ") else "")
                     append(tr("${s.finalCount()} 箭 · ${Fmt.duration(s.durationMs())}$tag", "${s.finalCount()} arrows · ${Fmt.duration(s.durationMs())}$tag"))
                     Tags.label(s.tags)?.let { append("\n").append(it) }
+                    origins[s.id]?.let { append("\n⇩ ").append(it) }
                     if (avg != null) append(tr("\n平均晃動 ${Fmt.num(avg)}", "\nAvg shake ${Fmt.num(avg)}"))
                 }
 
