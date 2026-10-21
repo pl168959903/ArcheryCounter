@@ -68,6 +68,7 @@ private const val ROUTE_HIST_COMPARE = "history_compare"
 private const val ROUTE_CHANGELOG = "changelog"
 private const val ROUTE_LINK_OPTIONS = "link_options"
 private const val ROUTE_LINK_DEVICE = "link_device"
+private const val ROUTE_LINK_LOG = "link_log"
 private const val ROUTE_DISC = "disc"
 
 @Composable
@@ -190,6 +191,7 @@ private fun AppNav(vm: CounterViewModel, launch: String?, onLaunchHandled: () ->
                     onOpenChangelog = { nav.navigate(ROUTE_CHANGELOG) },
                     onOpenLinkOptions = { nav.navigate(ROUTE_LINK_OPTIONS) },
                     onOpenLinkDevice = { nav.navigate(ROUTE_LINK_DEVICE) },
+                    onOpenLinkLog = { nav.navigate(ROUTE_LINK_LOG) },
                 )
             }
         }
@@ -234,6 +236,7 @@ private fun AppNav(vm: CounterViewModel, launch: String?, onLaunchHandled: () ->
         composable(ROUTE_OVERVIEW) { OverviewScreen(vm) }
         composable(ROUTE_CHANGELOG) { ChangelogScreen(vm) }
         composable(ROUTE_LINK_OPTIONS) { LinkOptionsScreen(vm) }
+        composable(ROUTE_LINK_LOG) { ConnectLogScreen(vm) }
         composable(ROUTE_LINK_DEVICE) { LinkDeviceScreen(vm) }
         composable(ROUTE_MATCH_COMPARE) {
             MatchCompareScreen(

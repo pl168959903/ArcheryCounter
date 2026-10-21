@@ -30,6 +30,7 @@ fun SettingsDetect(vm: CounterViewModel, onOpenCalibration: () -> Unit) {
     val cooldownSec by s.cooldownSec.collectAsStateWithLifecycle()
     val sessions by vm.sessions.collectAsStateWithLifecycle()
     val threshold by vm.threshold.collectAsStateWithLifecycle()
+    val mainThreshold by s.mainThreshold.collectAsStateWithLifecycle()
     val running by vm.running.collectAsStateWithLifecycle()
     val autoPause by s.autoPause.collectAsStateWithLifecycle()
     val autoPauseMin by s.autoPauseMin.collectAsStateWithLifecycle()
@@ -72,6 +73,15 @@ fun SettingsDetect(vm: CounterViewModel, onOpenCalibration: () -> Unit) {
                 )
             )
         }
+        item {
+            StepRow(
+                text = tr("閾值 ${threshold.toInt()}", "Threshold ${threshold.toInt()}"),
+                onMinus = { vm.adjustThreshold(-1f) },
+                onPlus = { vm.adjustThreshold(1f) },
+            )
+        }
+        item { Note(tr("越大越不靈敏。調整立即生效，偵測中也可以改", "Higher = less sensitive. Takes effect immediately, even while detecting")) }
+        item { ToggleChip(tr("主畫面顯示閾值調整", "Threshold on main screen"), mainThreshold) { s.setMainThreshold(it) } }
         item {
             StepRow(
                 text = tr("靜止 $stillThreshold", "Still $stillThreshold"),

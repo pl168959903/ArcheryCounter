@@ -34,7 +34,7 @@ object AppInfo {
     /** 給「關於」顯示的簽章狀態說明。 */
     fun signatureStatus(short: String): String = when {
         short == "?" -> tr("讀不到簽章", "Signature unavailable")
-        isFixedKey(short) -> tr("與固定金鑰相符，之後可直接覆蓋安裝", "Matches the fixed key; future updates install over this one")
+        isFixedKey(short) -> "" // 相符是正常情況，不必說明（v1.18.5）
         else -> tr("不是固定金鑰（可能是臨時簽章），更新時可能要先卸載", "Not the fixed key (maybe a temporary signature); you may have to uninstall before updating")
     }
 }

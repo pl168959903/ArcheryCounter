@@ -430,6 +430,14 @@ class AppSettings(private val prefs: SharedPreferences) {
         prefs.edit().putBoolean(KEY_RECORD_DEVICE, v).apply()
     }
 
+    private val _mainThreshold = MutableStateFlow(prefs.getBoolean(KEY_MAIN_THRESHOLD, false))
+    /** 主畫面顯示閾值調整（v1.18.5）。閾值預設只在設定「偵測」裡調整。預設：關 */
+    val mainThreshold: StateFlow<Boolean> = _mainThreshold.asStateFlow()
+    fun setMainThreshold(v: Boolean) {
+        _mainThreshold.value = v
+        prefs.edit().putBoolean(KEY_MAIN_THRESHOLD, v).apply()
+    }
+
     private val _reportExport = MutableStateFlow(prefs.getBoolean(KEY_REPORT_EXPORT, true))
     /** 資料頁提供「匯出報告」（網頁報告 report.html）。預設：開 */
     val reportExport: StateFlow<Boolean> = _reportExport.asStateFlow()
@@ -931,6 +939,7 @@ class AppSettings(private val prefs: SharedPreferences) {
         setCalAdvice(true)
         setAdvancedDetect(true)
         setRecordDevice(true)
+        setMainThreshold(false)
         setReportExport(true)
         setLanShare(false)
         setShareRemember(true)
@@ -1014,6 +1023,7 @@ class AppSettings(private val prefs: SharedPreferences) {
         private const val KEY_CAL_ADVICE = "cal_advice"
         private const val KEY_ADVANCED_DETECT = "advanced_detect"
         private const val KEY_RECORD_DEVICE = "record_device"
+        private const val KEY_MAIN_THRESHOLD = "main_threshold"
         private const val KEY_REPORT_EXPORT = "report_export"
         private const val KEY_LAN_SHARE = "lan_share"
         private const val KEY_SHARE_REMEMBER = "share_remember"

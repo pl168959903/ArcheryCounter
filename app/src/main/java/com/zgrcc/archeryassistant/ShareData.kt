@@ -130,6 +130,10 @@ object ShareText {
         return tr("今天 $devices 支裝置、${events.size} 次連線、$wrong 次 PIN 錯誤", "Today: $devices devices, ${events.size} visits, $wrong wrong PINs")
     }
 
+    /** 連線記錄由新到舊（最新在最前）；時間相同時後記的在前。 */
+    fun newestFirst(events: List<ShareEvent>): List<ShareEvent> =
+        events.withIndex().sortedWith(compareByDescending<IndexedValue<ShareEvent>> { it.value.timeMs }.thenByDescending { it.index }).map { it.value }
+
     fun clock(ms: Long): String {
         val t = Instant.ofEpochMilli(ms).atZone(ZoneId.systemDefault())
         return String.format("%02d:%02d", t.hour, t.minute)

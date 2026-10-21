@@ -43,7 +43,7 @@ class V17Test {
 
     @Test
     fun signatureStatusTexts() {
-        assertTrue(AppInfo.signatureStatus("C7:08:6E:C9").contains("相符"))
+        assertEquals("", AppInfo.signatureStatus("C7:08:6E:C9"))
         assertTrue(AppInfo.signatureStatus("AA:BB:CC:DD").contains("不是固定金鑰"))
         assertTrue(AppInfo.signatureStatus("?").contains("讀不到"))
     }

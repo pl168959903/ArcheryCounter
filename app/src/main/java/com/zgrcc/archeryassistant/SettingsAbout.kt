@@ -45,7 +45,7 @@ fun SettingsAbout(vm: CounterViewModel, onOpenChangelog: () -> Unit = {}) {
         item { Body(tr("裝置 ${vm.deviceModel()}", "Device ${vm.deviceModel()}")) }
         item { Body(tr("作者 ${AppInfo.AUTHOR}", "Author ${AppInfo.AUTHOR}")) }
         item { Body(tr("簽章 ${vm.signatureShort}", "Signature ${vm.signatureShort}")) }
-        item { Note(AppInfo.signatureStatus(vm.signatureShort)) }
+        AppInfo.signatureStatus(vm.signatureShort).takeIf { it.isNotEmpty() }?.let { item { Note(it) } }
         item {
             Chip(
                 onClick = { noBrowser = !openLink(ctx, AppInfo.GITHUB_URL) },

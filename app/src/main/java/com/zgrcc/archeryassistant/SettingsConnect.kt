@@ -30,7 +30,7 @@ import kotlinx.coroutines.launch
  * 離開這一頁就停止分享；分享中螢幕保持亮著。
  */
 @Composable
-fun SettingsConnect(vm: CounterViewModel, onOpenOptions: () -> Unit = {}, onOpenDevice: () -> Unit = {}) {
+fun SettingsConnect(vm: CounterViewModel, onOpenOptions: () -> Unit = {}, onOpenDevice: () -> Unit = {}, onOpenLog: () -> Unit = {}) {
     val s = vm.settings
     val lanShare by s.lanShare.collectAsStateWithLifecycle()
     val logOn by s.shareLog.collectAsStateWithLifecycle()
@@ -308,27 +308,15 @@ fun SettingsConnect(vm: CounterViewModel, onOpenOptions: () -> Unit = {}, onOpen
             }
         }
 
-        // ── 連線記錄 ──
-        item { SectionTitle(tr("連線記錄", "Connection log")) }
-        if (!logOn) {
-            item { Note(tr("「記錄連線」已關閉", "Logging is off")) }
-        } else {
-            item { Body(ShareText.summary(events)) }
-            for (e in events.takeLast(20).reversed()) {
-                item {
-                    Note(ShareText.clock(e.timeMs) + " " + e.ip + " " + AgentLabel.of(e.agent) + "\n" + ShareText.result(e.result))
-                }
-            }
-            if (events.isNotEmpty()) {
-                item {
-                    Chip(
-                        onClick = { vm.clearShareLog() },
-                        label = { Text(tr("清除連線記錄", "Clear log"), maxLines = 1) },
-                        colors = kindColors(ChipKind.NORMAL, ChipDefaults.secondaryChipColors()),
-                        modifier = Modifier.fillMaxWidth(0.9f),
-                    )
-                }
-            }
+        // ── 連線記錄：獨立一頁（v1.18.5），這裡只顯示按鈕和大致計數 ──
+        item {
+            Chip(
+                onClick = onOpenLog,
+                label = { Text(tr("連線記錄", "Connection log") + navMark(), maxLines = 1) },
+                secondaryLabel = { Text(if (logOn) ShareText.summary(events) else tr("「記錄連線」已關閉", "Logging is off"), maxLines = 2) },
+                colors = kindColors(ChipKind.NAV, ChipDefaults.secondaryChipColors()),
+                modifier = Modifier.fillMaxWidth(0.9f),
+            )
         }
     }
 }

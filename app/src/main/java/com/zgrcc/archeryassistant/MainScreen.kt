@@ -35,6 +35,7 @@ fun MainScreen(
     val count by vm.count.collectAsStateWithLifecycle()
     val running by vm.running.collectAsStateWithLifecycle()
     val threshold by vm.threshold.collectAsStateWithLifecycle()
+    val mainThreshold by vm.settings.mainThreshold.collectAsStateWithLifecycle()
     val lastShot by vm.lastShot.collectAsStateWithLifecycle()
     val liveOn by vm.settings.liveWaveform.collectAsStateWithLifecycle()
     val live2dOn by vm.settings.live2d.collectAsStateWithLifecycle()
@@ -201,8 +202,8 @@ fun MainScreen(
             }
         }
 
-        // 閾值：數值越大越不靈敏
-        item {
+        // 閾值：預設只在設定「偵測」調整，開了「主畫面顯示閾值調整」才出現（v1.18.5）
+        if (mainThreshold) item {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -212,7 +213,7 @@ fun MainScreen(
                 SmallRoundButton("+") { vm.adjustThreshold(1f) }
             }
         }
-        item { Note(tr("越大越不靈敏", "Higher = less sensitive")) }
+        if (mainThreshold) item { Note(tr("越大越不靈敏", "Higher = less sensitive")) }
 
         // 最近一箭：峰值與放箭前的晃動量
         item {

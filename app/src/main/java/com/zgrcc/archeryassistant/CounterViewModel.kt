@@ -875,7 +875,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
             author = AppInfo.AUTHOR,
             versionLabel = versionLabel,
             signature = signatureShort,
-            signatureNote = AppInfo.signatureStatus(signatureShort),
+            signatureNote = AppInfo.signatureStatus(signatureShort).takeIf { it.isNotEmpty() },
             generatedAtMs = System.currentTimeMillis(),
             iconBase64 = icon,
             arrowsPerEnd = settings.arrowsPerEnd.value,
@@ -1256,13 +1256,6 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         if (id == _activeId.value) return
         viewModelScope.launch(Dispatchers.IO) {
             store.delete(id)
-            publishSessions()
-        }
-    }
-
-    fun deleteAllSessions() {
-        viewModelScope.launch(Dispatchers.IO) {
-            store.deleteAll(keepId = _activeId.value)
             publishSessions()
         }
     }

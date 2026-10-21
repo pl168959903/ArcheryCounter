@@ -36,7 +36,6 @@ fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrendMen
     val origins = remember(sessions) { vm.importOrigins() }
     val steadiestId = remember(sessions, bestOn) { if (bestOn) PersonalBest.steadiestId(sessions) else null }
 
-    var confirmClear by remember { mutableStateOf(false) }
 
     // 管理模式：點記錄是勾選，不是進入詳情
     var manage by remember { mutableStateOf(false) }
@@ -220,41 +219,6 @@ fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrendMen
                     enabled = !(manage && isActive),
                     modifier = Modifier.fillMaxWidth(0.9f),
                 )
-            }
-        }
-
-        if (sessions.isNotEmpty() && manage) {
-            if (!confirmClear) {
-                item {
-                    Chip(
-                        onClick = { confirmClear = true },
-                        label = { Text(tr("清除全部", "Clear all"), maxLines = 1) },
-                        colors = kindColors(ChipKind.DANGER, ChipDefaults.secondaryChipColors()),
-                        modifier = Modifier.fillMaxWidth(0.9f),
-                    )
-                }
-            } else {
-                item { Note(tr("確定要刪除全部記錄嗎？無法復原", "Delete all records? This cannot be undone")) }
-                item {
-                    Chip(
-                        onClick = {
-                            vm.deleteAllSessions()
-                            confirmClear = false
-                            manage = false
-                        },
-                        label = { Text(tr("確定刪除", "Delete"), maxLines = 1) },
-                        colors = kindColors(ChipKind.DANGER, ChipDefaults.primaryChipColors()),
-                        modifier = Modifier.fillMaxWidth(0.9f),
-                    )
-                }
-                item {
-                    Chip(
-                        onClick = { confirmClear = false },
-                        label = { Text(tr("取消", "Cancel"), maxLines = 1) },
-                        colors = kindColors(ChipKind.NORMAL, ChipDefaults.secondaryChipColors()),
-                        modifier = Modifier.fillMaxWidth(0.9f),
-                    )
-                }
             }
         }
     }
