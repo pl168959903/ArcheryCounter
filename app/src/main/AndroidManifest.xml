@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <uses-feature android:name="android.hardware.type.watch" />
+    <!-- v1.20：不再限定只能裝在手表。手表上照常使用；手機上進入「手機模式」，用來匯入與檢視記錄 -->
+    <uses-feature android:name="android.hardware.type.watch" android:required="false" />
 
     <!-- 侦测到放箭时震动提示 -->
     <uses-permission android:name="android.permission.VIBRATE" />

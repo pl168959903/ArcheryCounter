@@ -494,6 +494,15 @@ class AppSettings(private val prefs: SharedPreferences) {
         prefs.edit().putBoolean(KEY_AUTO_ENDS, v).apply()
     }
 
+    private val _phoneMode = MutableStateFlow(PhoneMode.valid(prefs.getInt(KEY_PHONE_MODE, PhoneMode.AUTO)))
+    /** 手機模式（v1.20）：0 自動（不是手表就進手機模式）、1 手機模式、2 手錶模式。 預設：自動 */
+    val phoneMode: StateFlow<Int> = _phoneMode.asStateFlow()
+    fun setPhoneMode(v: Int) {
+        val value = PhoneMode.valid(v)
+        _phoneMode.value = value
+        prefs.edit().putInt(KEY_PHONE_MODE, value).apply()
+    }
+
     private val _historyFilter = MutableStateFlow(prefs.getBoolean(KEY_HISTORY_FILTER, true))
     /** 記錄頁篩選（v1.19）。 預設：開 */
     val historyFilter: StateFlow<Boolean> = _historyFilter.asStateFlow()
@@ -1026,6 +1035,7 @@ class AppSettings(private val prefs: SharedPreferences) {
         setShareZip(true)
         setHistoryFilter(true)
         setFlagSuspicious(true)
+        setPhoneMode(PhoneMode.AUTO)
         setAutoEnds(true)
         setRecordMeasuredHz(true)
         setFlagFastShots(true)
@@ -1120,6 +1130,7 @@ class AppSettings(private val prefs: SharedPreferences) {
         private const val KEY_SHARE_ZIP = "share_zip"
         private const val KEY_HISTORY_FILTER = "history_filter"
         private const val KEY_FLAG_SUSPICIOUS = "flag_suspicious"
+        private const val KEY_PHONE_MODE = "phone_mode"
         private const val KEY_AUTO_ENDS = "auto_ends"
         private const val KEY_RECORD_MEASURED_HZ = "record_measured_hz"
         private const val KEY_FLAG_FAST_SHOTS = "flag_fast_shots"

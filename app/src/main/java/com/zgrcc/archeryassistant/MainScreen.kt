@@ -31,7 +31,10 @@ fun MainScreen(
     onOpenCompetition: () -> Unit,
     onOpenDisc: () -> Unit,
     onOpenUpdate: () -> Unit = {},
+    onOpenImport: () -> Unit = {},
 ) {
+    val phoneModeSetting by vm.settings.phoneMode.collectAsStateWithLifecycle()
+    val phone = PhoneMode.resolve(phoneModeSetting, vm.isWatch)
     val count by vm.count.collectAsStateWithLifecycle()
     val running by vm.running.collectAsStateWithLifecycle()
     val threshold by vm.threshold.collectAsStateWithLifecycle()
@@ -125,7 +128,18 @@ fun MainScreen(
             item { Note(if (batteryPercent >= 0) tr("電量低（$batteryPercent%），請盡快充電", "Battery low ($batteryPercent%); please charge soon") else tr("電量低，請盡快充電", "Battery low; please charge soon")) }
         }
 
-        item {
+        if (phone) {
+            item { Note(tr("手機模式：偵測放箭請在手錶上進行，這裡用來匯入與檢視記錄", "Phone mode: detect releases on the watch; use this device to import and view records")) }
+            item {
+                Chip(
+                    onClick = onOpenImport,
+                    label = { Text(tr("從手錶匯入", "Import from watch") + navMark(), maxLines = 1) },
+                    secondaryLabel = { Text(tr("需同一個 Wi-Fi", "Same Wi-Fi required"), maxLines = 1) },
+                    colors = kindColors(ChipKind.GO, ChipDefaults.primaryChipColors()),
+                    modifier = Modifier.fillMaxWidth(0.85f),
+                )
+            }
+        } else item {
             if (!vm.sensorAvailable) {
                 Text(tr("此手錶沒有加速度感測器", "This watch has no accelerometer"), textAlign = TextAlign.Center)
             } else {
@@ -140,7 +154,7 @@ fun MainScreen(
         }
 
         // 比賽模式：沒在偵測時開始比賽；比賽進行中回到比賽畫面
-        if (!calibrating && vm.sensorAvailable) {
+        if (!phone && !calibrating && vm.sensorAvailable) {
             if (running && comp != null) {
                 item {
                     Chip(
@@ -191,7 +205,7 @@ fun MainScreen(
         }
 
         // 歸零只在暫停時出現，避免射箭時誤觸
-        if (!running) {
+        if (!running && !phone) {
             item {
                 Chip(
                     onClick = { vm.resetCount() },

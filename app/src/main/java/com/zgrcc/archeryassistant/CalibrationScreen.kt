@@ -70,7 +70,7 @@ fun CalibrationScreen(vm: CounterViewModel) {
                         },
                         label = { Text(tr("開始校準", "Start calibration"), maxLines = 1) },
                         colors = kindColors(ChipKind.GO, ChipDefaults.primaryChipColors()),
-                        enabled = vm.sensorAvailable,
+                        enabled = vm.sensorAvailable && !vm.inPhoneMode(),
                         modifier = Modifier.fillMaxWidth(0.9f),
                     )
                 }

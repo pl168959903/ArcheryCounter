@@ -167,6 +167,7 @@ private fun AppNav(vm: CounterViewModel, launch: String?, onLaunchHandled: () ->
                 onOpenCompetition = { nav.navigate(ROUTE_COMPETITION) },
                 onOpenDisc = { nav.navigate(ROUTE_DISC) },
                 onOpenUpdate = { nav.navigate(SettingsCategories.route(SettingsCategories.ABOUT)) },
+                onOpenImport = { nav.navigate(SettingsCategories.route(SettingsCategories.CONNECT)) },
             )
         }
         composable(ROUTE_DISC) {

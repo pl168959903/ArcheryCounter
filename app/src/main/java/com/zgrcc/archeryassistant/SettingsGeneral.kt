@@ -37,6 +37,7 @@ fun SettingsGeneral(vm: CounterViewModel) {
     val dimLevel by s.dimLevel.collectAsStateWithLifecycle()
     val language by s.language.collectAsStateWithLifecycle()
     val tileLaunch by s.tileLaunch.collectAsStateWithLifecycle()
+    val phoneMode by s.phoneMode.collectAsStateWithLifecycle()
 
     ScalingLazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -54,6 +55,17 @@ fun SettingsGeneral(vm: CounterViewModel) {
             )
         }
         item { Note(tr("點一下切換：\n• 自動（跟隨系統，中文系統用中文，其他用英文）\n• 繁體中文\n• English\n切換後回到主畫面", "Tap to switch:\n• Auto (follow the system: Chinese on Chinese systems, English otherwise)\n• Traditional Chinese\n• English\nReturns to the main screen")) }
+
+        item {
+            Chip(
+                onClick = { s.setPhoneMode(PhoneMode.next(phoneMode)) },
+                label = { Text(tr("裝置模式", "Device mode"), maxLines = 1) },
+                secondaryLabel = { Text(PhoneMode.label(phoneMode) + if (PhoneMode.resolve(phoneMode, vm.isWatch)) tr("（目前：手機）", " (now: phone)") else tr("（目前：手錶）", " (now: watch)"), maxLines = 2) },
+                colors = kindColors(ChipKind.NORMAL, ChipDefaults.secondaryChipColors()),
+                modifier = Modifier.fillMaxWidth(0.9f),
+            )
+        }
+        item { Note(tr("點一下切換：\n• 自動（不是手錶就進手機模式）\n• 手機模式\n• 手錶模式\n手機模式隱藏開始偵測、比賽、校準，主畫面多「從手錶匯入」，用來匯入與檢視記錄", "Tap to switch:\n• Auto (phone mode when this is not a watch)\n• Phone mode\n• Watch mode\nPhone mode hides start detection, match and calibration and adds Import from watch to the main screen, for importing and viewing records")) }
 
         item { ToggleChip(tr("偵測中觸控鎖", "Touch lock while detecting"), touchLock) { s.setTouchLock(it) } }
         item { Note(tr("偵測中主畫面出現「鎖定觸控」，鎖定時只顯示箭數，長按約 2 秒解鎖。", "A Lock touch button appears on the main screen while detecting. When locked only the arrow count shows; hold about 2 s to unlock.")) }

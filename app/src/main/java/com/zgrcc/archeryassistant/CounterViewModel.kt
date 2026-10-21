@@ -52,6 +52,12 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
     private val accelSensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
     private val gyroSensor: Sensor? = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
     val sensorAvailable: Boolean = linearSensor != null || accelSensor != null
+
+    /** 系統回報這是不是手表（v1.20）。 */
+    val isWatch: Boolean = appContext.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_WATCH)
+
+    /** 目前是不是手機模式：手機上不能開始偵測、比賽或校準。 */
+    fun inPhoneMode(): Boolean = PhoneMode.resolve(settings.phoneMode.value, isWatch)
     val gyroAvailable: Boolean = gyroSensor != null
 
     private val vibrator: Vibrator? =
@@ -395,7 +401,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
     fun startCalibration() = begin(calibration = true)
 
     private fun begin(calibration: Boolean, comp: CompMeta? = null) {
-        if (_running.value) return
+        if (_running.value || inPhoneMode()) return
         val sensor = linearSensor ?: accelSensor ?: return
 
         val hz = SamplingRate.valid(settings.samplingHz.value)
