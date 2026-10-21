@@ -193,8 +193,8 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
     private val pendingFollow = ArrayList<PendingFollow>()
 
     // 没有线性加速度传感器时，用低通滤波估算重力
-    private val gravity = FloatArray(3)
-    private var gravityReady = false
+    private val gravityFilter = GravityFilter()
+    private val gravityOut = FloatArray(3)
 
     // 最近一笔角速度 (°/s)，写原始数据时和加速度配对
     private var lastGx = 0f
@@ -420,7 +420,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         round = null
         competing = false
         synchronized(pendingFollow) { pendingFollow.clear() }
-        gravityReady = false
+        gravityFilter.reset()
         lastGx = 0f
         lastGy = 0f
         lastGz = 0f
@@ -573,11 +573,11 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         val fatigueNow = endFull && checkFatigue()
 
         // 震動優先順序：達標 > 疲勞提醒 > 滿一趟 > 一般放箭（只震最重要的那一種，不疊加）
-        when {
-            goalReached -> buzzEnd(EndVibration.LONG)
-            fatigueNow -> buzzPattern(FatigueRule.PATTERN)
-            endFull && settings.endVibration.value != EndVibration.OFF -> buzzEnd(settings.endVibration.value)
-            else -> buzzShot()
+        when (ShotBuzzRule.pick(goalReached, fatigueNow, endFull, settings.endVibration.value)) {
+            ShotBuzz.GOAL -> buzzEnd(EndVibration.LONG)
+            ShotBuzz.FATIGUE -> buzzPattern(FatigueRule.PATTERN)
+            ShotBuzz.END -> buzzEnd(settings.endVibration.value)
+            ShotBuzz.SHOT -> buzzShot()
         }
     }
 
@@ -1097,16 +1097,10 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
             ay = v[1]
             az = v[2]
         } else {
-            if (!gravityReady) {
-                for (i in 0..2) gravity[i] = v[i]
-                gravityReady = true
-            }
-            for (i in 0..2) {
-                gravity[i] = GRAVITY_ALPHA * gravity[i] + (1 - GRAVITY_ALPHA) * v[i]
-            }
-            ax = v[0] - gravity[0]
-            ay = v[1] - gravity[1]
-            az = v[2] - gravity[2]
+            gravityFilter.remove(v[0], v[1], v[2], gravityOut)
+            ax = gravityOut[0]
+            ay = gravityOut[1]
+            az = gravityOut[2]
         }
 
         tracker.addAccel(ax, ay, az, timeMs)
@@ -1152,7 +1146,6 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         const val KEY_THRESHOLD = "threshold"
         const val COMP_TICK_MS = 200L
         const val COMP_DONE_DELAY_MS = 1500L
-        const val GRAVITY_ALPHA = 0.9f
         const val MIN_THRESHOLD = 6f
         const val MAX_THRESHOLD = 40f
         const val RAD_TO_DEG = 57.29578f
