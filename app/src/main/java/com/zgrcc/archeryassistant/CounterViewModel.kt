@@ -844,6 +844,10 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
 
     /** 匯出網頁報告 report.html（v1.16）：頁首含作者、版本、簽章與 App 圖示。 */
     suspend fun exportReport(): Boolean = withContext(Dispatchers.IO) {
+        store.exportReport { ReportBuilder.build(it, reportMeta()) }
+    }
+
+    private fun reportMeta(): ReportMeta {
         val icon = try {
             appContext.resources.openRawResource(R.raw.report_icon).use {
                 android.util.Base64.encodeToString(it.readBytes(), android.util.Base64.NO_WRAP)
@@ -851,7 +855,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         } catch (_: Exception) {
             null
         }
-        val meta = ReportMeta(
+        return ReportMeta(
             author = AppInfo.AUTHOR,
             versionLabel = versionLabel,
             signature = signatureShort,
@@ -860,8 +864,52 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
             iconBase64 = icon,
             arrowsPerEnd = settings.arrowsPerEnd.value,
         )
-        store.exportReport { ReportBuilder.build(it, meta) }
     }
+
+    // ── 區網分享（v1.16.1）──
+    private var shareServer: ShareServer? = null
+    private var shareTimer: kotlinx.coroutines.Job? = null
+    private val _share = MutableStateFlow(ShareState())
+    val share: StateFlow<ShareState> = _share.asStateFlow()
+
+    /** 開始分享：產生 PIN、啟動伺服器，10 分鐘後自動關閉。 */
+    fun startShare() {
+        if (_share.value.running) return
+        val ip = ShareServer.localIp()
+        if (ip == null) {
+            _share.value = ShareState(error = ShareError.NO_WIFI)
+            return
+        }
+        val pin = String.format("%04d", java.security.SecureRandom().nextInt(10000))
+        val router = ShareRouter(
+            pin = pin,
+            listFiles = { store.shareNames() },
+            lookup = { store.shareFile(it) },
+            buildReport = { ReportBuilder.build(store.allSessions(), reportMeta()) },
+            zh = !I18n.english,
+        )
+        val server = ShareServer(router)
+        if (!server.start()) {
+            _share.value = ShareState(error = ShareError.PORT)
+            return
+        }
+        shareServer = server
+        _share.value = ShareState(running = true, url = "http://$ip:${ShareServer.PORT}", pin = pin)
+        shareTimer?.cancel()
+        shareTimer = viewModelScope.launch {
+            kotlinx.coroutines.delay(ShareState.AUTO_STOP_MS)
+            stopShare()
+        }
+    }
+
+    fun stopShare() {
+        shareTimer?.cancel()
+        shareTimer = null
+        shareServer?.stop()
+        shareServer = null
+        _share.value = ShareState()
+    }
+
 
     /** 即時波形：最近幾秒的加速度合力大小（m/s²），由舊到新。 */
     fun liveSnapshot(): FloatArray = live.snapshot()
@@ -979,6 +1027,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
 
     override fun onCleared() {
+        shareServer?.stop()
         sensorManager.unregisterListener(this)
         battery.stop()
         if (_running.value) {

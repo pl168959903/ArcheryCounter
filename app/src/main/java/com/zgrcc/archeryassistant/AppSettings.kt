@@ -430,6 +430,14 @@ class AppSettings(private val prefs: SharedPreferences) {
         prefs.edit().putBoolean(KEY_REPORT_EXPORT, v).apply()
     }
 
+    private val _lanShare = MutableStateFlow(prefs.getBoolean(KEY_LAN_SHARE, false))
+    /** 資料頁提供「區網分享」（手機瀏覽器下載報告與資料）。預設：關 */
+    val lanShare: StateFlow<Boolean> = _lanShare.asStateFlow()
+    fun setLanShare(v: Boolean) {
+        _lanShare.value = v
+        prefs.edit().putBoolean(KEY_LAN_SHARE, v).apply()
+    }
+
     private val _calAdvice = MutableStateFlow(prefs.getBoolean(KEY_CAL_ADVICE, true))
     /** 校準錄製完成後與校準記錄詳情提供「分析校準資料」。預設：開 */
     val calAdvice: StateFlow<Boolean> = _calAdvice.asStateFlow()
@@ -803,6 +811,7 @@ class AppSettings(private val prefs: SharedPreferences) {
         setCalAdvice(true)
         setAdvancedDetect(true)
         setReportExport(true)
+        setLanShare(false)
         setDiscFullscreen(true)
         setRecordTrace(false)
         setTraceGyro(false)
@@ -869,6 +878,7 @@ class AppSettings(private val prefs: SharedPreferences) {
         private const val KEY_CAL_ADVICE = "cal_advice"
         private const val KEY_ADVANCED_DETECT = "advanced_detect"
         private const val KEY_REPORT_EXPORT = "report_export"
+        private const val KEY_LAN_SHARE = "lan_share"
         private const val KEY_UPDATE_LAST = "update_last_check"
         private const val KEY_UPDATE_SKIPPED = "update_skipped"
         private const val KEY_DISC_FULLSCREEN = "disc_fullscreen"

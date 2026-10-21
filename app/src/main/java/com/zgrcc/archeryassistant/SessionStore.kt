@@ -169,6 +169,23 @@ class SessionStore(baseDir: File) {
         }
     }
 
+    /** 區網分享可下載的檔名：記錄 JSON、原始資料 CSV、匯出的 summary／shots CSV（report.html 另外即時產生）。 */
+    fun shareNames(): List<String> = onIo(emptyList()) { namesNow() }
+
+    private fun namesNow(): List<String> =
+        dir.listFiles().orEmpty().filter { it.isFile && (it.name.endsWith(".json") || isRawCsv(it) || it.name in EXPORT_FILES - ReportBuilder.FILE_NAME) }
+            .map { it.name }.sorted()
+
+    /** 取分享用檔案；名稱必須是 [shareNames] 裡的，否則回傳 null。 */
+    fun shareFile(name: String): ShareFile? = onIo(null) {
+        if (name !in namesNow()) return@onIo null
+        val f = File(dir, name)
+        if (f.isFile) ShareFile(f.length()) { f.inputStream() } else null
+    }
+
+    /** 全部記錄（最新在前），給網頁報告用。 */
+    fun allSessions(): List<Session> = listSessions()
+
     /** 删除全部记录，[keepId]（进行中的那一笔）除外。 */
     fun deleteAll(keepId: String?) = onIo(Unit) {
         val files = dir.listFiles { f -> f.isFile && f.name.endsWith(".json") }
