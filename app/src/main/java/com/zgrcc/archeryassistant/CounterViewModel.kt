@@ -911,57 +911,125 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         get() = prefs.getString("import_addr", "") ?: ""
         set(v) { prefs.edit().putString("import_addr", v.take(40)).apply() }
 
-    private var pendingBase: String? = null
-    private var pendingPin: String = ""
-    private var pendingName: String = ""
+    // ── 區域網裝置頁（v1.18.1）──
+    private val _link = MutableStateFlow(LinkDevice())
+    val link: StateFlow<LinkDevice> = _link.asStateFlow()
 
-    /** 按「開始匯入」：預覽開著就先預覽（等確認），否則直接匯入。 */
-    fun startImport(address: String, pin: String) {
-        if (_import.value.running) return
+    private val appUserAgent: String
+        get() = AgentLabel.userAgent(versionName, android.os.Build.MODEL ?: "")
+
+    /** 這個位址以前通過 PIN 後，對方發給本 App 的信任憑證（沒有就空字串）。 */
+    private fun tokenFor(base: String): String =
+        (prefs.getString("app_tokens", "") ?: "").lines().map { it.split('\t') }
+            .firstOrNull { it.size == 2 && it[0] == base }?.get(1) ?: ""
+
+    private fun saveToken(base: String, token: String) {
+        if (token.isEmpty()) return
+        val m = LinkedHashMap<String, String>()
+        for (line in (prefs.getString("app_tokens", "") ?: "").lines()) {
+            val p = line.split('\t')
+            if (p.size == 2) m[p[0]] = p[1]
+        }
+        m[base] = token
+        val text = m.entries.toList().takeLast(10).joinToString("\n") { it.key + "\t" + it.value }
+        prefs.edit().putString("app_tokens", text).apply()
+    }
+
+    private fun sourceFor(base: String, pin: String) = HttpSource(base, pin, appUserAgent, tokenFor(base))
+
+    /** 從自動尋找的清單點進某台裝置。 */
+    fun openLinkDevice(address: String, name: String) {
+        _import.value = ImportUi()
+        _link.value = LinkDevice(address = address, name = name)
+    }
+
+    /** 找不到時手動輸入位址。 */
+    fun openManualDevice() {
+        _import.value = ImportUi()
+        _link.value = LinkDevice(address = lastImportAddress, manual = true)
+    }
+
+    /** 驗證 PIN（或已有的信任憑證）。成功後這一頁才出現「開啟網頁報告」和「開始匯入」。 */
+    fun verifyLink(address: String, pin: String) {
+        val cur = _link.value
+        if (cur.busy) return
         val base = ImportAddress.parse(address)
         if (base == null) {
-            _import.value = ImportUi(result = ImportResult(error = ImportError.BAD_ADDRESS))
+            _link.value = cur.copy(address = address, error = ImportError.BAD_ADDRESS)
             return
         }
         lastImportAddress = address.trim()
-        pendingBase = base
-        pendingPin = pin.trim()
-        pendingName = ""
+        _link.value = cur.copy(address = address.trim(), busy = true, error = null)
+        viewModelScope.launch(Dispatchers.IO) {
+            val source = sourceFor(base, pin.trim())
+            try {
+                val name = source.deviceName()
+                saveToken(base, source.token)
+                _link.value = LinkDevice(
+                    address = address.trim(), name = name.ifBlank { cur.name }.ifBlank { base.removePrefix("http://") },
+                    pin = pin.trim(), verified = true, manual = cur.manual,
+                )
+            } catch (e: ImportException) {
+                _link.value = cur.copy(address = address.trim(), busy = false, error = e.error)
+            } catch (e: Exception) {
+                _link.value = cur.copy(address = address.trim(), busy = false, error = ImportError.UNREACHABLE)
+            }
+        }
+    }
+
+    fun leaveLinkDevice() {
+        _link.value = LinkDevice()
+        if (!_import.value.running) _import.value = ImportUi()
+    }
+
+    /** 對方報告的網址與信任憑證（有憑證就不帶 PIN）。 */
+    fun remoteReport(): Pair<String, String?>? {
+        val l = _link.value
+        val base = ImportAddress.parse(l.address) ?: return null
+        val token = tokenFor(base)
+        return if (token.isNotEmpty()) Pair("$base/${ReportBuilder.FILE_NAME}", token)
+        else Pair("$base/${ReportBuilder.FILE_NAME}?pin=${l.pin}", null)
+    }
+
+    /** 按「開始匯入」：預覽開著就先預覽（等確認），否則直接匯入。 */
+    fun startImport() {
+        val l = _link.value
+        if (!l.verified || _import.value.running) return
+        val base = ImportAddress.parse(l.address) ?: run {
+            _import.value = ImportUi(result = ImportResult(error = ImportError.BAD_ADDRESS))
+            return
+        }
         if (!settings.importPreview.value) {
-            runImport()
+            runImport(base, l.pin, l.name)
             return
         }
         _import.value = ImportUi(running = true)
         viewModelScope.launch(Dispatchers.IO) {
-            val p = SessionImporter(store, HttpSource(base, pendingPin)).preview(settings.importRaw.value)
-            pendingName = p.deviceName
+            val source = sourceFor(base, l.pin)
+            val p = SessionImporter(store, source).preview(settings.importRaw.value)
+            saveToken(base, source.token)
             _import.value = if (p.error != null) ImportUi(result = ImportResult(error = p.error)) else ImportUi(preview = p)
         }
     }
 
     /** 預覽後按「確認匯入」。 */
     fun confirmImport() {
-        if (_import.value.preview != null && !_import.value.running) runImport()
+        val l = _link.value
+        val base = ImportAddress.parse(l.address) ?: return
+        if (_import.value.preview != null && !_import.value.running) runImport(base, l.pin, l.name)
     }
 
-    private fun runImport() {
-        val base = pendingBase ?: return
+    private fun runImport(base: String, pin: String, name: String) {
         _import.value = ImportUi(running = true)
         viewModelScope.launch(Dispatchers.IO) {
-            val source = HttpSource(base, pendingPin)
+            val source = sourceFor(base, pin)
             val importer = SessionImporter(store, source)
             val r = importer.run(settings.importOverwrite.value, settings.importRaw.value, settings.importSettings.value) { d, t ->
                 _import.value = ImportUi(running = true, done = d, total = t)
             }
+            saveToken(base, source.token)
             if (r.error == null && settings.importMark.value && r.ids.isNotEmpty()) {
-                val label = pendingName.ifBlank {
-                    try {
-                        source.deviceName()
-                    } catch (e: Exception) {
-                        ""
-                    }
-                }.ifBlank { base.removePrefix("http://") }
-                ImportMarks(prefs).put(r.ids, label)
+                ImportMarks(prefs).put(r.ids, name.ifBlank { base.removePrefix("http://") })
             }
             _import.value = ImportUi(result = r)
             publishSessions()

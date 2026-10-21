@@ -173,18 +173,32 @@ class SessionImporter(private val store: SessionStore, private val source: Impor
 class ImportException(val error: ImportError) : IOException(error.name)
 
 /** 透過 HTTP 從另一台裝置的區網分享抓資料。[base] 來自 [ImportAddress.parse]。 */
-class HttpSource(private val base: String, private val pin: String) : ImportSource {
+class HttpSource(
+    private val base: String,
+    private val pin: String,
+    private val userAgent: String = "",
+    token: String = "",
+) : ImportSource {
+    /** 目前使用的信任憑證（開始時帶入的，或對方這次發的）。 */
+    var token: String = token
+        private set
     private fun connect(path: String): HttpURLConnection {
         val c = URL("$base$path?pin=$pin").openConnection() as HttpURLConnection
         c.connectTimeout = 6000
         c.readTimeout = 15000
         c.requestMethod = "GET"
+        if (userAgent.isNotEmpty()) c.setRequestProperty("User-Agent", userAgent)
+        if (token.isNotEmpty()) c.setRequestProperty("Cookie", "${ShareRouter.COOKIE}=$token")
         return c
     }
 
     private fun check(c: HttpURLConnection) {
         when (c.responseCode) {
-            200 -> Unit
+            200 -> {
+                // 對方信任這支 App 時會發憑證，之後免輸入 PIN
+                c.headerFields["Set-Cookie"]?.firstNotNullOfOrNull { ShareRouter.cookieValue(it.substringBefore(';'), ShareRouter.COOKIE) }
+                    ?.let { token = it }
+            }
             403 -> throw ImportException(ImportError.WRONG_PIN)
             429 -> throw ImportException(ImportError.LOCKED)
             else -> throw ImportException(ImportError.SERVER)
@@ -297,3 +311,15 @@ class ImportMarks(private val prefs: android.content.SharedPreferences) {
         const val KEY = "import_origins"
     }
 }
+
+/** 區域網裝置頁的狀態（v1.18.1）：點進某台裝置、輸入 PIN、驗證通過後才能看報告與匯入。 */
+data class LinkDevice(
+    val address: String = "",
+    val name: String = "",
+    val pin: String = "",
+    val verified: Boolean = false,
+    /** 手動輸入位址（自動尋找找不到時）。 */
+    val manual: Boolean = false,
+    val busy: Boolean = false,
+    val error: ImportError? = null,
+)

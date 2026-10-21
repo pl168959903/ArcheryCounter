@@ -164,13 +164,11 @@ class ImporterTest {
     @Test
     fun v17SettingsDefaults() {
         val s = AppSettings(FakePrefs())
-        assertFalse(s.importEnabled.value)
         assertFalse(s.importOverwrite.value)
         assertFalse(s.importRaw.value)
         assertTrue(s.reportView.value)
-        s.setImportEnabled(true); s.setImportOverwrite(true); s.setImportRaw(true); s.setReportView(false)
+        s.setImportOverwrite(true); s.setImportRaw(true); s.setReportView(false)
         s.resetDefaults()
-        assertFalse(s.importEnabled.value)
         assertFalse(s.importOverwrite.value)
         assertFalse(s.importRaw.value)
         assertTrue(s.reportView.value)

@@ -438,8 +438,8 @@ class AppSettings(private val prefs: SharedPreferences) {
         prefs.edit().putBoolean(KEY_LAN_SHARE, v).apply()
     }
 
-    private val _shareRemember = MutableStateFlow(prefs.getBoolean(KEY_SHARE_REMEMBER, false))
-    /** 區網分享的網頁提供「記住這個裝置」（之後免輸入 PIN）。預設：關 */
+    private val _shareRemember = MutableStateFlow(prefs.getBoolean(KEY_SHARE_REMEMBER, true))
+    /** 區網分享的網頁提供「記住這個裝置」（之後免輸入 PIN）；別台的 App 通過 PIN 後也會被記住。預設：開 */
     val shareRemember: StateFlow<Boolean> = _shareRemember.asStateFlow()
     fun setShareRemember(v: Boolean) {
         _shareRemember.value = v
@@ -460,14 +460,6 @@ class AppSettings(private val prefs: SharedPreferences) {
     fun setShareAlert(v: Boolean) {
         _shareAlert.value = v
         prefs.edit().putBoolean(KEY_SHARE_ALERT, v).apply()
-    }
-
-    private val _importEnabled = MutableStateFlow(prefs.getBoolean(KEY_IMPORT_ENABLED, false))
-    /** 「連線」頁提供「從別台匯入」。 預設：關 */
-    val importEnabled: StateFlow<Boolean> = _importEnabled.asStateFlow()
-    fun setImportEnabled(v: Boolean) {
-        _importEnabled.value = v
-        prefs.edit().putBoolean(KEY_IMPORT_ENABLED, v).apply()
     }
 
     private val _importOverwrite = MutableStateFlow(prefs.getBoolean(KEY_IMPORT_OVERWRITE, false))
@@ -502,8 +494,8 @@ class AppSettings(private val prefs: SharedPreferences) {
         prefs.edit().putBoolean(KEY_SHARE_QR, v).apply()
     }
 
-    private val _importDiscover = MutableStateFlow(prefs.getBoolean(KEY_IMPORT_DISCOVER, false))
-    /** 區網自動尋找：分享時讓別台找得到，匯入時列出找到的裝置。 預設：關 */
+    private val _importDiscover = MutableStateFlow(prefs.getBoolean(KEY_IMPORT_DISCOVER, true))
+    /** 區網自動尋找：分享時讓別台找得到，連線頁列出找到的裝置。 預設：開 */
     val importDiscover: StateFlow<Boolean> = _importDiscover.asStateFlow()
     fun setImportDiscover(v: Boolean) {
         _importDiscover.value = v
@@ -932,15 +924,14 @@ class AppSettings(private val prefs: SharedPreferences) {
         setAdvancedDetect(true)
         setReportExport(true)
         setLanShare(false)
-        setShareRemember(false)
+        setShareRemember(true)
         setShareLog(true)
         setShareAlert(false)
-        setImportEnabled(false)
         setImportOverwrite(false)
         setImportRaw(false)
         setReportView(true)
         setShareQr(true)
-        setImportDiscover(false)
+        setImportDiscover(true)
         setImportMark(true)
         setImportPreview(true)
         setImportSettings(false)
@@ -1018,7 +1009,6 @@ class AppSettings(private val prefs: SharedPreferences) {
         private const val KEY_SHARE_REMEMBER = "share_remember"
         private const val KEY_SHARE_LOG = "share_log"
         private const val KEY_SHARE_ALERT = "share_alert"
-        private const val KEY_IMPORT_ENABLED = "import_enabled"
         private const val KEY_IMPORT_OVERWRITE = "import_overwrite"
         private const val KEY_IMPORT_RAW = "import_raw"
         private const val KEY_REPORT_VIEW = "report_view"

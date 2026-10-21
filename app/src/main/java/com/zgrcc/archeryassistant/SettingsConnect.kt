@@ -30,41 +30,27 @@ import kotlinx.coroutines.launch
  * 離開這一頁就停止分享；分享中螢幕保持亮著。
  */
 @Composable
-fun SettingsConnect(vm: CounterViewModel, onOpenReport: () -> Unit = {}) {
+fun SettingsConnect(vm: CounterViewModel, onOpenOptions: () -> Unit = {}, onOpenDevice: () -> Unit = {}) {
     val s = vm.settings
     val lanShare by s.lanShare.collectAsStateWithLifecycle()
-    val rememberOn by s.shareRemember.collectAsStateWithLifecycle()
     val logOn by s.shareLog.collectAsStateWithLifecycle()
-    val alert by s.shareAlert.collectAsStateWithLifecycle()
     val share by vm.share.collectAsStateWithLifecycle()
     val devices by vm.trustedDevices.collectAsStateWithLifecycle()
     val events by vm.shareEvents.collectAsStateWithLifecycle()
-    val importOn by s.importEnabled.collectAsStateWithLifecycle()
-    val importOverwrite by s.importOverwrite.collectAsStateWithLifecycle()
-    val importRaw by s.importRaw.collectAsStateWithLifecycle()
-    val reportView by s.reportView.collectAsStateWithLifecycle()
-    val importUi by vm.importUi.collectAsStateWithLifecycle()
-    var addr by remember { mutableStateOf(vm.lastImportAddress) }
-    var pinDraft by remember { mutableStateOf("") }
-    val shareQr by s.shareQr.collectAsStateWithLifecycle()
     val discover by s.importDiscover.collectAsStateWithLifecycle()
-    val importMark by s.importMark.collectAsStateWithLifecycle()
-    val importPreview by s.importPreview.collectAsStateWithLifecycle()
-    val importSettings by s.importSettings.collectAsStateWithLifecycle()
+    val shareQr by s.shareQr.collectAsStateWithLifecycle()
     val backupOn by s.settingsBackup.collectAsStateWithLifecycle()
-    val reportTag by s.reportTag.collectAsStateWithLifecycle()
-    val sessionsList by vm.sessions.collectAsStateWithLifecycle()
     val found by vm.foundDevices.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
-    val allTags = remember(sessionsList) { sessionsList.flatMap { it.tags }.distinct().sorted() }
     var backupResult by remember { mutableStateOf<Boolean?>(null) }
     var backupCount by remember { mutableStateOf<Int?>(null) }
     var backupTick by remember { mutableStateOf(0) }
     var restoreConfirm by remember { mutableStateOf(false) }
     var restored by remember { mutableStateOf<Int?>(null) }
     LaunchedEffect(backupOn, backupTick) { backupCount = if (backupOn) vm.settingsBackupCount() else null }
-    LaunchedEffect(importOn, discover) {
-        if (importOn && discover) vm.startDiscovery()
+    LaunchedEffect(discover) {
+        vm.leaveLinkDevice()
+        if (discover) vm.startDiscovery()
     }
     DisposableEffect(Unit) { onDispose { vm.stopDiscovery() } }
     val view = LocalView.current
@@ -173,140 +159,50 @@ fun SettingsConnect(vm: CounterViewModel, onOpenReport: () -> Unit = {}) {
             }
         }
 
-        // ── 設定開關 ──
-        item { ToggleChip(tr("記住已信任的裝置", "Remember trusted devices"), rememberOn) { s.setShareRemember(it) } }
-        item { Note(tr("開啟後，網頁輸入 PIN 的頁面多一個「記住這個裝置」勾選框，勾選後該瀏覽器之後免輸入 PIN（憑證 1 年，最多 5 支裝置）。注意分享是普通 HTTP、沒有加密，同一個 Wi-Fi 的人理論上可能偷到憑證。預設關閉", "When on, the PIN page gets a Remember this device checkbox; that browser then skips the PIN (valid 1 year, up to 5 devices). Note sharing is plain HTTP without encryption, so someone on the same Wi-Fi could in theory capture the token. Off by default")) }
-        item { ToggleChip(tr("顯示 QR Code", "Show QR code"), shareQr) { s.setShareQr(it) } }
-        item { Note(tr("分享中在畫面上顯示 QR Code（含網址和 PIN），用手機相機掃描就能開，不必手打。預設開", "While sharing, shows a QR code (address and PIN) you can scan with the phone camera instead of typing. On by default")) }
-        item { ToggleChip(tr("區網自動尋找", "LAN auto-discovery"), discover) { s.setImportDiscover(it) } }
-        item { Note(tr("開啟後：分享時讓同一個 Wi-Fi 的另一台裝置找得到你；匯入時自動列出找到的裝置，點一下帶入位址。用系統的 mDNS，有些網路不支援，找不到時請改手動輸入。需要重新開始分享才生效。預設關閉", "When on: while sharing, other devices on the same Wi-Fi can find you; when importing, found devices are listed and one tap fills the address. Uses system mDNS, which some networks block; type the address manually if nothing is found. Restart sharing to apply. Off by default")) }
-        item { ToggleChip(tr("記錄連線", "Log connections"), logOn) { s.setShareLog(it) } }
-        item { Note(tr("開啟後記錄今天誰連進來（位址、瀏覽器、成功或失敗），只存在這支裝置上，過了午夜自動清掉，最多 100 筆。預設開", "When on, records who connected today (address, browser, success or failure), stored only on this device, cleared after midnight, up to 100 entries. On by default")) }
-        item { ToggleChip(tr("PIN 錯誤時震動", "Vibrate on wrong PIN"), alert) { s.setShareAlert(it) } }
-        item { Note(tr("有人輸入錯誤 PIN 時震動兩下提醒。預設關閉", "Two short vibrations when someone enters a wrong PIN. Off by default")) }
+        // ── 連結設定 ──
+        item {
+            Chip(
+                onClick = onOpenOptions,
+                label = { Text(tr("連結設定", "Link settings") + navMark(), maxLines = 1) },
+                secondaryLabel = { Text(tr("信任、QR、尋找、匯入選項…", "Trust, QR, discovery, import options…"), maxLines = 2) },
+                colors = kindColors(ChipKind.NAV, ChipDefaults.secondaryChipColors()),
+                modifier = Modifier.fillMaxWidth(0.9f),
+            )
+        }
 
-        // ── 網頁報告（在這台裝置上看）──
-        item { ToggleChip(tr("開啟網頁報告", "View web report"), reportView) { s.setReportView(it) } }
-        item { Note(tr("開啟後多一個按鈕，在這台裝置上直接看全部記錄的網頁報告（同 report.html，不含腳本）。手機上比手錶好讀。預設開", "When on, adds a button to view the web report of all records right on this device (same as report.html, no scripts). Easier to read on a phone than a watch. On by default")) }
-        if (reportView) {
+        // ── 區域網裝置 ──
+        item { SectionTitle(tr("區域網裝置", "LAN devices")) }
+        if (!discover) {
+            item { Note(tr("自動尋找已關閉。可以手動輸入位址，或到「連結設定」開啟區域網自動尋找", "Auto-discovery is off. Enter an address manually, or turn it on in Link settings")) }
+        } else if (found.isEmpty()) {
+            item { Note(tr("尋找中…（對方要開著「區網分享」。找不到時請手動輸入位址）", "Searching… (the other device must be sharing. Enter the address manually if nothing shows up)")) }
+        }
+        for (d in found) {
             item {
                 Chip(
-                    onClick = onOpenReport,
-                    label = { Text(tr("看網頁報告", "Open web report") + navMark(), maxLines = 1) },
+                    onClick = {
+                        vm.openLinkDevice(d.address, d.name)
+                        onOpenDevice()
+                    },
+                    label = { Text(d.name + navMark(), maxLines = 1) },
+                    secondaryLabel = { Text(d.address, maxLines = 1) },
                     colors = kindColors(ChipKind.NAV, ChipDefaults.secondaryChipColors()),
                     modifier = Modifier.fillMaxWidth(0.9f),
                 )
             }
         }
-
-        // ── 報告標籤篩選 ──
         item {
             Chip(
                 onClick = {
-                    val order = listOf("") + allTags
-                    val i = order.indexOf(reportTag)
-                    s.setReportTag(order[(i + 1) % order.size])
+                    vm.openManualDevice()
+                    onOpenDevice()
                 },
-                label = { Text(tr("報告篩選標籤", "Report tag filter"), maxLines = 1) },
-                secondaryLabel = { Text(if (reportTag.isBlank()) tr("全部記錄", "All records") else reportTag, maxLines = 1) },
-                colors = kindColors(ChipKind.NORMAL, ChipDefaults.secondaryChipColors()),
+                label = { Text(tr("手動輸入位址", "Enter address manually") + navMark(), maxLines = 1) },
+                colors = kindColors(ChipKind.NAV, ChipDefaults.secondaryChipColors()),
                 modifier = Modifier.fillMaxWidth(0.9f),
             )
         }
-        item { Note(tr("點一下依序切換：全部記錄 → 各個標籤（例如距離、弓種）。網頁報告、匯出報告和區網分享的報告都只包含選到標籤的記錄。沒有標籤時只有「全部」。預設全部", "Tap to cycle: all records, then each tag (e.g. distance, bow). The web report, the exported report and the shared report only include records with the chosen tag. Only All is available if there are no tags. Default: all")) }
-
-        // ── 從別台匯入 ──
-        item { ToggleChip(tr("從別台匯入", "Import from another device"), importOn) { s.setImportEnabled(it) } }
-        item { Note(tr("開啟後，輸入另一台裝置「區網分享」畫面上的位址和 PIN，把它的記錄抓到這台（例如手錶 → 手機）。只讀取對方，不會改動對方；位址限區網。本機已有的同一筆預設略過，不會覆蓋。預設關閉", "When on, enter the address and PIN shown on another device's LAN share screen to pull its records onto this one (e.g. watch to phone). Read-only on the other side; LAN addresses only. A record that already exists here is skipped by default. Off by default")) }
-        if (importOn) {
-            item { ToggleChip(tr("覆蓋已有記錄", "Overwrite existing"), importOverwrite) { s.setImportOverwrite(it) } }
-            item { Note(tr("開啟：對方的版本會蓋掉本機同一筆（你在這台改過的自評等會被取代）。預設關", "On: the other device's copy replaces the local one (edits like self-ratings made here are lost). Off by default")) }
-            item { ToggleChip(tr("匯入前預覽", "Preview before import"), importPreview) { s.setImportPreview(it) } }
-            item { Note(tr("開啟：按「開始匯入」先列出將新增和已有的筆數，確認後才寫入。預設開", "On: Start import first lists how many will be added or already exist, and writes only after you confirm. On by default")) }
-            item { ToggleChip(tr("標示匯入來源", "Mark import source"), importMark) { s.setImportMark(it) } }
-            item { Note(tr("開啟：記錄列表顯示「⇩ 來源裝置名稱」，報告也標示「來自 …」。不改記錄檔本身。預設開", "On: the record list shows ⇩ and the source device name, and the report says From …. Record files are not modified. On by default")) }
-            item { ToggleChip(tr("一併取得設定備份", "Also get settings backup"), importSettings) { s.setImportSettings(it) } }
-            item { Note(tr("開啟：若對方有設定備份檔，一併取回（不會自動套用，要到下方按「還原設定」）。預設關", "On: if the other device has a settings backup file, fetch it too (not applied automatically; tap Restore settings below). Off by default")) }
-            item { ToggleChip(tr("同時匯入原始資料", "Include raw data"), importRaw) { s.setImportRaw(it) } }
-            item { Note(tr("開啟：一併抓原始資料 CSV，檔案大、較慢。預設關", "On: also fetch raw data CSV; large and slower. Off by default")) }
-            if (discover) {
-                if (found.isEmpty()) {
-                    item { Note(tr("自動尋找中…（找不到時請手動輸入）", "Searching… (type the address if nothing shows up)")) }
-                }
-                for (d in found) {
-                    item {
-                        Chip(
-                            onClick = { addr = d.address },
-                            label = { Text(d.name, maxLines = 1) },
-                            secondaryLabel = { Text(d.address, maxLines = 1) },
-                            colors = kindColors(ChipKind.NORMAL, ChipDefaults.secondaryChipColors()),
-                            modifier = Modifier.fillMaxWidth(0.9f),
-                        )
-                    }
-                }
-            }
-            item { Note(tr("對方位址（例如 192.168.1.23:8080）", "Other device address (e.g. 192.168.1.23:8080)")) }
-            item {
-                BasicTextField(
-                    value = addr,
-                    onValueChange = { addr = it.take(40) },
-                    singleLine = true,
-                    textStyle = MaterialTheme.typography.body1.copy(color = MaterialTheme.colors.onBackground),
-                    cursorBrush = SolidColor(MaterialTheme.colors.primary),
-                    modifier = Modifier.fillMaxWidth(0.9f),
-                )
-            }
-            item { Note(tr("PIN（4 位數）", "PIN (4 digits)")) }
-            item {
-                BasicTextField(
-                    value = pinDraft,
-                    onValueChange = { pinDraft = it.filter { c -> c.isDigit() }.take(4) },
-                    singleLine = true,
-                    textStyle = MaterialTheme.typography.body1.copy(color = MaterialTheme.colors.onBackground),
-                    cursorBrush = SolidColor(MaterialTheme.colors.primary),
-                    modifier = Modifier.fillMaxWidth(0.9f),
-                )
-            }
-            item {
-                Chip(
-                    onClick = { vm.startImport(addr, pinDraft) },
-                    enabled = !importUi.running,
-                    label = { Text(if (importUi.running) tr("匯入中 ${importUi.done}/${importUi.total}", "Importing ${importUi.done}/${importUi.total}") else tr("開始匯入", "Start import"), maxLines = 1) },
-                    colors = kindColors(ChipKind.GO, ChipDefaults.primaryChipColors()),
-                    modifier = Modifier.fillMaxWidth(0.9f),
-                )
-            }
-            importUi.preview?.let { p ->
-                item { Note(ImportPreviewText.describe(p, importOverwrite)) }
-                item {
-                    Chip(
-                        onClick = { vm.confirmImport() },
-                        label = { Text(tr("確認匯入", "Confirm import"), maxLines = 1) },
-                        colors = kindColors(ChipKind.GO, ChipDefaults.primaryChipColors()),
-                        modifier = Modifier.fillMaxWidth(0.9f),
-                    )
-                }
-                item {
-                    Chip(
-                        onClick = { vm.clearImportResult() },
-                        label = { Text(tr("取消", "Cancel"), maxLines = 1) },
-                        colors = kindColors(ChipKind.NORMAL, ChipDefaults.secondaryChipColors()),
-                        modifier = Modifier.fillMaxWidth(0.9f),
-                    )
-                }
-            }
-            importUi.result?.let { r ->
-                item { Note(ImportText.describe(r)) }
-                item {
-                    Chip(
-                        onClick = { vm.clearImportResult() },
-                        label = { Text(tr("清除結果", "Clear result"), maxLines = 1) },
-                        colors = kindColors(ChipKind.NORMAL, ChipDefaults.secondaryChipColors()),
-                        modifier = Modifier.fillMaxWidth(0.9f),
-                    )
-                }
-            }
-        }
+        item { Note(tr("點進裝置後輸入對方畫面上的 PIN，就能看對方的網頁報告或把資料匯入這支裝置", "Open a device and enter the PIN shown on it to view its web report or import its data here")) }
 
         // ── 設定備份與還原 ──
         item { ToggleChip(tr("設定備份與還原", "Settings backup and restore"), backupOn) { s.setSettingsBackup(it) } }

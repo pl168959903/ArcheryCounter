@@ -206,12 +206,12 @@ class ShareConnectTest {
     @Test
     fun settingsDefaultsAndReset() {
         val s = AppSettings(FakePrefs())
-        assertFalse(s.shareRemember.value)
+        assertTrue(s.shareRemember.value)
         assertTrue(s.shareLog.value)
         assertFalse(s.shareAlert.value)
-        s.setShareRemember(true); s.setShareLog(false); s.setShareAlert(true)
+        s.setShareRemember(false); s.setShareLog(false); s.setShareAlert(true)
         s.resetDefaults()
-        assertFalse(s.shareRemember.value)
+        assertTrue(s.shareRemember.value)
         assertTrue(s.shareLog.value)
         assertFalse(s.shareAlert.value)
     }

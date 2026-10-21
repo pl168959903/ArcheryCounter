@@ -33,8 +33,19 @@ data class ShareEvent(
 
 /** 瀏覽器自報資訊 → 簡短描述，例如「Android · Chrome」。純字串處理。 */
 object AgentLabel {
+    /** 本 App 的匯入連線自報的 User-Agent 開頭：`ArcheryAssistant/1.18.1 (Pixel 8)`。 */
+    const val APP_PREFIX = "ArcheryAssistant/"
+
+    fun isApp(ua: String) = ua.startsWith(APP_PREFIX)
+
+    fun userAgent(version: String, model: String) = "$APP_PREFIX${version.take(20)} (${model.replace(')', ' ').take(30)})"
+
     fun of(ua: String): String {
         if (ua.isBlank()) return "?"
+        if (isApp(ua)) {
+            val model = ua.substringAfter('(', "").substringBeforeLast(')', "").trim()
+            return if (model.isEmpty()) "App" else "App · $model"
+        }
         val os = when {
             ua.contains("iPhone") || ua.contains("iPad") -> "iOS"
             ua.contains("Android") -> "Android"
@@ -146,7 +157,9 @@ class ShareData(private val prefs: SharedPreferences, private val now: () -> Lon
         val t = now()
         val id = token.take(8)
         val d = TrustedDevice(id, AgentLabel.of(agent), hash(token), t, t, ip, agent)
-        saveDevices((listOf(d) + _devices.value).take(MAX_DEVICES))
+        // 同一個位址、同一種瀏覽器／App 重新信任時，取代舊的，不留重複
+        val rest = _devices.value.filter { !(it.ip == ip && it.agent == agent) }
+        saveDevices((listOf(d) + rest).take(MAX_DEVICES))
         return token
     }
 

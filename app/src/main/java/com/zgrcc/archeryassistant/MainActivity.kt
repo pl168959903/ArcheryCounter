@@ -65,6 +65,9 @@ private const val ROUTE_GROUPS = "groups"
 private const val ROUTE_OVERVIEW = "overview"
 private const val ROUTE_REPORT = "report_view"
 private const val ROUTE_CHANGELOG = "changelog"
+private const val ROUTE_LINK_OPTIONS = "link_options"
+private const val ROUTE_LINK_DEVICE = "link_device"
+private const val ROUTE_LINK_REPORT = "link_report"
 private const val ROUTE_DISC = "disc"
 
 @Composable
@@ -182,8 +185,9 @@ private fun AppNav(vm: CounterViewModel, launch: String?, onLaunchHandled: () ->
                     category = c,
                     onOpenCategory = {},
                     onOpenCalibration = { nav.navigate(ROUTE_CALIBRATION) },
-                    onOpenReport = { nav.navigate(ROUTE_REPORT) },
                     onOpenChangelog = { nav.navigate(ROUTE_CHANGELOG) },
+                    onOpenLinkOptions = { nav.navigate(ROUTE_LINK_OPTIONS) },
+                    onOpenLinkDevice = { nav.navigate(ROUTE_LINK_DEVICE) },
                 )
             }
         }
@@ -198,6 +202,7 @@ private fun AppNav(vm: CounterViewModel, launch: String?, onLaunchHandled: () ->
                 onOpenMatchCompare = { nav.navigate(ROUTE_MATCH_COMPARE) },
                 onOpenGroups = { nav.navigate(ROUTE_GROUPS) },
                 onOpenOverview = { nav.navigate(ROUTE_OVERVIEW) },
+                onOpenReport = { nav.navigate(ROUTE_REPORT) },
             )
         }
         composable(ROUTE_DETAIL) {
@@ -218,6 +223,9 @@ private fun AppNav(vm: CounterViewModel, launch: String?, onLaunchHandled: () ->
         composable(ROUTE_OVERVIEW) { OverviewScreen(vm) }
         composable(ROUTE_REPORT) { ReportScreen(vm) }
         composable(ROUTE_CHANGELOG) { ChangelogScreen(vm) }
+        composable(ROUTE_LINK_OPTIONS) { LinkOptionsScreen(vm) }
+        composable(ROUTE_LINK_DEVICE) { LinkDeviceScreen(vm, onOpenReport = { nav.navigate(ROUTE_LINK_REPORT) }) }
+        composable(ROUTE_LINK_REPORT) { RemoteReportScreen(vm) }
         composable(ROUTE_MATCH_COMPARE) {
             MatchCompareScreen(
                 vm = vm,

@@ -20,7 +20,7 @@ import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
 
 @Composable
-fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrend: () -> Unit, onOpenMatchCompare: () -> Unit, onOpenGroups: () -> Unit, onOpenOverview: () -> Unit) {
+fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrend: () -> Unit, onOpenMatchCompare: () -> Unit, onOpenGroups: () -> Unit, onOpenOverview: () -> Unit, onOpenReport: () -> Unit = {}) {
     val sessions by vm.sessions.collectAsStateWithLifecycle()
     val activeId by vm.activeSessionId.collectAsStateWithLifecycle()
     val showTrend by vm.settings.showSessionTrend.collectAsStateWithLifecycle()
@@ -28,6 +28,7 @@ fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrend: (
     val groupCompare by vm.settings.groupCompare.collectAsStateWithLifecycle()
     val overviewOn by vm.settings.overview.collectAsStateWithLifecycle()
     val bestOn by vm.settings.personalBest.collectAsStateWithLifecycle()
+    val reportViewOn by vm.settings.reportView.collectAsStateWithLifecycle()
     val origins = remember(sessions) { vm.importOrigins() }
     val steadiestId = remember(sessions, bestOn) { if (bestOn) PersonalBest.steadiestId(sessions) else null }
 
@@ -158,6 +159,18 @@ fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrend: (
                     onClick = onOpenOverview,
                     label = { Text(tr("訓練總覽", "Training overview") + navMark(), maxLines = 1) },
                     secondaryLabel = { Text(tr("每週、每月的箭數", "Arrows per week and month"), maxLines = 1) },
+                    colors = kindColors(ChipKind.NAV, ChipDefaults.secondaryChipColors()),
+                    modifier = Modifier.fillMaxWidth(0.9f),
+                )
+            }
+        }
+
+        if (reportViewOn && sessions.isNotEmpty() && !manage) {
+            item {
+                Chip(
+                    onClick = onOpenReport,
+                    label = { Text(tr("網頁報告", "Web report") + navMark(), maxLines = 1) },
+                    secondaryLabel = { Text(tr("全部記錄的圖表與明細", "Charts and details of all records"), maxLines = 1) },
                     colors = kindColors(ChipKind.NAV, ChipDefaults.secondaryChipColors()),
                     modifier = Modifier.fillMaxWidth(0.9f),
                 )

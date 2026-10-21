@@ -27,6 +27,7 @@ import kotlinx.coroutines.launch
 fun SettingsRecord(vm: CounterViewModel) {
     val s = vm.settings
     val recordRaw by s.recordRaw.collectAsStateWithLifecycle()
+    val reportView by s.reportView.collectAsStateWithLifecycle()
     val windowSec by s.windowSec.collectAsStateWithLifecycle()
     val recordWaveform by s.recordWaveform.collectAsStateWithLifecycle()
     val followThrough by s.followThrough.collectAsStateWithLifecycle()
@@ -73,6 +74,9 @@ fun SettingsRecord(vm: CounterViewModel) {
 
         item { ToggleChip(tr("每箭自評", "Shot self-rating"), shotFeel) { s.setShotFeel(it) } }
         item { Note(tr("在單箭頁和快速檢查加「差／普通／好」三顆按鈕，記錄詳情會比較各自評的平均晃動。預設關閉，立即生效", "Adds Bad / OK / Good buttons on the shot page and Quick check; the detail page compares average shake per rating. Off by default. Takes effect immediately")) }
+
+        item { ToggleChip(tr("網頁報告按鈕", "Web report button"), reportView) { s.setReportView(it) } }
+        item { Note(tr("開啟後，記錄頁多一個「網頁報告」按鈕，在這支裝置上直接看全部記錄的報告（同 report.html，不含腳本）。手機上比手錶好讀。報告只包含「連線 → 連結設定」裡選的標籤。預設開", "When on, the Records page gets a Web report button that shows the report of all records right on this device (same as report.html, no scripts). Easier to read on a phone than a watch. Only records with the tag chosen under Connection > Link settings are included. On by default")) }
 
         item { ToggleChip(tr("條件標籤", "Condition tags"), tagsEnabled) { s.setTagsEnabled(it) } }
         item { Note(tr("新記錄自動帶上下面選的條件，記錄列表會顯示，跨次趨勢可以只比較相同條件。立即生效，對之後的新記錄有效", "New records get the conditions chosen below, shown in the record list; trends can compare like with like. Applies to later records")) }

@@ -62,8 +62,10 @@ class ShareRouter(
         val params = parseQuery(if (q >= 0) target.substring(q + 1) else "")
         if (path == "/favicon.ico") return text(404, "Not Found")
 
+        val isApp = AgentLabel.isApp(req.agent)
         fun note(r: ShareResult) {
-            if (path == "/" || r == ShareResult.WRONG_PIN || r == ShareResult.LOCKED) {
+            // 瀏覽器：看首頁算一次；本 App：列出檔案（每次匯入／預覽的第一個請求）算一次；失敗與鎖定一律記
+            if (path == "/" || (isApp && path == "/list") || r == ShareResult.WRONG_PIN || r == ShareResult.LOCKED) {
                 gate?.record(ShareEvent(clock(), req.ip, req.agent, r))
             }
         }
@@ -92,7 +94,7 @@ class ShareRouter(
             fails = 0
             viaPin = true
             note(ShareResult.OK_PIN)
-            if (gate?.enabled == true && params["remember"] == "1") {
+            if (gate?.enabled == true && (params["remember"] == "1" || isApp)) {
                 setCookie = "$COOKIE=${gate?.issue(req.ip, req.agent)}; Path=/; Max-Age=$COOKIE_AGE_S; HttpOnly; SameSite=Strict"
             }
         }
