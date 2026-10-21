@@ -828,6 +828,15 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         r
     }
 
+    /** 標記某一箭「確認正常」或取消（v1.20.1）。 */
+    suspend fun setShotReviewed(id: String, index: Int, reviewed: Boolean): Unit =
+        updateShot(id, index) { it.copy(reviewed = reviewed) }
+
+    /** 單箭詳情是不是「檢查可疑箭」模式：換箭箭頭只在可疑箭之間跳。 */
+    private val _shotReview = MutableStateFlow(false)
+    val shotReview: StateFlow<Boolean> = _shotReview.asStateFlow()
+    fun setShotReview(v: Boolean) { _shotReview.value = v }
+
     suspend fun setShotCancelled(id: String, index: Int, cancelled: Boolean): Unit =
         updateShot(id, index) { it.copy(cancelled = cancelled) }
 
@@ -893,7 +902,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
             arrowsPerEnd = settings.arrowsPerEnd.value,
             filterTag = settings.reportTag.value.takeIf { it.isNotBlank() },
             showNotes = settings.recordNote.value,
-            flags = if (settings.flagSuspicious.value) Suspicion.flags(sessions.value, _activeId.value) else emptyMap(),
+            flags = if (settings.flagSuspicious.value) Suspicion.flags(sessions.value, _activeId.value, settings.flagFastShots.value) else emptyMap(),
             origins = if (settings.importMark.value) ImportMarks(prefs).all() else emptyMap(),
         )
     }

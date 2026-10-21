@@ -350,7 +350,7 @@ class SessionStore(baseDir: File) {
  * 结构：
  *   { "id", "startMs", "endMs"（-1 表示没有正常结束）, "threshold", "windowSec", "hasGyro", "rawCsv",
  *     "tags"?: ["室外70米", "反曲"], "cal"?: true, "app"?, "dev"?, "uid"?, "det"?, "note"?, "comp"?: { "sec", "apn", "pr" }, "marks"?: [ { "l", "s", "e"? } ],
- *     "shots":  [ { "rel", "peak", "thr", "acc"?, "gyr"?, "x"?（1=誤判）, "wf"?（波形）,
+ *     "shots":  [ { "rel", "peak", "thr", "acc"?, "gyr"?, "x"?（1=誤判）, "ok"?（1=確認正常）, "wf"?（波形）,
  *                   "fa"?, "fg"?（放箭後跟隨晃動量）, "sc"?（環數） } ],
  *     "manual": [ { "rel", "d" } ] }
  */
@@ -407,6 +407,7 @@ internal object SessionJson {
             if (sh.waveform != null) append(",\"wf\":").append(encodeWave(sh.waveform))
             if (sh.trace != null) append(",\"tr\":").append(encodeTrace(sh.trace))
             if (sh.feel != null) append(",\"fe\":").append(sh.feel)
+            if (sh.reviewed) append(",\"ok\":1")
             append('}')
         }
 
@@ -442,6 +443,11 @@ internal object SessionJson {
                     followAccelRms = (m["fa"] as? Number)?.toFloat(),
                     followGyroRms = (m["fg"] as? Number)?.toFloat(),
                     score = (m["sc"] as? Number)?.toInt()?.coerceIn(0, 10),
+                    reviewed = when (val ok = m["ok"]) {
+                        is Boolean -> ok
+                        is Number -> ok.toInt() != 0
+                        else -> false
+                    },
                     cancelled = when (val x = m["x"]) {
                         is Boolean -> x
                         is Number -> x.toInt() != 0

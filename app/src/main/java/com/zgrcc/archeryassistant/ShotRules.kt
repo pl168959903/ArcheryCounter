@@ -42,7 +42,7 @@ object FastShot {
             } else {
                 g < medGap * GAP_RATIO_NO_FOLLOW
             }
-            if (hit) out.add(i)
+            if (hit && !s.shots[i].reviewed) out.add(i)
         }
         return out
     }
@@ -131,4 +131,24 @@ object SessionExtras {
         sessions.filter { !it.calibration && (tags == null || Tags.same(it.tags, tags)) }
             .mapNotNull { s -> computeStats(s).followAvg?.let { SessionPoint(s.startMs, it) } }
             .sortedBy { it.startMs }.takeLast(limit)
+}
+
+/** 單箭詳情的換箭（v1.20.1）：在 [list]（箭的位置，由小到大）裡找上一個／下一個。純 Kotlin。 */
+object ShotNav {
+    /** 往後（[dir] = 1）或往前（−1）一個；到頭回傳 [current]（不動）。[current] 不在清單裡時，取最接近的那一個。 */
+    fun step(list: List<Int>, current: Int, dir: Int): Int {
+        if (list.isEmpty()) return current
+        return if (dir >= 0) list.firstOrNull { it > current } ?: current
+        else list.lastOrNull { it < current } ?: current
+    }
+
+    /** 處理完 [from] 之後要跳到哪一支：先找後面的，沒有再找前面的；清單空了回傳 null。 */
+    fun nextAfter(list: List<Int>, from: Int): Int? =
+        list.firstOrNull { it > from } ?: list.firstOrNull { it < from }
+
+    /** 「3 / 96」：[current] 在 [list] 裡的順位（找不到顯示 −）。 */
+    fun progress(list: List<Int>, current: Int): String {
+        val i = list.indexOf(current)
+        return (if (i < 0) "-" else (i + 1).toString()) + " / " + list.size
+    }
 }

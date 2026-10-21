@@ -102,7 +102,7 @@ fun SettingsDisplay(vm: CounterViewModel) {
                 modifier = Modifier.fillMaxWidth(0.9f),
             )
         }
-        item { Note(tr("即時圓盤、單箭頁和快速檢查裡的圓盤大小：小 100、中 130、大 160 dp，預設大。圓盤越大，下面的內容要多滑一點才看得到", "Disc size in the live disc, shot page and Quick check: Small 100, Medium 130, Large 160 dp, default Large. A bigger disc means more scrolling to reach what is below")) }
+        item { Note(tr("即時圓盤和單箭頁裡的圓盤大小：小 100、中 130、大 160 dp，預設大。圓盤越大，下面的內容要多滑一點才看得到", "Disc size in the live disc and shot page: Small 100, Medium 130, Large 160 dp, default Large. A bigger disc means more scrolling to reach what is below")) }
 
         item { ToggleChip(tr("點圓盤全屏", "Tap disc for full screen"), discFullscreen) { s.setDiscFullscreen(it) } }
         item { Note(tr("偵測中點一下主畫面的即時圓盤，放大成全屏；再點一下或往右滑返回。偵測照常運行。觸控鎖定時點不到", "While detecting, tap the live disc on the main screen to go full screen; tap again or swipe right to return. Detection keeps running. Not tappable while touch-locked")) }

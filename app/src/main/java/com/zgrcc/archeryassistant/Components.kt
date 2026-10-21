@@ -72,11 +72,14 @@ enum class ChipKind {
     NORMAL,
     /** 清單裡的每一項（每筆記錄、每場比賽、每一箭）：黃色、黑字 */
     LIST,
+    /** 可疑的箭（v1.20.1）：橘紅底白字，和一般黃色的箭明顯不同 */
+    SUSPECT,
 }
 
 private val GO_BG = androidx.compose.ui.graphics.Color(0xFF2E7D32)
 private val NAV_BG = androidx.compose.ui.graphics.Color(0xFF1565C0)
 private val DANGER_BG = androidx.compose.ui.graphics.Color(0xFFB71C1C)
+private val SUSPECT_BG = androidx.compose.ui.graphics.Color(0xFFE64A19)
 private val LIST_BG = androidx.compose.ui.graphics.Color(0xFFFFD54F)
 
 /** 依用途回傳按鈕顏色；「按鈕分色」關閉時回傳 [fallback]（原本的配色）。 */
@@ -99,6 +102,9 @@ fun kindColors(kind: ChipKind, fallback: androidx.wear.compose.material.ChipColo
             backgroundColor = LIST_BG,
             contentColor = androidx.compose.ui.graphics.Color.Black,
             secondaryContentColor = androidx.compose.ui.graphics.Color(0xFF3A3A3A),
+        )
+        ChipKind.SUSPECT -> androidx.wear.compose.material.ChipDefaults.chipColors(
+            backgroundColor = SUSPECT_BG, contentColor = white, secondaryContentColor = soft,
         )
         ChipKind.NORMAL -> androidx.wear.compose.material.ChipDefaults.secondaryChipColors()
     }

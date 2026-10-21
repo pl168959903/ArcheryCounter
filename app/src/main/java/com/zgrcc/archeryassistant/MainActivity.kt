@@ -60,7 +60,6 @@ private const val ROUTE_TREND = "trend"
 private const val ROUTE_CALIBRATION = "calibration"
 private const val ROUTE_COMPETITION = "competition"
 private const val ROUTE_MATCH_COMPARE = "match_compare"
-private const val ROUTE_QUICK_CHECK = "quick_check"
 private const val ROUTE_GROUPS = "groups"
 private const val ROUTE_OVERVIEW = "overview"
 private const val ROUTE_HIST_TREND = "history_trend"
@@ -225,11 +224,16 @@ private fun AppNav(vm: CounterViewModel, launch: String?, onLaunchHandled: () ->
             DetailScreen(
                 vm = vm,
                 onOpenShot = { index ->
+                    vm.setShotReview(false)
                     vm.selectShot(index)
                     nav.navigate(ROUTE_SHOT)
                 },
                 onDeleted = { nav.popBackStack() },
-                onOpenQuickCheck = { nav.navigate(ROUTE_QUICK_CHECK) },
+                onOpenReview = { index ->
+                    vm.setShotReview(true)
+                    vm.selectShot(index)
+                    nav.navigate(ROUTE_SHOT)
+                },
             )
         }
         composable(ROUTE_SHOT) {
@@ -250,9 +254,6 @@ private fun AppNav(vm: CounterViewModel, launch: String?, onLaunchHandled: () ->
                     nav.navigate(ROUTE_DETAIL)
                 },
             )
-        }
-        composable(ROUTE_QUICK_CHECK) {
-            QuickCheckScreen(vm = vm)
         }
         composable(ROUTE_TREND) {
             TrendScreen(vm = vm)

@@ -407,7 +407,7 @@ class AppSettings(private val prefs: SharedPreferences) {
         set(v) { prefs.edit().putString(KEY_CLEAN_LAST, v).apply() }
 
     private val _shotFeel = MutableStateFlow(prefs.getBoolean(KEY_SHOT_FEEL, false))
-    /** 單箭頁與快速檢查提供「差／普通／好」自評。預設：關 */
+    /** 單箭頁提供「差／普通／好」自評。預設：關 */
     val shotFeel: StateFlow<Boolean> = _shotFeel.asStateFlow()
     fun setShotFeel(v: Boolean) {
         _shotFeel.value = v
@@ -757,7 +757,7 @@ class AppSettings(private val prefs: SharedPreferences) {
     }
 
     private val _quickCheck = MutableStateFlow(prefs.getBoolean(KEY_QUICK_CHECK, true))
-    /** 記錄詳情顯示「快速檢查」入口（逐箭滑動、一鍵標記誤判）。預設：開 */
+    /** 記錄詳情在有可疑箭時顯示「檢查可疑箭」入口。預設：開 */
     val quickCheck: StateFlow<Boolean> = _quickCheck.asStateFlow()
 
     fun setQuickCheck(v: Boolean) {

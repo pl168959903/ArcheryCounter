@@ -39,6 +39,8 @@ data class ShotEntry(
     val trace: Trace2D? = null,
     /** 這一箭的自評（v1.14）：1 差、2 普通、3 好；沒評為 null */
     val feel: Int? = null,
+    /** 你確認過這一箭是正常的（v1.20.1）：不再被標成可疑 */
+    val reviewed: Boolean = false,
 )
 
 /** 校准录制里的一段动作（例如「只拉弓不放箭」），起止时间是距这次记录开始的毫秒数。 */

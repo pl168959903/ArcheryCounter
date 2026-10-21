@@ -39,7 +39,8 @@ fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrendMen
     val filterOn by vm.settings.historyFilter.collectAsStateWithLifecycle()
     val histTag by vm.histTag.collectAsStateWithLifecycle()
     val histDays by vm.histDays.collectAsStateWithLifecycle()
-    val flags = remember(sessions, activeId, flagOn) { if (flagOn) Suspicion.flags(sessions, activeId) else emptyMap() }
+    val fastOn by vm.settings.flagFastShots.collectAsStateWithLifecycle()
+    val flags = remember(sessions, activeId, flagOn, fastOn) { if (flagOn) Suspicion.flags(sessions, activeId, fastOn) else emptyMap() }
     val shown = remember(sessions, filterOn, histTag, histDays) {
         if (filterOn) HistoryFilter.apply(sessions, histTag, histDays, System.currentTimeMillis()) else sessions
     }

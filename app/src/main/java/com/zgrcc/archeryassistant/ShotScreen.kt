@@ -67,6 +67,24 @@ private fun ShotContent(vm: CounterViewModel, session: Session, index: Int, shot
     val recordTrace by vm.settings.recordTrace.collectAsStateWithLifecycle()
     val discSize by vm.settings.discSize.collectAsStateWithLifecycle()
     val shotFeel by vm.settings.shotFeel.collectAsStateWithLifecycle()
+    val showEnds by vm.settings.showEnds.collectAsStateWithLifecycle()
+    val autoEnds by vm.settings.autoEnds.collectAsStateWithLifecycle()
+    val arrowsPerEnd by vm.settings.arrowsPerEnd.collectAsStateWithLifecycle()
+    val fastOn by vm.settings.flagFastShots.collectAsStateWithLifecycle()
+    val review by vm.shotReview.collectAsStateWithLifecycle()
+    val fastShots = remember(session, fastOn) { if (fastOn && !isActive) FastShot.flagged(session).sorted() else emptyList() }
+    val suspect = index in fastShots
+    val ends = remember(session, autoEnds, arrowsPerEnd) { endsFor(session, autoEnds, arrowsPerEnd) }
+    val endLabel = if (showEnds) shotEndLabel(session, ends, index) else null
+    val reviewMode = review && fastShots.isNotEmpty()
+    val navList = if (reviewMode) fastShots else session.shots.indices.toList()
+    // 處理完（標正常或誤判）後跳到下一支可疑箭；沒有了就留在原處
+    fun afterHandled() {
+        if (review) {
+            val next = ShotNav.nextAfter(fastShots.filter { it != index }, index)
+            if (next != null) vm.selectShot(next)
+        }
+    }
 
     // 有效的第幾箭（不含誤判）
     val validNo = if (shot.cancelled) 0 else session.shots.take(index + 1).count { !it.cancelled }
@@ -81,9 +99,26 @@ private fun ShotContent(vm: CounterViewModel, session: Session, index: Int, shot
     ) {
         item {
             Text(
-                text = if (shot.cancelled) tr("已取消的一箭", "Cancelled shot") else tr("第 $validNo 箭", "Shot $validNo"),
+                text = if (shot.cancelled) tr("已取消的一箭", "Cancelled shot")
+                else tr("第 $validNo 箭", "Shot $validNo") + (endLabel?.let { "（$it）" } ?: ""),
                 style = MaterialTheme.typography.title3,
             )
+        }
+        if (review && fastShots.isEmpty() && !isActive) {
+            item { Note(tr("可疑箭都處理完了", "All suspicious shots are handled")) }
+        }
+        if (suspect) {
+            item {
+                Chip(
+                    onClick = {},
+                    label = { Text(FastShot.shortText(), maxLines = 1) },
+                    secondaryLabel = { Text(FastShot.text(), maxLines = 4) },
+                    colors = kindColors(ChipKind.SUSPECT, ChipDefaults.primaryChipColors()),
+                    modifier = Modifier.fillMaxWidth(0.95f),
+                )
+            }
+        } else if (shot.reviewed && !shot.cancelled) {
+            item { Note(tr("你已確認這一箭是正常的", "You confirmed this shot is normal")) }
         }
         item {
             Body(
@@ -165,18 +200,59 @@ private fun ShotContent(vm: CounterViewModel, session: Session, index: Int, shot
             }
         }
 
+        if (suspect && !isActive) {
+            item {
+                Chip(
+                    onClick = {
+                        scope.launch { vm.setShotReviewed(session.id, index, true) }
+                        afterHandled()
+                    },
+                    label = { Text(tr("標記為正常", "Mark as normal"), maxLines = 1) },
+                    colors = kindColors(ChipKind.GO, ChipDefaults.primaryChipColors()),
+                    modifier = Modifier.fillMaxWidth(0.9f),
+                )
+            }
+        } else if (shot.reviewed && !shot.cancelled && !isActive) {
+            item {
+                Chip(
+                    onClick = { scope.launch { vm.setShotReviewed(session.id, index, false) } },
+                    label = { Text(tr("取消確認", "Undo confirmation"), maxLines = 1) },
+                    colors = ChipDefaults.secondaryChipColors(),
+                    modifier = Modifier.fillMaxWidth(0.9f),
+                )
+            }
+        }
+
         item {
             if (isActive) {
                 Note(tr("進行中，暫停偵測後才能標記誤判", "In progress; pause detection before marking false detections"))
             } else {
                 Chip(
                     onClick = {
-                        scope.launch { vm.setShotCancelled(session.id, index, !shot.cancelled) }
+                        val toCancel = !shot.cancelled
+                        scope.launch { vm.setShotCancelled(session.id, index, toCancel) }
+                        if (toCancel) afterHandled()
                     },
                     label = { Text(if (shot.cancelled) tr("恢復為有效", "Restore as valid") else tr("標記為誤判", "Mark as false detection"), maxLines = 1) },
                     colors = if (shot.cancelled) kindColors(ChipKind.GO, ChipDefaults.primaryChipColors()) else ChipDefaults.secondaryChipColors(),
                     modifier = Modifier.fillMaxWidth(0.9f),
                 )
+            }
+        }
+
+        if (navList.size > 1 || reviewMode) {
+            item {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    SmallRoundButton("‹") { vm.selectShot(ShotNav.step(navList, index, -1)) }
+                    Text(
+                        (if (reviewMode) tr("可疑 ", "Suspicious ") else "") + ShotNav.progress(navList, index),
+                        style = MaterialTheme.typography.caption2,
+                    )
+                    SmallRoundButton("›") { vm.selectShot(ShotNav.step(navList, index, 1)) }
+                }
             }
         }
     }

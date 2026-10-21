@@ -121,3 +121,15 @@ object AutoEnds {
         return "${e.number}-${shotNo - e.firstShot + 1}"
     }
 }
+
+/** 這一份記錄目前顯示用的分趟：開了自動分趟就依間隔，否則依每趟箭數（v1.20.1 起詳情與單箭頁共用）。 */
+fun endsFor(s: Session, auto: Boolean, arrowsPerEnd: Int): List<EndStats> =
+    if (auto) AutoEnds.compute(s) else computeEnds(s, arrowsPerEnd)
+
+/** [index]（在 [Session.shots] 裡的位置）這一箭是「第幾趟-第幾箭」，例如「9-2」；誤判或找不到回傳 null。 */
+fun shotEndLabel(s: Session, ends: List<EndStats>, index: Int): String? {
+    val sh = s.shots.getOrNull(index) ?: return null
+    if (sh.cancelled) return null
+    val validNo = s.shots.take(index + 1).count { !it.cancelled }
+    return AutoEnds.label(ends, validNo)
+}

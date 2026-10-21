@@ -26,7 +26,7 @@ data class ReportMeta(
     /** 顯示記錄備註（v1.19） */
     val showNotes: Boolean = true,
     /** 記錄 id → 可疑種類（v1.19）；空 = 不標示 */
-    val flags: Map<String, SuspectKind> = emptyMap(),
+    val flags: Map<String, Suspect> = emptyMap(),
 )
 
 /**

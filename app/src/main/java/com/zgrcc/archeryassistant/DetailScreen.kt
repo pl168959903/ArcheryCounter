@@ -49,7 +49,7 @@ private fun buildTimeline(s: Session): List<TimelineRow> {
 }
 
 @Composable
-fun DetailScreen(vm: CounterViewModel, onOpenShot: (Int) -> Unit, onDeleted: () -> Unit, onOpenQuickCheck: () -> Unit) {
+fun DetailScreen(vm: CounterViewModel, onOpenShot: (Int) -> Unit, onDeleted: () -> Unit, onOpenReview: (Int) -> Unit) {
     val id by vm.selectedId.collectAsStateWithLifecycle()
     val activeId by vm.activeSessionId.collectAsStateWithLifecycle()
     val sessions by vm.sessions.collectAsStateWithLifecycle()
@@ -77,7 +77,7 @@ fun DetailScreen(vm: CounterViewModel, onOpenShot: (Int) -> Unit, onDeleted: () 
             session = l.session,
             isActive = l.session.id == activeId,
             onOpenShot = onOpenShot,
-            onOpenQuickCheck = onOpenQuickCheck,
+            onOpenReview = onOpenReview,
             onDelete = {
                 vm.deleteSession(l.session.id)
                 onDeleted()
@@ -92,7 +92,7 @@ private fun DetailContent(
     session: Session,
     isActive: Boolean,
     onOpenShot: (Int) -> Unit,
-    onOpenQuickCheck: () -> Unit,
+    onOpenReview: (Int) -> Unit,
     onDelete: () -> Unit,
 ) {
     val showTrend by vm.settings.showTrendChart.collectAsStateWithLifecycle()
@@ -102,9 +102,7 @@ private fun DetailContent(
     val stats = remember(session) { computeStats(session) }
     val timeline = remember(session) { buildTimeline(session) }
     val autoEnds by vm.settings.autoEnds.collectAsStateWithLifecycle()
-    val ends = remember(session, arrowsPerEnd, autoEnds) {
-        if (autoEnds) AutoEnds.compute(session) else computeEnds(session, arrowsPerEnd)
-    }
+    val ends = remember(session, arrowsPerEnd, autoEnds) { endsFor(session, autoEnds, arrowsPerEnd) }
     val accelSeries = remember(session) { metricSeries(session, gyro = false) }
     val gyroSeries = remember(session) { metricSeries(session, gyro = true) }
     var confirmDelete by remember { mutableStateOf(false) }
@@ -129,12 +127,12 @@ private fun DetailContent(
     val scope = rememberCoroutineScope()
     val noteOn by vm.settings.recordNote.collectAsStateWithLifecycle()
     val flagOn by vm.settings.flagSuspicious.collectAsStateWithLifecycle()
-    val suspectKind = remember(session, allSessions, flagOn, isActive) {
-        if (flagOn) Suspicion.check(session, Suspicion.median(allSessions), isActive) else null
-    }
     val fastOn by vm.settings.flagFastShots.collectAsStateWithLifecycle()
     val posOn by vm.settings.positionTrend.collectAsStateWithLifecycle()
     val fastShots = remember(session, fastOn) { if (fastOn) FastShot.flagged(session) else emptySet() }
+    val suspectKind = remember(session, flagOn, fastOn, isActive) {
+        if (flagOn) Suspicion.check(session, isActive, fastOn) else null
+    }
     val posRows = remember(session, posOn) { if (posOn) PositionTrend.rows(listOf(session)) else emptyList() }
     var noteDraft by remember(session.id, session.note) { mutableStateOf(session.note) }
 
@@ -286,13 +284,19 @@ private fun DetailContent(
             item { Note(tr("這次沒有偵測到放箭", "No release detected this time")) }
         } else {
             item { Note(tr("點一箭可看波形，也可以標記為誤判", "Tap a shot to see its waveform or mark it as a false detection")) }
-            if (quickCheck && !isActive && !session.calibration) {
+            if (quickCheck && !isActive && !session.calibration && fastShots.isNotEmpty()) {
                 item {
+                    val labels = fastShots.sorted().map { i ->
+                        (if (showEnds) shotEndLabel(session, ends, i) else null)
+                            ?: tr("第 ${session.shots.take(i + 1).count { !it.cancelled }} 箭", "#${session.shots.take(i + 1).count { !it.cancelled }}")
+                    }
+                    val sub = if (labels.size <= 3) labels.joinToString("、")
+                    else labels.take(3).joinToString("、") + tr(" 等共 ${labels.size} 支", " and ${labels.size - 3} more")
                     Chip(
-                        onClick = onOpenQuickCheck,
-                        label = { Text(tr("快速檢查", "Quick check") + navMark(), maxLines = 1) },
-                        secondaryLabel = { Text(tr("逐箭滑動，一鍵標記誤判", "Step through shots, one-tap marking"), maxLines = 2) },
-                        colors = kindColors(ChipKind.NAV, ChipDefaults.primaryChipColors()),
+                        onClick = { onOpenReview(fastShots.min()) },
+                        label = { Text(tr("檢查可疑箭（${fastShots.size}）", "Review suspicious (${fastShots.size})") + navMark(), maxLines = 1) },
+                        secondaryLabel = { Text(sub, maxLines = 2) },
+                        colors = kindColors(ChipKind.SUSPECT, ChipDefaults.primaryChipColors()),
                         modifier = Modifier.fillMaxWidth(0.9f),
                     )
                 }
@@ -307,7 +311,11 @@ private fun DetailContent(
                     Chip(
                         onClick = { onOpenShot(row.shotIndex) },
                         label = { Text((if (autoEnds && showEnds && row.shotNo > 0) AutoEnds.label(ends, row.shotNo)?.let { "[$it] " }.orEmpty() else "") + shotText(session, row, shot) + if (row.shotIndex in fastShots) "\n" + FastShot.shortText() else "", style = MaterialTheme.typography.caption1, maxLines = 5) },
-                        colors = if (shot.cancelled) ChipDefaults.childChipColors() else kindColors(ChipKind.LIST, ChipDefaults.secondaryChipColors()),
+                        colors = when {
+                            shot.cancelled -> ChipDefaults.childChipColors()
+                            row.shotIndex in fastShots -> kindColors(ChipKind.SUSPECT, ChipDefaults.primaryChipColors())
+                            else -> kindColors(ChipKind.LIST, ChipDefaults.secondaryChipColors())
+                        },
                         modifier = Modifier.fillMaxWidth(0.95f),
                     )
                 }

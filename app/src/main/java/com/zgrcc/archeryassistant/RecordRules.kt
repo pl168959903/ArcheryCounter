@@ -1,50 +1,53 @@
 package com.zgrcc.archeryassistant
 
-/** 可疑記錄的種類（v1.19）。 */
-enum class SuspectKind { INTERRUPTED, NO_ARROWS, TOO_MANY }
+/** 可疑記錄的種類（v1.19；v1.20.1 拿掉「箭數偏多」，新增「有待確認的可疑箭」）。 */
+enum class SuspectKind { INTERRUPTED, NO_ARROWS, SHOTS }
+
+/** 一筆記錄的可疑結果：[kind] 是原因，[shots] 是還沒確認的可疑箭數（沒開「標示可疑的箭」時為 0）。 */
+data class Suspect(val kind: SuspectKind, val shots: Int = 0)
 
 /**
- * 標示可疑記錄：①沒有正常結束；②結束了但超過 2 分鐘一箭都沒偵測到；
- * ③箭數超過其他記錄中位數的 2 倍（至少 [MIN_SAMPLE] 筆比較、且至少 [MIN_ARROWS] 箭）。校準與進行中的不判斷。純 Kotlin。
+ * 標示可疑記錄：①沒有正常結束；②結束了但超過 2 分鐘一箭都沒偵測到；③有還沒確認的可疑箭（見 [FastShot]）。
+ * 箭數多不再算可疑。校準與進行中的不判斷。純 Kotlin。
  */
 object Suspicion {
-    const val MIN_SAMPLE = 5
-    const val MIN_ARROWS = 10
     const val NO_ARROW_MS = 120_000L
 
-    /** 其他記錄的箭數中位數；樣本不足回傳 null。 */
-    fun median(all: List<Session>): Int? {
-        val counts = all.filter { !it.calibration && it.endMs != null && it.finalCount() > 0 }.map { it.finalCount() }.sorted()
-        if (counts.size < MIN_SAMPLE) return null
-        return counts[counts.size / 2]
-    }
-
-    fun check(s: Session, median: Int?, isActive: Boolean): SuspectKind? {
+    fun check(s: Session, isActive: Boolean, shotsOn: Boolean = true): Suspect? {
         if (s.calibration || isActive) return null
-        if (s.endMs == null) return SuspectKind.INTERRUPTED
-        val n = s.finalCount()
-        if (n == 0 && s.durationMs() > NO_ARROW_MS) return SuspectKind.NO_ARROWS
-        if (median != null && n >= MIN_ARROWS && n > median * 2) return SuspectKind.TOO_MANY
-        return null
+        val n = if (shotsOn) FastShot.flagged(s).size else 0
+        val kind = when {
+            s.endMs == null -> SuspectKind.INTERRUPTED
+            s.finalCount() == 0 && s.durationMs() > NO_ARROW_MS -> SuspectKind.NO_ARROWS
+            n > 0 -> SuspectKind.SHOTS
+            else -> return null
+        }
+        return Suspect(kind, n)
     }
 
-    fun flags(all: List<Session>, activeId: String?): Map<String, SuspectKind> {
-        val m = median(all)
-        val out = LinkedHashMap<String, SuspectKind>()
-        for (s in all) check(s, m, s.id == activeId)?.let { out[s.id] = it }
+    fun flags(all: List<Session>, activeId: String?, shotsOn: Boolean = true): Map<String, Suspect> {
+        val out = LinkedHashMap<String, Suspect>()
+        for (s in all) check(s, s.id == activeId, shotsOn)?.let { out[s.id] = it }
         return out
     }
 
-    fun text(k: SuspectKind): String = when (k) {
-        SuspectKind.INTERRUPTED -> tr("可疑：這筆記錄沒有正常結束（中斷）", "Suspicious: this record did not end normally")
-        SuspectKind.NO_ARROWS -> tr("可疑：超過 2 分鐘卻一箭都沒偵測到，可能漏判或沒放好", "Suspicious: over 2 minutes with no detected arrows; possibly missed detections")
-        SuspectKind.TOO_MANY -> tr("可疑：箭數是其他記錄中位數的 2 倍以上，可能有誤判", "Suspicious: more than twice the median arrow count; possibly false detections")
+    private fun shotsPart(n: Int) = tr("可疑箭 $n 支", "$n suspicious shot(s)")
+
+    fun text(k: Suspect): String = when (k.kind) {
+        SuspectKind.INTERRUPTED -> tr("可疑：這筆記錄沒有正常結束（中斷）", "Suspicious: this record did not end normally") +
+            if (k.shots > 0) " · " + shotsPart(k.shots) else ""
+        SuspectKind.NO_ARROWS -> tr("可疑：超過 2 分鐘卻一箭都沒偵測到，可能漏判或沒放好", "Suspicious: over 2 minutes with no detected arrows; possibly missed detections") +
+            if (k.shots > 0) " · " + shotsPart(k.shots) else ""
+        SuspectKind.SHOTS -> tr(
+            "可疑：有 ${k.shots} 支箭待確認，進入詳情按「檢查可疑箭」逐支處理",
+            "Suspicious: ${k.shots} shot(s) to review; open details and tap Review suspicious shots",
+        )
     }
 
-    fun shortText(k: SuspectKind): String = when (k) {
-        SuspectKind.INTERRUPTED -> tr("可疑：中斷", "Suspicious: interrupted")
-        SuspectKind.NO_ARROWS -> tr("可疑：沒偵測到箭", "Suspicious: no arrows")
-        SuspectKind.TOO_MANY -> tr("可疑：箭數偏多", "Suspicious: many arrows")
+    fun shortText(k: Suspect): String = when (k.kind) {
+        SuspectKind.INTERRUPTED -> tr("可疑：中斷", "Suspicious: interrupted") + if (k.shots > 0) " · " + shotsPart(k.shots) else ""
+        SuspectKind.NO_ARROWS -> tr("可疑：沒偵測到箭", "Suspicious: no arrows") + if (k.shots > 0) " · " + shotsPart(k.shots) else ""
+        SuspectKind.SHOTS -> tr("可疑箭 ${k.shots} 支", "${k.shots} suspicious shot(s)")
     }
 }
 
