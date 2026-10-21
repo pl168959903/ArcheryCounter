@@ -1,5 +1,6 @@
 package com.zgrcc.archeryassistant
 
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -12,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
@@ -73,6 +75,7 @@ private fun ShotContent(vm: CounterViewModel, session: Session, index: Int, shot
     val arrowsPerEnd by vm.settings.arrowsPerEnd.collectAsStateWithLifecycle()
     val fastOn by vm.settings.flagFastShots.collectAsStateWithLifecycle()
     val review by vm.shotReview.collectAsStateWithLifecycle()
+    val tapNav by vm.settings.shotTapNav.collectAsStateWithLifecycle()
     val fastShots = remember(session, fastOn) { if (fastOn && !isActive) FastShot.flagged(session).sorted() else emptyList() }
     val suspect = index in fastShots
     val ends = remember(session, autoEnds, arrowsPerEnd) { endsFor(session, autoEnds, arrowsPerEnd) }
@@ -94,7 +97,12 @@ private fun ShotContent(vm: CounterViewModel, session: Session, index: Int, shot
     val intervalSec = if (shot.cancelled || prevValid == null) null else (shot.relMs - prevValid.relMs) / 1000f
 
     ScalingLazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().pointerInput(tapNav, navList, index) {
+            // 按鈕自己會處理點擊；只有沒被按鈕接走的點擊才會到這裡
+            if (tapNav) detectTapGestures { off ->
+                vm.selectShot(ShotNav.step(navList, index, ShotNav.tapDir(off.x, size.width.toFloat())))
+            }
+        },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
@@ -255,6 +263,7 @@ private fun ShotContent(vm: CounterViewModel, session: Session, index: Int, shot
                     SmallRoundButton("›") { vm.selectShot(ShotNav.step(navList, index, 1)) }
                 }
             }
+            if (tapNav) item { Note(tr("點畫面左半邊上一箭、右半邊下一箭", "Tap the left half for the previous shot, the right half for the next")) }
         }
     }
 }

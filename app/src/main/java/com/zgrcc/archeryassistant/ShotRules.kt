@@ -146,6 +146,9 @@ object ShotNav {
     fun nextAfter(list: List<Int>, from: Int): Int? =
         list.firstOrNull { it > from } ?: list.firstOrNull { it < from }
 
+    /** 點螢幕的位置在左半邊回傳 −1（上一箭），右半邊回傳 1（下一箭）；寬度無效當作右半邊。 */
+    fun tapDir(x: Float, width: Float): Int = if (width > 0f && x < width / 2f) -1 else 1
+
     /** 「3 / 96」：[current] 在 [list] 裡的順位（找不到顯示 −）。 */
     fun progress(list: List<Int>, current: Int): String {
         val i = list.indexOf(current)

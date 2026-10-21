@@ -43,6 +43,7 @@ fun SettingsRecord(vm: CounterViewModel) {
     val flagSuspicious by s.flagSuspicious.collectAsStateWithLifecycle()
     val historyFilter by s.historyFilter.collectAsStateWithLifecycle()
     val flagFastShots by s.flagFastShots.collectAsStateWithLifecycle()
+    val shotTapNav by s.shotTapNav.collectAsStateWithLifecycle()
     val recordMeasuredHz by s.recordMeasuredHz.collectAsStateWithLifecycle()
 
     ScalingLazyColumn(
@@ -58,6 +59,8 @@ fun SettingsRecord(vm: CounterViewModel) {
         item { Note(tr("記錄詳情可寫一句備註（最多 60 字），顯示在列表和網頁報告。", "Write a short note (up to 60 chars) in record details; shown in the list and web report.")) }
         item { ToggleChip(tr("標示可疑記錄", "Flag suspicious records"), flagSuspicious) { s.setFlagSuspicious(it) } }
         item { Note(tr("符合下列任一項會標「⚠ 可疑」：\n• 沒正常結束\n• 超過 2 分鐘沒偵測到箭\n• 有還沒確認的可疑箭（顯示支數，全部處理完就消失）\n箭數多不算可疑。校準記錄不判斷。", "A record is marked Suspicious if any of these applies:\n• It did not end normally\n• No arrows detected for over 2 minutes\n• It has suspicious shots you have not reviewed (count shown; disappears once all are handled)\nA high arrow count is not suspicious. Calibration records are not checked.")) }
+        item { ToggleChip(tr("單箭頁點擊換箭", "Tap to switch shots"), shotTapNav) { s.setShotTapNav(it) } }
+        item { Note(tr("單箭詳情點非按鈕的地方：左半邊上一箭、右半邊下一箭。點到按鈕只按按鈕；往右滑仍是回上一頁", "On the shot page, tap anywhere that is not a button: left half for the previous shot, right half for the next. Tapping a button only presses it; swiping right still goes back")) }
         item { ToggleChip(tr("標示可疑的箭", "Flag suspicious shots"), flagFastShots) { s.setFlagFastShots(it) } }
         item { Note(tr("離上一箭不到一般間隔的一半、放箭後又幾乎沒動作的箭，在詳情的逐箭明細（橘紅色）與單箭頁標「⚠ 可疑」，只標示不會自動取消，由你標為正常或誤判", "Shots much closer to the previous one than usual and with almost no follow-through are marked Suspicious in the shot list and shot details. Only marked, never cancelled automatically; mark each one normal or false detection")) }
         item { ToggleChip(tr("記錄實測取樣率", "Record measured sample rate"), recordMeasuredHz) { s.setRecordMeasuredHz(it) } }
