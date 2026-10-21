@@ -126,7 +126,6 @@ private fun DetailContent(
     val scope = rememberCoroutineScope()
     val noteOn by vm.settings.recordNote.collectAsStateWithLifecycle()
     val flagOn by vm.settings.flagSuspicious.collectAsStateWithLifecycle()
-    val allSessions by vm.sessions.collectAsStateWithLifecycle()
     val suspectKind = remember(session, allSessions, flagOn, isActive) {
         if (flagOn) Suspicion.check(session, Suspicion.median(allSessions), isActive) else null
     }
