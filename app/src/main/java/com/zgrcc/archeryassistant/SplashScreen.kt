@@ -84,28 +84,7 @@ fun SplashScreen(
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             // 圖示加一圈呼吸光圈
-            Box(modifier = Modifier.size(84.dp), contentAlignment = Alignment.Center) {
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    drawCircle(
-                        color = Color(0xFF9CCC3C).copy(alpha = SplashTiming.glowAlpha(t)),
-                        radius = size.minDimension / 2f - 1.5f,
-                        style = Stroke(width = 3f),
-                    )
-                }
-                Image(
-                    painter = painterResource(R.drawable.ic_launcher),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(74.dp)
-                        .clip(CircleShape)
-                        .graphicsLayer {
-                            val s = SplashTiming.iconScale(t)
-                            scaleX = s
-                            scaleY = s
-                            alpha = SplashTiming.iconAlpha(t)
-                        },
-                )
-            }
+            AppIconBadge(t)
             Spacer(Modifier.height(4.dp))
             lines.forEachIndexed { i, (text, style) ->
                 Text(
@@ -139,5 +118,37 @@ fun SplashScreen(
                 )
             }
         }
+    }
+}
+
+
+/**
+ * App 圖示加一圈呼吸光圈（v1.19.1，啟動畫面與「關於」共用）。
+ * [t] 是動畫開始後的毫秒數；[breathing] 為 false 時光圈不動、圖示直接顯示完整。
+ */
+@Composable
+fun AppIconBadge(t: Long, size: androidx.compose.ui.unit.Dp = 84.dp, breathing: Boolean = true) {
+    val time = if (breathing) t else 10_000L
+    Box(modifier = Modifier.size(size), contentAlignment = Alignment.Center) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            drawCircle(
+                color = Color(0xFF9CCC3C).copy(alpha = if (breathing) SplashTiming.glowAlpha(time) else 0.7f),
+                radius = this.size.minDimension / 2f - 1.5f,
+                style = Stroke(width = 3f),
+            )
+        }
+        Image(
+            painter = painterResource(R.drawable.ic_launcher),
+            contentDescription = null,
+            modifier = Modifier
+                .size(size - 10.dp)
+                .clip(CircleShape)
+                .graphicsLayer {
+                    val s = SplashTiming.iconScale(time)
+                    scaleX = s
+                    scaleY = s
+                    alpha = SplashTiming.iconAlpha(time)
+                },
+        )
     }
 }

@@ -53,33 +53,33 @@ fun SettingsGeneral(vm: CounterViewModel) {
                 modifier = Modifier.fillMaxWidth(0.9f),
             )
         }
-        item { Note(tr("點一下切換：自動 → 繁體中文 → English。自動＝系統是中文就用中文，其他語言用英文。切換後會回到主畫面", "Tap to change: Auto → Traditional Chinese → English. Auto uses Chinese when the system language is Chinese, otherwise English. You return to the main screen after switching")) }
+        item { Note(tr("點一下切換：\n• 自動（跟隨系統，中文系統用中文，其他用英文）\n• 繁體中文\n• English\n切換後回到主畫面", "Tap to switch:\n• Auto (follow the system: Chinese on Chinese systems, English otherwise)\n• Traditional Chinese\n• English\nReturns to the main screen")) }
 
         item { ToggleChip(tr("偵測中觸控鎖", "Touch lock while detecting"), touchLock) { s.setTouchLock(it) } }
-        item { Note(tr("開啟後，偵測中主畫面有「鎖定觸控」按鈕，鎖定時只顯示箭數，長按約 2 秒解鎖，避免拉弓、放箭時誤碰。立即生效", "When on, the main screen has a Lock touch button while detecting. Locked shows only the count; hold about 2 s to unlock, so draws and releases do not cause stray touches. Takes effect immediately")) }
+        item { Note(tr("偵測中主畫面出現「鎖定觸控」，鎖定時只顯示箭數，長按約 2 秒解鎖。", "A Lock touch button appears on the main screen while detecting. When locked only the arrow count shows; hold about 2 s to unlock.")) }
 
         item { ToggleChip(tr("低電量提醒", "Low battery alert"), lowBattery) { s.setLowBattery(it) } }
-        item { Note(tr("偵測中電量低於 15% 時震動一次，主畫面顯示「電量低」，只提醒不會自己動作。立即生效", "Vibrates once when the battery drops below 15% while detecting and shows Battery low on the main screen. Only a reminder. Takes effect immediately")) }
+        item { Note(tr("偵測中電量低於 15% 時震動一次，並顯示「電量低」。", "Buzzes once and shows Low battery when it drops below 15% while detecting.")) }
 
         item { ToggleChip(tr("磁貼快捷啟動", "Tile quick start"), tileLaunch) { s.setTileLaunch(it) } }
-        item { Note(tr("在手錶的磁貼列表加入「射箭助手」磁貼後，可直接從磁貼開始偵測或開始比賽。關閉時點磁貼只會打開應用。立即生效", "After adding the Archery Assistant tile to your watch, you can start detection or a match straight from it. When off, tapping the tile only opens the app. Takes effect immediately")) }
+        item { Note(tr("加入「射箭助手」磁貼後，可直接開始偵測或比賽。", "After adding the Archery Assistant tile, you can start detection or a match right from it.")) }
 
         item { ToggleChip(tr("開啟動畫", "Startup animation"), splash) { s.setSplash(it) } }
-        item { Note(tr("開啟應用時先播放約 3 秒的動畫（圖示放大，並顯示版本、作者與簽章）。下次開啟應用時生效", "Plays a short animation when the app opens (icon, version, author and signature). Takes effect next launch")) }
+        item { Note(tr("開啟 App 時播放約 3 秒動畫，顯示版本、作者與簽章。下次開啟生效", "Plays a 3 s animation on launch showing version, author and signature. Takes effect next launch.")) }
         if (splash) {
             item { ToggleChip(tr("點按後才進入", "Tap to enter"), splashTap) { s.setSplashTap(it) } }
-            item { Note(tr("開啟時動畫播完會停在畫面上，出現「點按螢幕進入」，點一下才進入主畫面（太久沒點會自己進入）。關閉則約 3 秒後自動進入。動畫中隨時點一下都會直接進入。下次開啟應用時生效", "The animation stays on screen and shows Tap to enter; tap to continue (it continues by itself after a long time). When off, it continues automatically after about 3 s. Tapping at any time skips it. Takes effect next launch")) }
+            item { Note(tr("動畫播完後停住，點一下才進入（太久沒點會自己進入）。關閉則約 3 秒後自動進入。下次開啟生效", "The animation stops at the end and waits for a tap (enters by itself after a long while). Off: enters automatically after about 3 s. Takes effect next launch.")) }
         }
 
         item { ToggleChip(tr("保持亮屏", "Keep screen on"), keepScreenOn) { s.setKeepScreenOn(it) } }
-        item { Note(tr("應用開著時螢幕不休眠，立即生效", "The screen stays on while the app is open. Takes effect immediately")) }
+        item { Note(tr("應用開著時螢幕不休眠", "The screen stays on while the app is open")) }
 
         item { ToggleChip(tr("CPU 喚醒鎖", "CPU wake lock"), wakeLock) { s.setWakeLock(it) } }
-        item { Note(tr("偵測中保持 CPU 運作，即使螢幕被熄滅也繼續取資料。較耗電，立即生效", "Keeps the CPU running while detecting, even if the screen turns off. Uses more battery. Takes effect immediately")) }
+        item { Note(tr("偵測中保持 CPU 運作，即使螢幕被熄滅也繼續取資料。較耗電", "Keeps the CPU running while detecting, even if the screen turns off. Uses more battery")) }
 
 
         item { ToggleChip(tr("偵測中降低亮度", "Dim while detecting"), dimWhenRunning) { s.setDimWhenRunning(it) } }
-        item { Note(tr("偵測中把螢幕亮度降低以省電，暫停後恢復。部分手錶可能不理會這個設定。立即生效", "Lowers screen brightness while detecting to save power and restores it after pausing. Some watches may ignore this. Takes effect immediately")) }
+        item { Note(tr("偵測中把螢幕亮度降低以省電，暫停後恢復。部分手錶可能不理會這個設定", "Lowers screen brightness while detecting to save power and restores it after pausing. Some watches may ignore this")) }
         if (dimWhenRunning) {
             item {
                 Chip(
@@ -90,7 +90,7 @@ fun SettingsGeneral(vm: CounterViewModel) {
                     modifier = Modifier.fillMaxWidth(0.9f),
                 )
             }
-            item { Note(tr("點一下切換：低 20% → 中 40% → 高 60%", "Tap to change: Low 20% → Mid 40% → High 60%")) }
+            item { Note(tr("點一下切換：\n• 低 20%\n• 中 40%\n• 高 60%", "Tap to switch:\n• Low 20%\n• Medium 40%\n• High 60%")) }
         }
 
     }

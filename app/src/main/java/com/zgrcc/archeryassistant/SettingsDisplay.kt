@@ -51,28 +51,28 @@ fun SettingsDisplay(vm: CounterViewModel) {
     ) {
         item { SectionTitle(SettingsCategories.name(5)) }
         item { ToggleChip(tr("趨勢圖", "Trend charts"), showTrend) { s.setShowTrendChart(it) } }
-        item { Note(tr("記錄詳情頁顯示每箭晃動量的趨勢圖。只影響顯示，不影響檔案大小，立即生效", "Shows a per-shot shake trend chart in record details. Display only. Takes effect immediately")) }
+        item { Note(tr("記錄詳情頁顯示每箭晃動量的趨勢圖。只影響顯示，不影響檔案大小", "Shows a per-shot shake trend chart in record details. Display only")) }
 
         item { ToggleChip(tr("跨次趨勢", "Trend across sessions"), showSessionTrend) { s.setShowSessionTrend(it) } }
-        item { Note(tr("記錄列表顯示每次的平均晃動量，並提供最近 20 次的趨勢圖。只影響顯示，立即生效", "Shows each session's average shake in the list and a trend chart of the last 20. Display only. Takes effect immediately")) }
+        item { Note(tr("記錄列表顯示每次的平均晃動量，並提供最近 20 次的趨勢圖。只影響顯示", "Shows each session's average shake in the list and a trend chart of the last 20. Display only")) }
 
         item { ToggleChip(tr("比賽對比", "Match comparison"), matchCompare) { s.setMatchCompare(it) } }
-        item { Note(tr("記錄列表多一個「比賽對比」，把比賽紀錄的日期、總環數、平均晃動、時間到的趟數放在一起比，並畫趨勢圖。只影響顯示，立即生效", "Adds Match comparison to the records list: date, total score, average shake and timed-out ends side by side, with trend charts. Display only. Takes effect immediately")) }
+        item { Note(tr("記錄列表多一個「比賽對比」，把比賽紀錄的日期、總環數、平均晃動、時間到的趟數放在一起比，並畫趨勢圖。只影響顯示", "Adds Match comparison to the records list: date, total score, average shake and timed-out ends side by side, with trend charts. Display only")) }
 
         item { ToggleChip(tr("節奏分析", "Pace analysis"), paceAnalysis) { s.setPaceAnalysis(it) } }
-        item { Note(tr("比賽紀錄詳情多一段節奏分析（第一箭等待、最後一箭剩幾秒、壓線趟數、用時），比賽對比也會列平均第一箭等待。只影響顯示，立即生效", "Adds pace analysis to match details (first-arrow wait, time left on the last arrow, tight ends, time used), and average first-arrow wait to Match comparison. Display only. Takes effect immediately")) }
+        item { Note(tr("比賽紀錄詳情多一段節奏分析（第一箭等待、最後一箭剩幾秒、壓線趟數、用時），比賽對比也會列平均第一箭等待。只影響顯示", "Adds pace analysis to match details (first-arrow wait, time left on the last arrow, tight ends, time used), and average first-arrow wait to Match comparison. Display only")) }
 
         item { ToggleChip(tr("條件對比", "Condition comparison"), groupCompare) { s.setGroupCompare(it) } }
-        item { Note(tr("記錄列表多一個「條件對比」，依距離和弓種分組比較平均晃動與環數，並標出最穩的一組。只影響顯示，立即生效", "Adds Compare conditions to the records list, grouping by distance and bow with average shake and score, and marking the steadiest group. Display only. Takes effect immediately")) }
+        item { Note(tr("記錄列表多一個「條件對比」，依距離和弓種分組比較平均晃動與環數，並標出最穩的一組。只影響顯示", "Adds Compare conditions to the records list, grouping by distance and bow with average shake and score, and marking the steadiest group. Display only")) }
 
         item { ToggleChip(tr("個人最佳", "Personal best"), personalBest) { s.setPersonalBest(it) } }
-        item { Note(tr("在最穩的練習、同賽制下環數最高或最穩的比賽前面標 ★。只影響顯示，立即生效", "Marks the steadiest practice session, and the highest-scoring or steadiest match within the same format, with ★. Display only. Takes effect immediately")) }
+        item { Note(tr("在最穩的練習、同賽制下環數最高或最穩的比賽前面標 ★。只影響顯示", "Marks the steadiest practice session, and the highest-scoring or steadiest match within the same format, with ★. Display only")) }
 
         item { ToggleChip(tr("訓練總覽", "Training overview"), overviewOn) { s.setOverview(it) } }
-        item { Note(tr("記錄列表多一個「訓練總覽」，看每週、每月的箭數、練習天數和連續練習天數。只影響顯示，立即生效", "Adds Training overview to the records list: arrows per week and month, practice days and streak. Display only. Takes effect immediately")) }
+        item { Note(tr("記錄列表多一個「訓練總覽」，看每週、每月的箭數、練習天數和連續練習天數。只影響顯示", "Adds Training overview to the records list: arrows per week and month, practice days and streak. Display only")) }
 
         item { ToggleChip(tr("即時晃動圓盤", "Live shake disc"), live2d) { s.setLive2d(it) } }
-        item { Note(tr("偵測中主畫面顯示像跑車 G 力圖的圓盤：點是最近約 2 秒的手錶 x、y 位置，越集中在圓心越穩，旁邊有外圈大小和虛線圈（均方根半徑）。開啟後取代即時波形，畫圖較耗電。軸是手錶表面方向，取決於怎麼戴表。立即生效", "While detecting, the main screen shows a G-force style disc: the dots are the watch's x/y over the last ~2 s; tighter around the center is steadier. Shows the outer ring size and a dashed ring (RMS radius). Replaces the live waveform and uses more battery. Axes follow the watch face, so they depend on how you wear it. Takes effect immediately")) }
+        item { Note(tr("偵測中主畫面顯示像跑車 G 力圖的圓盤：點是最近約 2 秒的手錶 x、y 位置，越集中在圓心越穩，旁邊有外圈大小和虛線圈（均方根半徑）。開啟後取代即時波形，畫圖較耗電。軸是手錶表面方向，取決於怎麼戴表", "While detecting, the main screen shows a G-force style disc: the dots are the watch's x/y over the last ~2 s; tighter around the center is steadier. Shows the outer ring size and a dashed ring (RMS radius). Replaces the live waveform and uses more battery. Axes follow the watch face, so they depend on how you wear it")) }
 
         item {
             Chip(
@@ -94,16 +94,16 @@ fun SettingsDisplay(vm: CounterViewModel) {
                 modifier = Modifier.fillMaxWidth(0.9f),
             )
         }
-        item { Note(tr("即時圓盤、單箭頁和快速檢查裡的圓盤大小：小 100、中 130、大 160 dp，預設大。圓盤越大，下面的內容要多滑一點才看得到。立即生效", "Disc size in the live disc, shot page and Quick check: Small 100, Medium 130, Large 160 dp, default Large. A bigger disc means more scrolling to reach what is below. Takes effect immediately")) }
+        item { Note(tr("即時圓盤、單箭頁和快速檢查裡的圓盤大小：小 100、中 130、大 160 dp，預設大。圓盤越大，下面的內容要多滑一點才看得到", "Disc size in the live disc, shot page and Quick check: Small 100, Medium 130, Large 160 dp, default Large. A bigger disc means more scrolling to reach what is below")) }
 
         item { ToggleChip(tr("點圓盤全屏", "Tap disc for full screen"), discFullscreen) { s.setDiscFullscreen(it) } }
-        item { Note(tr("偵測中點一下主畫面的即時圓盤，放大成全屏；再點一下或往右滑返回。偵測照常運行。觸控鎖定時點不到。立即生效", "While detecting, tap the live disc on the main screen to go full screen; tap again or swipe right to return. Detection keeps running. Not tappable while touch-locked. Takes effect immediately")) }
+        item { Note(tr("偵測中點一下主畫面的即時圓盤，放大成全屏；再點一下或往右滑返回。偵測照常運行。觸控鎖定時點不到", "While detecting, tap the live disc on the main screen to go full screen; tap again or swipe right to return. Detection keeps running. Not tappable while touch-locked")) }
 
         item { ToggleChip(tr("按鈕分色", "Colored buttons"), chipKinds) { s.setChipKinds(it) } }
-        item { Note(tr("按鈕依用途上色：綠＝開始／確認，藍＝點進去是另一頁（標籤尾巴有 ›），黃＝清單裡的每一項（每筆記錄、每場比賽、每一箭），紅＝刪除或結束，灰＝一般操作。關閉則全部維持原本配色。立即生效", "Buttons are colored by purpose: green = start/confirm, blue = opens another page (label ends with ›), yellow = each item in a list (record, match, shot), red = delete or end, gray = ordinary actions. Off keeps the original look. Takes effect immediately")) }
+        item { Note(tr("按鈕依用途上色：綠＝開始／確認，藍＝點進去是另一頁（標籤尾巴有 ›），黃＝清單裡的每一項（每筆記錄、每場比賽、每一箭），紅＝刪除或結束，灰＝一般操作。關閉則全部維持原本配色", "Buttons are colored by purpose: green = start/confirm, blue = opens another page (label ends with ›), yellow = each item in a list (record, match, shot), red = delete or end, gray = ordinary actions. Off keeps the original look")) }
 
         item { ToggleChip(tr("即時波形", "Live waveform"), liveWaveform) { s.setLiveWaveform(it) } }
-        item { Note(tr("偵測中在主畫面顯示即時加速度波形。只影響顯示，但最耗電，立即生效", "Shows a live accel waveform on the main screen while detecting. Display only, but uses the most battery. Takes effect immediately")) }
+        item { Note(tr("偵測中在主畫面顯示即時加速度波形。只影響顯示，但最耗電", "Shows a live accel waveform on the main screen while detecting. Display only, but uses the most battery")) }
 
     }
 }

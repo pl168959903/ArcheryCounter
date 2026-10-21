@@ -61,7 +61,7 @@ fun SettingsData(vm: CounterViewModel) {
                 )
             }
         }
-        item { Note(tr("開啟後，每次開 App 會把超過設定天數、已結束的記錄刪掉原始資料和波形／軌跡，統計與環數保留。校準記錄不動。預設關閉，無法復原", "When on, each app start deletes raw data and waveforms/traces of finished records older than the set days; statistics and scores are kept. Calibration records are untouched. Off by default; cannot be undone")) }
+        item { Note(tr("開 App 時，超過設定天數、已結束的記錄會刪掉原始資料和波形／軌跡，統計與環數保留。校準記錄不動。無法復原。", "On launch, finished records older than the set days lose raw data and waveforms/traces; statistics and scores are kept. Calibration records are untouched. Cannot be undone.")) }
         item { Note(AutoClean.describe(cleanLast, ::formatBytes)) }
 
         item {
@@ -83,7 +83,7 @@ fun SettingsData(vm: CounterViewModel) {
         }
 
         item { ToggleChip(tr("匯出報告", "Export report"), reportExport) { s.setReportExport(it) } }
-        item { Note(tr("開啟後，這一頁多一個「匯出報告」按鈕，把全部記錄做成一份網頁報告 report.html（含總覽、圖表、逐趟與逐箭明細，頁首有作者、版本與圖示），放在 sessions 資料夾，用 adb 取出後在電腦瀏覽器直接打開。只影響這個按鈕，立即生效", "When on, this page gets an Export report button that turns all records into one web report, report.html (overview, charts, per-end and per-shot details, with author, version and icon in the header), written to the sessions folder; pull it with adb and open it in a browser. Only affects this button. Takes effect immediately")) }
+        item { Note(tr("產生 report.html（總覽、圖表、逐趟逐箭明細），放在 sessions 資料夾，用 adb 取出在電腦瀏覽器開啟。記錄多時需數秒。", "Builds report.html (overview, charts, per-end and per-shot details) in the sessions folder; pull it with adb and open it in a desktop browser. Takes a few seconds with many records.")) }
         if (reportExport) {
             item {
                 Chip(

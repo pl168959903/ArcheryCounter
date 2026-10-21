@@ -120,7 +120,7 @@ fun SettingsConnect(vm: CounterViewModel, onOpenOptions: () -> Unit = {}, onOpen
 
         // ── 區網分享 ──
         item { ToggleChip(tr("區網分享", "LAN share"), lanShare) { on -> s.setLanShare(on); if (!on) vm.stopShare() } }
-        item { Note(tr("開啟後出現「開始分享」。手錶和手機連同一個 Wi-Fi 時，在手機瀏覽器輸入畫面上的網址和 PIN，就能直接看報告、下載資料，不必用 adb。只提供唯讀下載，PIN 錯 10 次就鎖住，10 分鐘後或離開此頁自動關閉。預設關閉", "When on, a Start sharing button appears. With the watch and phone on the same Wi-Fi, enter the address and PIN shown into the phone browser to view the report and download data without adb. Read-only downloads; 10 wrong PINs lock it; it stops after 10 minutes or when you leave this page. Off by default")) }
+        item { Note(tr("開啟後出現「開始分享」。同一 Wi-Fi 的手機瀏覽器輸入畫面上的網址和 PIN，可看報告、下載資料。\n• 唯讀\n• PIN 錯 10 次就鎖住\n• 依「分享自動結束」的時間或離開此頁自動關閉", "Turns on Start sharing. A phone browser on the same Wi-Fi can open the address and PIN shown here to view the report and download data.\n• Read-only\n• Locks after 10 wrong PINs\n• Stops after the Auto-stop time or when you leave this page")) }
         if (lanShare) {
             if (!share.running) {
                 item {
@@ -147,7 +147,7 @@ fun SettingsConnect(vm: CounterViewModel, onOpenOptions: () -> Unit = {}, onOpen
                     item { QrCode(text = share.url + "/?pin=" + share.pin, size = 150.dp) }
                     item { Note(tr("手機相機掃這個 QR Code 就能直接開啟（已含 PIN）", "Scan this QR code with the phone camera to open it directly (PIN included)")) }
                 }
-                item { Note(tr("分享中，螢幕會保持亮著。10 分鐘後自動關閉", "Sharing; the screen stays on. Stops automatically after 10 minutes")) }
+                item { Note(tr("分享中，螢幕保持亮著。", "The screen stays on while sharing.")) }
                 item {
                     Chip(
                         onClick = { vm.stopShare() },
@@ -206,7 +206,7 @@ fun SettingsConnect(vm: CounterViewModel, onOpenOptions: () -> Unit = {}, onOpen
 
         // ── 設定備份與還原 ──
         item { ToggleChip(tr("設定備份與還原", "Settings backup and restore"), backupOn) { s.setSettingsBackup(it) } }
-        item { Note(tr("開啟後多兩個按鈕：把目前所有設定存成 sessions/settings_backup.txt（也能用區網分享或 adb 取出），以及從這個檔案還原。換手錶或重裝時很方便。不含記錄、本次箭數和信任裝置。還原後要重新開啟 App 才生效。預設開", "When on, adds two buttons: save all current settings to sessions/settings_backup.txt (also available through LAN share or adb) and restore from that file. Handy when changing watches or reinstalling. Does not include records, the current count or trusted devices. Restart the app after restoring. On by default")) }
+        item { Note(tr("• 備份：把全部設定存成 sessions/settings_backup.txt\n• 還原：從該檔套用，重新開啟 App 才生效\n不含記錄、本次箭數、信任裝置。", "• Back up: saves all settings to sessions/settings_backup.txt\n• Restore: applies that file; reopen the app to take effect\nRecords, the current count and trusted devices are not included.")) }
         if (backupOn) {
             item {
                 Chip(

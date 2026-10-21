@@ -7,7 +7,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -30,6 +32,7 @@ fun SettingsAbout(vm: CounterViewModel, onOpenChangelog: () -> Unit = {}) {
     val threshold by vm.threshold.collectAsStateWithLifecycle()
     val updateMode by s.updateMode.collectAsStateWithLifecycle()
     val updateUi by vm.update.collectAsStateWithLifecycle()
+    val iconAnim by s.aboutIconAnim.collectAsStateWithLifecycle()
     var confirmReset by remember { mutableStateOf(false) }
     val ctx = LocalContext.current
     var noBrowser by remember { mutableStateOf(false) }
@@ -40,7 +43,20 @@ fun SettingsAbout(vm: CounterViewModel, onOpenChangelog: () -> Unit = {}) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        item { SectionTitle(SettingsCategories.name(7)) }
+        item { SectionTitle(tr("關於", "About")) }
+        item {
+            var t by remember { mutableLongStateOf(0L) }
+            LaunchedEffect(iconAnim) {
+                if (!iconAnim) return@LaunchedEffect
+                var start = -1L
+                while (true) {
+                    val now = withFrameNanos { it }
+                    if (start < 0) start = now
+                    t = (now - start) / 1_000_000L
+                }
+            }
+            AppIconBadge(t, size = 72.dp, breathing = iconAnim)
+        }
         item { Body(tr("版本 ${vm.versionLabel}", "Version ${vm.versionLabel}")) }
         item { Body(tr("裝置 ${vm.deviceModel()}", "Device ${vm.deviceModel()}")) }
         item { Body(tr("作者 ${AppInfo.AUTHOR}", "Author ${AppInfo.AUTHOR}")) }
@@ -68,6 +84,8 @@ fun SettingsAbout(vm: CounterViewModel, onOpenChangelog: () -> Unit = {}) {
             )
         }
 
+        item { ToggleChip(tr("圖示動畫", "Icon animation"), iconAnim) { s.setAboutIconAnim(it) } }
+
         item { SectionTitle(tr("更新", "Update")) }
         item {
             Chip(
@@ -78,7 +96,7 @@ fun SettingsAbout(vm: CounterViewModel, onOpenChangelog: () -> Unit = {}) {
                 modifier = Modifier.fillMaxWidth(0.9f),
             )
         }
-        item { Note(tr("每次啟動：每次開啟 App 都查一次 GitHub。每天第一次啟動：一天最多查一次。無自動檢查：只在你按「檢查更新」時查。有新版本才會在主畫面提醒並顯示版號；已是最新或連線失敗都不吭聲。不會自己下載，也不會中斷射擊。需要網路。預設「每次啟動」，下次開啟 App 才生效", "Every start: checks GitHub each time the app opens. First start each day: at most once a day. No automatic check: only when you tap Check for updates. Only a new version shows a reminder with its version number on the main screen; up to date or a failed check stay silent. Never downloads by itself or interrupts shooting. Needs a network. Default is Every start; takes effect the next time the app opens")) }
+        item { Note(tr("點一下切換：\n• 每次啟動：每次開 App 查一次\n• 每天第一次啟動：一天最多一次\n• 無自動檢查：只在按「檢查更新」時查\n有新版本才在啟動畫面提醒。不會自己下載，也不會中斷射擊。下次開啟生效", "Tap to switch:\n• Every start: check each time the app opens\n• First start each day: at most once a day\n• No automatic check: only when you tap Check for updates\nOnly a new version shows a reminder on the splash screen. Never downloads by itself or interrupts shooting. Takes effect next launch.")) }
         item {
             val busy = updateUi.kind == UpdateKind.CHECKING || updateUi.kind == UpdateKind.DOWNLOADING || updateUi.kind == UpdateKind.INSTALLING
             Chip(

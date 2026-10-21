@@ -80,7 +80,7 @@ fun SettingsDetect(vm: CounterViewModel, onOpenCalibration: () -> Unit) {
                 onPlus = { vm.adjustThreshold(1f) },
             )
         }
-        item { Note(tr("越大越不靈敏。調整立即生效，偵測中也可以改", "Higher = less sensitive. Takes effect immediately, even while detecting")) }
+        item { Note(tr("越大越不靈敏。偵測中也可以改。", "Higher = less sensitive. Can be changed while detecting.")) }
         item { ToggleChip(tr("主畫面顯示閾值調整", "Threshold on main screen"), mainThreshold) { s.setMainThreshold(it) } }
         item {
             StepRow(
@@ -90,7 +90,7 @@ fun SettingsDetect(vm: CounterViewModel, onOpenCalibration: () -> Unit) {
             )
         }
         item {
-            Note(tr("放箭前要先靜止到合力低於此值（m/s²，預設 5）。調大較容易算進去，但容易誤判；調小較嚴格，可能漏判。立即生效", "Before a release the arm must be quieter than this (m/s², default 5). Higher counts more easily but may false-trigger; lower is stricter and may miss. Takes effect immediately"))
+            Note(tr("放箭前須先靜止到合力低於此值（m/s²，預設 5）。\n• 調大：較容易計入，也較容易誤判\n• 調小：較嚴格，可能漏判", "Must be still (net force below this, m/s², default 5) before a release.\n• Higher: counts more easily, more false detections\n• Lower: stricter, may miss shots"))
         }
         item {
             StepRow(
@@ -99,10 +99,10 @@ fun SettingsDetect(vm: CounterViewModel, onOpenCalibration: () -> Unit) {
                 onPlus = { s.setCooldownSec(cooldownSec + 1) },
             )
         }
-        item { Note(tr("兩次計數之間至少間隔多久（預設 3 秒）。調短可能把一次放箭算成兩次；調長可能漏掉連續的兩箭。立即生效", "Minimum time between two counts (default 3 s). Shorter may count one release twice; longer may miss two quick arrows. Takes effect immediately")) }
+        item { Note(tr("兩次計數至少間隔多久（預設 3 秒）。\n• 調短：可能把一次放箭算成兩次\n• 調長：可能漏掉連續兩箭", "Minimum gap between two counts (default 3 s).\n• Shorter: one release may count twice\n• Longer: may miss two quick shots")) }
 
         item { ToggleChip(tr("自動暫停", "Auto-pause"), autoPause) { s.setAutoPause(it) } }
-        item { Note(tr("偵測中太久沒有放箭就自動暫停並震動，避免忘了按暫停而白白耗電。校準錄製不適用。立即生效", "Pauses and vibrates when no arrow is released for a while, so a forgotten session does not drain the battery. Not used in calibration or match mode. Takes effect immediately")) }
+        item { Note(tr("太久沒放箭就自動暫停並震動，避免忘了按暫停。校準錄製不適用。", "Pauses and buzzes after a long time with no release, so you do not forget to pause. Not used for calibration recordings.")) }
         if (autoPause) {
             item {
                 StepRow(
@@ -115,13 +115,13 @@ fun SettingsDetect(vm: CounterViewModel, onOpenCalibration: () -> Unit) {
         }
 
         item { ToggleChip(tr("進階放箭判定（試用）", "Advanced release check (trial)"), advancedDetect) { s.setAdvancedDetect(it) } }
-        item { Note(tr("試用中，之後版本可能移除這個開關。開啟後：放箭前的穩定檢查和衝擊之間留 0.25 秒緩衝（原本 0.1 秒），避免雙峰放箭被漏掉；並要求放箭前手腕轉動不能太大（陀螺儀 40°/s 以內），擋掉碰撞、放下弓這類誤判。關閉就是舊判定。對之後新開始的偵測生效", "Trial; this switch may be removed in a later version. When on: the stillness check leaves a 0.25 s buffer before the impact (was 0.1 s) so double-peak releases are not missed, and wrist rotation before release must stay small (gyro within 40°/s), which rejects bumps and putting the bow down. Off is the old check. Applies to detections started afterwards")) }
+        item { Note(tr("試用中，之後可能移除。\n• 穩定檢查與衝擊之間留 0.25 秒緩衝（原 0.1 秒），避免雙峰放箭被漏掉\n• 放箭前手腕轉動須在 40°/s 以內，擋掉碰撞、放下弓\n• 關閉＝舊判定\n下次開始偵測生效", "Trial; may be removed later.\n• 0.25 s buffer between the stability check and the impact (was 0.1 s) so double-peak releases are not missed\n• Wrist rotation must stay within 40°/s before the release, to filter bumps and putting the bow down\n• Off = old detection\nTakes effect the next time detection starts.")) }
 
         item { ToggleChip(tr("校準自動建議", "Calibration advice"), calAdvice) { s.setCalAdvice(it) } }
-        item { Note(tr("校準儲存後，以及校準記錄的詳情頁會多一個「分析校準資料」，用拉弓、走動和正常射擊三段資料給閾值與靜止的建議。只建議，由你決定要不要套用。立即生效", "After a calibration is saved, and on a calibration record's detail page, adds Analyze calibration: it suggests threshold and Still from the three movements. Advice only. Takes effect immediately")) }
+        item { Note(tr("校準儲存後，以及校準記錄的詳情頁會多一個「分析校準資料」，用拉弓、走動和正常射擊三段資料給閾值與靜止的建議。只建議，由你決定要不要套用", "After a calibration is saved, and on a calibration record's detail page, adds Analyze calibration: it suggests threshold and Still from the three movements. Advice only")) }
 
         item { ToggleChip(tr("靈敏度建議", "Sensitivity advice"), sensitivityAdvice) { s.setSensitivityAdvice(it) } }
-        item { Note(tr("開啟後，下方「閾值建議」也會一併給「靜止」和「冷卻」的建議（需要標記過誤判的記錄）。只建議，由你決定要不要套用。立即生效", "When on, Threshold advice below also covers Still and Cooldown (needs records with marked false detections). Advice only; you decide whether to apply. Takes effect immediately")) }
+        item { Note(tr("開啟後，下方「閾值建議」也會一併給「靜止」和「冷卻」的建議（需要標記過誤判的記錄）。只建議，由你決定要不要套用", "When on, Threshold advice below also covers Still and Cooldown (needs records with marked false detections). Advice only; you decide whether to apply")) }
 
         item {
             Chip(

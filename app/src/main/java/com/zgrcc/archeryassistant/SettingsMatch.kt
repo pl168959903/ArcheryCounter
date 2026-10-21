@@ -63,7 +63,7 @@ fun SettingsMatch(vm: CounterViewModel) {
     ) {
         item { SectionTitle(SettingsCategories.name(4)) }
         item { ToggleChip(tr("比賽模式", "Match mode"), compEnabled) { s.setCompEnabled(it) } }
-        item { Note(tr("開啟後主畫面多一個「比賽模式」：每趟有準備倒數、射擊倒數（剩 30、10 秒震動提醒）、射滿箭數自動結束，休息後按「下一趟」。比賽中自動鎖定觸控、保持亮屏。紀錄標為「比賽」，詳情頁有逐趟用時與逾時統計。立即生效", "Adds a Match mode to the main screen: each end has a prepare countdown and a shooting countdown (buzz at 30 s and 10 s left), ends automatically when the arrows are used, and after the break you press Next end. Touch lock and screen-on are automatic during a match. Records are tagged Match with per-end time and overtime statistics. Takes effect immediately")) }
+        item { Note(tr("主畫面多「比賽模式」：\n• 每趟有準備倒數、射擊倒數（剩 30、10 秒震動）\n• 射滿箭數自動結束，休息後按「下一趟」\n• 自動鎖定觸控、保持亮屏\n• 記錄標為「比賽」，詳情有逐趟用時與逾時統計", "Adds Match mode to the main screen:\n• Each end has a prep countdown and a shooting countdown (buzz at 30 and 10 s left)\n• Ends automatically when all arrows are shot; tap Next end after resting\n• Touch is locked and the screen stays on\n• Records are marked Match, with per-end time and overtime stats in details")) }
         if (compEnabled) {
             item {
                 Chip(
@@ -77,7 +77,7 @@ fun SettingsMatch(vm: CounterViewModel) {
                     modifier = Modifier.fillMaxWidth(0.9f),
                 )
             }
-            item { Note(tr("室內18米：每趟 3 箭、20 趟、120 秒；室外70米：每趟 6 箭、12 趟、240 秒；自訂：下面自己設；我的賽制：存下來的自訂賽制，最多 5 組，點一下依序切換", "Indoor 18 m: 3 arrows, 20 ends, 120 s; Outdoor 70 m: 6 arrows, 12 ends, 240 s; Custom: set below; Mine: saved custom formats, up to 5, tap to cycle")) }
+            item { Note(tr("• 室內 18 米：每趟 3 箭、20 趟、120 秒\n• 室外 70 米：每趟 6 箭、12 趟、240 秒\n• 自訂：自己設定\n• 我的賽制：最多 5 組，點一下依序切換", "• Indoor 18 m: 3 arrows per end, 20 ends, 120 s\n• Outdoor 70 m: 6 arrows per end, 12 ends, 240 s\n• Custom: set your own\n• My formats: up to 5, tap to cycle")) }
             if (compFormat == CompFormat.CUSTOM) {
                 item {
                     StepRow(
@@ -151,7 +151,7 @@ fun SettingsMatch(vm: CounterViewModel) {
                 )
             }
             item { ToggleChip(tr("單箭限時", "Per-arrow limit"), compArrowTimer) { s.setCompArrowTimer(it) } }
-            item { Note(tr("每一箭限時：射擊開始或射出一箭後重新倒數，超時震動並響兩聲提醒一次。只提醒，不會結束這一趟，每趟總時間照舊。預設關。立即生效", "Time limit for each arrow: restarts when shooting begins or after each arrow; going over buzzes and beeps twice, once. Only a reminder; it does not end the end, and the end clock is unchanged. Off by default. Takes effect immediately")) }
+            item { Note(tr("每一箭限時：射擊開始或射出一箭後重新倒數，超時震動並響兩聲提醒一次。只提醒，不會結束這一趟，每趟總時間照舊", "Time limit for each arrow: restarts when shooting begins or after each arrow; going over buzzes and beeps twice, once. Only a reminder; it does not end the end, and the end clock is unchanged. Off by default")) }
             if (compArrowTimer) {
                 item {
                     StepRow(
@@ -162,7 +162,7 @@ fun SettingsMatch(vm: CounterViewModel) {
                 }
             }
             item { ToggleChip(tr("休息時輸入環數", "Score entry at breaks"), compScoreEntry) { s.setCompScoreEntry(it) } }
-            item { Note(tr("每趟結束進入休息畫面時，多一個「輸入環數」按鈕，逐箭輸入該趟環數（可跳過，賽後在詳情頁也能補）。最後一趟射完後比賽直接結束，那一趟請賽後在詳情頁輸入。立即生效", "At each break an Enter scores button lets you score that end's arrows (skippable; you can also add them later in record details). The match ends right after the last end, so score that one in record details. Takes effect immediately")) }
+            item { Note(tr("每趟結束進入休息畫面時，多一個「輸入環數」按鈕，逐箭輸入該趟環數（可跳過，賽後在詳情頁也能補）。最後一趟射完後比賽直接結束，那一趟請賽後在詳情頁輸入", "At each break an Enter scores button lets you score that end's arrows (skippable; you can also add them later in record details). The match ends right after the last end, so score that one in record details")) }
             item { Note(tr("正式開始前的練習趟，不計入正式箭數與統計", "Practice ends before the match proper; not counted in match arrows or statistics")) }
             item {
                 StepRow(
@@ -189,9 +189,9 @@ fun SettingsMatch(vm: CounterViewModel) {
                 )
             }
             item { ToggleChip(tr("比賽畫面配色", "Match colors"), compColors) { s.setCompColors(it) } }
-            item { Note(tr("準備階段紅底白字、射擊階段綠底黑字。關閉則維持一般深色畫面。立即生效", "Red background with white text while getting ready; green with black text while shooting. Off keeps the normal dark screen. Takes effect immediately")) }
+            item { Note(tr("準備階段紅底白字、射擊階段綠底黑字。關閉則維持一般深色畫面", "Red background with white text while getting ready; green with black text while shooting. Off keeps the normal dark screen")) }
             item { ToggleChip(tr("比賽聲音", "Match sounds"), soundEnabled) { s.setSoundEnabled(it) } }
-            item { Note(tr("用手錶喇叭（或已連接的藍牙耳機）播放提示音，和震動各自獨立。沒有喇叭的手錶聽不到；手錶處於勿擾或靜音時可能被系統壓低。立即生效", "Plays tones through the watch speaker (or connected Bluetooth headphones), independent of vibration. Watches without a speaker are silent; Do Not Disturb or silent mode may mute it. Takes effect immediately")) }
+            item { Note(tr("用手錶喇叭（或已連接的藍牙耳機）播放提示音，和震動各自獨立。沒有喇叭的手錶聽不到；手錶處於勿擾或靜音時可能被系統壓低", "Plays tones through the watch speaker (or connected Bluetooth headphones), independent of vibration. Watches without a speaker are silent; Do Not Disturb or silent mode may mute it")) }
             if (soundEnabled) {
                 item {
                     Chip(
