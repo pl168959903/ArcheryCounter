@@ -32,6 +32,10 @@ class SessionRecorder(private val store: SessionStore) {
     private var tags: List<String> = emptyList()
     private var calibration = false
     private var comp: CompMeta? = null
+    private var app = ""
+    private var dev = ""
+    private var det = ""
+    private var uid = ""
 
     private val marks = ArrayList<Mark>()
     private val shots = ArrayList<ShotEntry>()
@@ -55,6 +59,9 @@ class SessionRecorder(private val store: SessionStore) {
         tags: List<String> = emptyList(),
         calibration: Boolean = false,
         comp: CompMeta? = null,
+        app: String = "",
+        dev: String = "",
+        det: String = "",
     ): String {
         finishLocked(null)
 
@@ -75,6 +82,10 @@ class SessionRecorder(private val store: SessionStore) {
         this.tags = tags
         this.calibration = calibration
         this.comp = comp
+        this.app = app
+        this.dev = dev
+        this.det = det
+        this.uid = java.util.UUID.randomUUID().toString().replace("-", "").take(8)
         shots.clear()
         manual.clear()
         marks.clear()
@@ -213,6 +224,7 @@ class SessionRecorder(private val store: SessionStore) {
             id = sid, startMs = startMs, endMs = null, threshold = threshold, windowSec = windowSec,
             hasGyro = hasGyro, rawCsv = rawCsv, shots = shots.toList(), manual = manual.toList(),
             tags = tags, calibration = calibration, marks = marks.toList(), comp = comp,
+            app = app, dev = dev, uid = uid, det = det,
         )
     }
 
@@ -282,6 +294,10 @@ class SessionRecorder(private val store: SessionStore) {
                 calibration = calibration,
                 marks = marks.toList(),
                 comp = comp,
+                app = app,
+                dev = dev,
+                uid = uid,
+                det = det,
             )
         )
     }

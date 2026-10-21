@@ -46,10 +46,13 @@ object ExportCsv {
     private fun time(ms: Long): String =
         SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date(ms))
 
+    private fun csvCell(v: String): String =
+        if (v.any { it == ',' || it == '"' || it == '\n' }) "\"" + v.replace("\"", "\"\"") + "\"" else v
+
     fun summary(sessions: List<Session>): String = buildString {
         append("id,start,duration_s,detected,cancelled,manual_plus,manual_minus,final_count,")
         append("threshold_min,threshold_max,peak_avg,interval_avg_s,")
-        append("accel_rms_avg,gyro_rms_avg,follow_accel_avg,follow_gyro_avg,scored,score_avg,tags,calibration\n")
+        append("accel_rms_avg,gyro_rms_avg,follow_accel_avg,follow_gyro_avg,scored,score_avg,tags,calibration,app,device,uid\n")
         for (s in sessions.sortedBy { it.startMs }) {
             val st = computeStats(s)
             append(s.id).append(',')
@@ -71,7 +74,8 @@ object ExportCsv {
             append(st.scoredCount).append(',')
             append(f(st.scoreAvg, 2)).append(',')
             append(s.tags.joinToString("|")).append(',')
-            append(if (s.calibration) 1 else 0).append('\n')
+            append(if (s.calibration) 1 else 0).append(',')
+            append(csvCell(s.app)).append(',').append(csvCell(s.dev)).append(',').append(csvCell(s.uid)).append('\n')
         }
     }
 

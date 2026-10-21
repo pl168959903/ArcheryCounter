@@ -422,6 +422,14 @@ class AppSettings(private val prefs: SharedPreferences) {
         prefs.edit().putBoolean(KEY_ADVANCED_DETECT, v).apply()
     }
 
+    private val _recordDevice = MutableStateFlow(prefs.getBoolean(KEY_RECORD_DEVICE, true))
+    /** 記錄檔寫入裝置型號（v1.18.1）。App 版本、唯一碼與偵測設定一律寫入。預設：開 */
+    val recordDevice: StateFlow<Boolean> = _recordDevice.asStateFlow()
+    fun setRecordDevice(v: Boolean) {
+        _recordDevice.value = v
+        prefs.edit().putBoolean(KEY_RECORD_DEVICE, v).apply()
+    }
+
     private val _reportExport = MutableStateFlow(prefs.getBoolean(KEY_REPORT_EXPORT, true))
     /** 資料頁提供「匯出報告」（網頁報告 report.html）。預設：開 */
     val reportExport: StateFlow<Boolean> = _reportExport.asStateFlow()
@@ -922,6 +930,7 @@ class AppSettings(private val prefs: SharedPreferences) {
         setShotFeel(false)
         setCalAdvice(true)
         setAdvancedDetect(true)
+        setRecordDevice(true)
         setReportExport(true)
         setLanShare(false)
         setShareRemember(true)
@@ -1004,6 +1013,7 @@ class AppSettings(private val prefs: SharedPreferences) {
         private const val KEY_SHOT_FEEL = "shot_feel"
         private const val KEY_CAL_ADVICE = "cal_advice"
         private const val KEY_ADVANCED_DETECT = "advanced_detect"
+        private const val KEY_RECORD_DEVICE = "record_device"
         private const val KEY_REPORT_EXPORT = "report_export"
         private const val KEY_LAN_SHARE = "lan_share"
         private const val KEY_SHARE_REMEMBER = "share_remember"

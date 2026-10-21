@@ -226,20 +226,34 @@ class SessionStore(baseDir: File) {
         } catch (e: Exception) {
             return@onIo ImportOutcome.INVALID
         }
-        val ok = try {
-            SessionJson.decode(text, id) != null
+        val incoming = try {
+            SessionJson.decode(text, id)
         } catch (e: Exception) {
-            false
+            null
+        } ?: return@onIo ImportOutcome.INVALID
+        var tid = id
+        var data = bytes
+        // 同 id 但唯一碼不同 = 不同手錶剛好同一秒開始：改用新 id 匯入，不覆蓋也不略過
+        val existing = jsonFile(tid)
+        if (existing.exists() && incoming.uid.isNotEmpty()) {
+            val old = try {
+                SessionJson.decode(existing.readText(Charsets.UTF_8), tid)
+            } catch (e: Exception) {
+                null
+            }
+            if (old != null && old.uid != incoming.uid) {
+                tid = RecordMeta.collisionId(tid, incoming.uid)
+                data = SessionJson.encode(incoming.copy(id = tid)).toByteArray(Charsets.UTF_8)
+            }
         }
-        if (!ok) return@onIo ImportOutcome.INVALID
-        val target = jsonFile(id)
+        val target = jsonFile(tid)
         if (target.exists() && !overwrite) return@onIo ImportOutcome.SKIPPED
         try {
             dir.mkdirs()
-            val tmp = File(dir, "$id.json.tmp")
-            tmp.writeBytes(bytes)
+            val tmp = File(dir, "$tid.json.tmp")
+            tmp.writeBytes(data)
             if (!tmp.renameTo(target)) {
-                target.writeBytes(bytes)
+                target.writeBytes(data)
                 tmp.delete()
             }
             ImportOutcome.IMPORTED
@@ -325,7 +339,7 @@ class SessionStore(baseDir: File) {
  *
  * 结构：
  *   { "id", "startMs", "endMs"（-1 表示没有正常结束）, "threshold", "windowSec", "hasGyro", "rawCsv",
- *     "tags"?: ["室外70米", "反曲"], "cal"?: true, "comp"?: { "sec", "apn", "pr" }, "marks"?: [ { "l", "s", "e"? } ],
+ *     "tags"?: ["室外70米", "反曲"], "cal"?: true, "app"?, "dev"?, "uid"?, "det"?, "comp"?: { "sec", "apn", "pr" }, "marks"?: [ { "l", "s", "e"? } ],
  *     "shots":  [ { "rel", "peak", "thr", "acc"?, "gyr"?, "x"?（1=誤判）, "wf"?（波形）,
  *                   "fa"?, "fg"?（放箭後跟隨晃動量）, "sc"?（環數） } ],
  *     "manual": [ { "rel", "d" } ] }
@@ -346,6 +360,10 @@ internal object SessionJson {
             append(",\"tags\":").append(s.tags.joinToString(",", "[", "]") { quote(it) })
         }
         if (s.calibration) append(",\"cal\":true")
+        if (s.app.isNotEmpty()) append(",\"app\":").append(quote(s.app))
+        if (s.dev.isNotEmpty()) append(",\"dev\":").append(quote(s.dev))
+        if (s.uid.isNotEmpty()) append(",\"uid\":").append(quote(s.uid))
+        if (s.det.isNotEmpty()) append(",\"det\":").append(quote(s.det))
         s.comp?.let {
             append(",\"comp\":{\"sec\":").append(it.secondsPerEnd)
             append(",\"apn\":").append(it.arrowsPerEnd)
@@ -439,6 +457,10 @@ internal object SessionJson {
                 manual = manual,
                 tags = (root["tags"] as? List<*>).orEmpty().mapNotNull { it as? String },
                 calibration = root["cal"] as? Boolean ?: false,
+                app = (root["app"] as? String).orEmpty().take(40),
+                dev = (root["dev"] as? String).orEmpty().take(60),
+                uid = (root["uid"] as? String).orEmpty().filter { it.isLetterOrDigit() }.take(16),
+                det = (root["det"] as? String).orEmpty().take(200),
                 comp = (root["comp"] as? Map<*, *>)?.let { c ->
                     val sec = (c["sec"] as? Number)?.toInt() ?: return@let null
                     val apn = (c["apn"] as? Number)?.toInt() ?: return@let null

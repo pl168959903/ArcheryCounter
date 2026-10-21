@@ -217,6 +217,7 @@ object ReportBuilder {
             if (st.scoredCount > 0) kpi(sb, Fmt.numOrDash(st.scoreAvg, 1), tr("平均環數", "Avg score"))
         }
         sb.append("</div>\n")
+        RecordMeta.sourceLine(s).takeIf { it.isNotEmpty() }?.let { sb.append("<div class=\"note\">${esc(it)}</div>\n") }
         if (s.endMs == null) sb.append("<div class=\"note\">${esc(tr("這筆記錄沒有正常結束（中斷）。", "This record did not end normally (interrupted)."))}</div>\n")
         if (st.cancelled > 0) sb.append("<div class=\"note\">${esc(tr("另有 ${st.cancelled} 筆被標為誤判，已排除。", "${st.cancelled} detections were marked as false and excluded."))}</div>\n")
 

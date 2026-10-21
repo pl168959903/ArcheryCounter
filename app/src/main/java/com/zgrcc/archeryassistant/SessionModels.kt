@@ -70,6 +70,14 @@ data class Session(
     val marks: List<Mark> = emptyList(),
     /** 比賽模式的設定（v1.9）；不是比賽紀錄為 null。各趟的起止時間存在 [marks] */
     val comp: CompMeta? = null,
+    /** 記錄當時的 App 版本（v1.18.1）；舊記錄為空 */
+    val app: String = "",
+    /** 記錄裝置型號；舊記錄或關閉「記錄裝置型號」為空 */
+    val dev: String = "",
+    /** 這次記錄的唯一碼（隨機 8 碼）；舊記錄為空 */
+    val uid: String = "",
+    /** 偵測設定摘要（進階判定、取樣率等）；舊記錄為空 */
+    val det: String = "",
 ) {
     /** 有效的箭（没有被标记为误判的）。 */
     fun validShots(): List<ShotEntry> = shots.filter { !it.cancelled }

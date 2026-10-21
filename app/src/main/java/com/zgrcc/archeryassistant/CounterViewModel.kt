@@ -438,6 +438,9 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
             }) + (if (comp != null) listOf(Tags.COMPETITION) else emptyList()),
             calibration = calibration,
             comp = comp,
+            app = versionName,
+            dev = if (settings.recordDevice.value) deviceModel() else "",
+            det = detectSummary(),
         )
         calibrating = calibration
         _calibrationActive.value = calibration
@@ -739,6 +742,19 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
     } catch (_: Exception) {
         null
     }
+
+    private fun deviceModel(): String {
+        val m = android.os.Build.MANUFACTURER.orEmpty().trim()
+        val d = android.os.Build.MODEL.orEmpty().trim()
+        return if (d.startsWith(m, ignoreCase = true)) d else "$m $d".trim()
+    }
+
+    private fun detectSummary(): String = RecordMeta.detect(
+        advanced = settings.advancedDetect.value,
+        hz = settings.samplingHz.value,
+        threshold = _threshold.value,
+        windowSec = settings.windowSec.value,
+    )
 
     /** 版本名稱，給「關於」顯示。 */
     val versionName: String = packageInfo?.versionName ?: "?"

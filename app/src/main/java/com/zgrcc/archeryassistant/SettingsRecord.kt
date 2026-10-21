@@ -38,6 +38,7 @@ fun SettingsRecord(vm: CounterViewModel) {
     val shotFeel by s.shotFeel.collectAsStateWithLifecycle()
     val recordTrace by s.recordTrace.collectAsStateWithLifecycle()
     val quickCheck by s.quickCheck.collectAsStateWithLifecycle()
+    val recordDevice by s.recordDevice.collectAsStateWithLifecycle()
 
     ScalingLazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -47,6 +48,9 @@ fun SettingsRecord(vm: CounterViewModel) {
         item { SectionTitle(SettingsCategories.name(2)) }
         item { ToggleChip(tr("快速檢查", "Quick check"), quickCheck) { s.setQuickCheck(it) } }
         item { Note(tr("記錄詳情多一個「快速檢查」，逐箭滑動看波形，一鍵標記誤判或恢復。只影響顯示，立即生效", "Adds Quick check to record details: step through shots with waveforms and mark or restore false detections in one tap. Display only. Takes effect immediately")) }
+
+        item { ToggleChip(tr("記錄裝置型號", "Record device model"), recordDevice) { s.setRecordDevice(it) } }
+        item { Note(tr("記錄檔會寫入手錶型號，方便分辨資料來源。App 版本、唯一碼與偵測設定一律寫入，不含個人資料。從下一次記錄開始", "Writes the watch model into records to tell sources apart. App version, unique ID and detection summary are always written; no personal data. Starts with the next record")) }
 
         item { ToggleChip(tr("錄製原始資料", "Record raw data"), recordRaw) { s.setRecordRaw(it) } }
         item { Note(tr("每次記錄另存一份 CSV（加速度與角速度）。每 30 分鐘約 10 MB 以上，從下一次記錄開始", "Saves a CSV of accel and gyro for each record. 10 MB or more per 30 min. Starts with the next record")) }
