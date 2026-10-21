@@ -39,6 +39,9 @@ object RecordMeta {
         return parts.joinToString(" · ")
     }
 
+    /** 同 id 的兩筆記錄是否其實是不同裝置的（雙方都有唯一碼且不同）。 */
+    fun clashes(mine: String, theirs: String): Boolean = mine.isNotEmpty() && theirs.isNotEmpty() && mine != theirs
+
     /** 匯入撞號時的新 id。 */
     fun collisionId(id: String, uid: String): String = id + "_" + uid.take(4)
 }

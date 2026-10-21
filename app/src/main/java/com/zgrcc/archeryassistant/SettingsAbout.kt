@@ -42,6 +42,7 @@ fun SettingsAbout(vm: CounterViewModel, onOpenChangelog: () -> Unit = {}) {
     ) {
         item { SectionTitle(SettingsCategories.name(7)) }
         item { Body(tr("版本 ${vm.versionLabel}", "Version ${vm.versionLabel}")) }
+        item { Body(tr("裝置 ${vm.deviceModel()}", "Device ${vm.deviceModel()}")) }
         item { Body(tr("作者 ${AppInfo.AUTHOR}", "Author ${AppInfo.AUTHOR}")) }
         item { Body(tr("簽章 ${vm.signatureShort}", "Signature ${vm.signatureShort}")) }
         item { Note(AppInfo.signatureStatus(vm.signatureShort)) }

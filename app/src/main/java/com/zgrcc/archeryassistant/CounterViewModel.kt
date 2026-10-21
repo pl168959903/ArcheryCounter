@@ -743,7 +743,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         null
     }
 
-    private fun deviceModel(): String {
+    fun deviceModel(): String {
         val m = android.os.Build.MANUFACTURER.orEmpty().trim()
         val d = android.os.Build.MODEL.orEmpty().trim()
         return if (d.startsWith(m, ignoreCase = true)) d else "$m $d".trim()

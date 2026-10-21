@@ -10,6 +10,7 @@ on:
 # 建立 Release 需要寫入權限
 permissions:
   contents: write
+  actions: read
 
 jobs:
   build:
@@ -36,12 +37,43 @@ jobs:
             exit 1
           fi
 
+      # v1.18.2：標籤指向的 commit 如果在 main 上已經編譯成功，就直接拿那次的 APK 發布，不再重編
+      - name: Check CHANGELOG has this version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          if ! grep -qx "### $GITHUB_REF_NAME" CHANGELOG.md; then
+            echo "::warning::CHANGELOG.md 沒有「### $GITHUB_REF_NAME」段落，Release 說明會改用自動產生的"
+          fi
+
+      - name: Look for an earlier successful build of this commit
+        id: reuse
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RUN=$(gh run list --workflow "${{ github.workflow }}" --commit "$GITHUB_SHA" --event push --status success --json databaseId,headBranch --jq '[.[] | select(.headBranch=="main")][0].databaseId' 2>/dev/null || true)
+          echo "reuse=false" >> "$GITHUB_OUTPUT"
+          if [ -n "$RUN" ] && [ "$RUN" != "null" ]; then
+            mkdir -p prebuilt
+            gh run download "$RUN" --name ArcheryCounter-apk --dir prebuilt || true
+            APK=$(find prebuilt -name app-release.apk 2>/dev/null | head -n 1)
+            if [ -n "$APK" ]; then
+              echo "reuse=true" >> "$GITHUB_OUTPUT"
+              echo "apk=$APK" >> "$GITHUB_OUTPUT"
+              echo "沿用 main 上第 $RUN 次編譯的 APK，不重新編譯"
+              exit 0
+            fi
+          fi
+          echo "找不到可沿用的編譯，改為完整編譯"
+
       - uses: actions/setup-java@v5
+        if: steps.reuse.outputs.reuse != 'true'
         with:
           distribution: temurin
           java-version: 17
 
       - uses: gradle/actions/setup-gradle@v4
+        if: steps.reuse.outputs.reuse != 'true'
         with:
           gradle-version: 8.9
 
@@ -69,6 +101,7 @@ jobs:
 
       # 單元測試（v1.14.2 起）：失敗就停，並把失敗的測試名稱輸出成註解
       - name: Unit tests
+        if: steps.reuse.outputs.reuse != 'true'
         run: |
           set -o pipefail
           gradle :app:testDebugUnitTest --no-daemon 2>&1 | tee test.log || {
@@ -79,6 +112,7 @@ jobs:
 
       # 同時編譯 release APK（較快，建議使用）、debug APK（備用），以及上架 Google Play 用的 AAB
       - name: Build APKs and AAB
+        if: steps.reuse.outputs.reuse != 'true'
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
@@ -92,6 +126,7 @@ jobs:
           }
 
       - uses: actions/upload-artifact@v4
+        if: steps.reuse.outputs.reuse != 'true'
         with:
           name: ArcheryCounter-apk
           path: |
@@ -100,6 +135,7 @@ jobs:
 
       # 上架 Google Play 用的 App Bundle（.aab），在 Actions 的 Artifacts 下載，不放進 GitHub Release
       - uses: actions/upload-artifact@v4
+        if: steps.reuse.outputs.reuse != 'true'
         with:
           name: ArcheryAssistant-aab
           path: app/build/outputs/bundle/release/app-release.aab
@@ -110,10 +146,13 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ github.token }}
+          REUSED_APK: ${{ steps.reuse.outputs.apk }}
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           FILE="ArcheryAssistant-v${VERSION}.apk"
-          cp app/build/outputs/apk/release/app-release.apk "$FILE"
+          SRC="app/build/outputs/apk/release/app-release.apk"
+          if [ -n "$REUSED_APK" ]; then SRC="$REUSED_APK"; fi
+          cp "$SRC" "$FILE"
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             gh release upload "$GITHUB_REF_NAME" "$FILE" --clobber
           else

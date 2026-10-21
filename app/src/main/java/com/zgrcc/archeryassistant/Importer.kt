@@ -39,6 +39,8 @@ data class ImportPreview(
     val newIds: List<String> = emptyList(),
     val existingIds: List<String> = emptyList(),
     val raw: Int = 0,
+    /** 同 id 但唯一碼不同、會另存成新 id 的記錄數（v1.18.2） */
+    val collisions: Int = 0,
     val hasSettings: Boolean = false,
     val deviceName: String = "",
     val error: ImportError? = null,
@@ -103,9 +105,21 @@ class SessionImporter(private val store: SessionStore, private val source: Impor
         val items = ImportPlanner.wanted(remote, withRaw)
         val local = store.localIds()
         val jsonIds = items.filter { it.name.endsWith(".json") }.map { it.name.removeSuffix(".json") }
+        val existing = jsonIds.filter { it in local }
+        // 本機已有的 id：抓對方檔案比唯一碼，不同就是另一支裝置同一秒開始的記錄，會另存
+        val clash = existing.filter { id ->
+            try {
+                val mine = store.load(id)?.uid.orEmpty()
+                val theirs = SessionJson.decode(String(source.open("$id.json").use { it.readBytes() }, Charsets.UTF_8), id)?.uid.orEmpty()
+                RecordMeta.clashes(mine, theirs)
+            } catch (e: Exception) {
+                false
+            }
+        }.toSet()
         return ImportPreview(
-            newIds = jsonIds.filter { it !in local },
-            existingIds = jsonIds.filter { it in local },
+            newIds = jsonIds.filter { it !in local || it in clash },
+            existingIds = existing.filter { it !in clash },
+            collisions = clash.size,
             raw = items.count { it.name.endsWith(".csv") },
             hasSettings = remote.any { it.name == SettingsBackup.FILE_NAME },
             deviceName = safeName(),
@@ -266,7 +280,8 @@ object ImportPreviewText {
             tr("，本機已有 ${p.existingIds.size} 筆會被覆蓋", ", ${p.existingIds.size} existing here will be overwritten")
         else tr("，本機已有 ${p.existingIds.size} 筆會略過", ", ${p.existingIds.size} existing here will be skipped")
         val raw = if (p.raw > 0) tr("；原始資料 ${p.raw} 個", "; ${p.raw} raw files") else ""
-        return who + tr("將新增 ${p.newIds.size} 筆$ex$raw", "Will add ${p.newIds.size}$ex$raw")
+        val clash = if (p.collisions > 0) tr("（其中 ${p.collisions} 筆與本機同一秒但不同裝置，另存新編號）", " (${p.collisions} share a start second with local records from another device and are saved under a new ID)") else ""
+        return who + tr("將新增 ${p.newIds.size} 筆$clash$ex$raw", "Will add ${p.newIds.size}$clash$ex$raw")
     }
 }
 

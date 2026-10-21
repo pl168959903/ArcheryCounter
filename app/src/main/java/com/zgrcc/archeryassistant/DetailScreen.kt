@@ -147,6 +147,9 @@ private fun DetailContent(
             }
         }
         item { Body(summaryText(session, stats, isActive)) }
+        RecordMeta.sourceLine(session).takeIf { it.isNotEmpty() }?.let { src ->
+            item { Note(tr("來源：", "Source: ") + src) }
+        }
         if (isSteadiest) {
             item { Body(tr("★ 個人最佳：這是你最穩的一次練習（平均晃動最低）", "★ Personal best: your steadiest practice session (lowest average shake)")) }
         }
