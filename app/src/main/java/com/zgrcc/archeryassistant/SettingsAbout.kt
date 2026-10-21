@@ -13,6 +13,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
@@ -30,6 +31,8 @@ fun SettingsAbout(vm: CounterViewModel, onOpenChangelog: () -> Unit = {}) {
     val updateMode by s.updateMode.collectAsStateWithLifecycle()
     val updateUi by vm.update.collectAsStateWithLifecycle()
     var confirmReset by remember { mutableStateOf(false) }
+    val ctx = LocalContext.current
+    var noBrowser by remember { mutableStateOf(false) }
 
 
     ScalingLazyColumn(
@@ -42,6 +45,19 @@ fun SettingsAbout(vm: CounterViewModel, onOpenChangelog: () -> Unit = {}) {
         item { Body(tr("作者 ${AppInfo.AUTHOR}", "Author ${AppInfo.AUTHOR}")) }
         item { Body(tr("簽章 ${vm.signatureShort}", "Signature ${vm.signatureShort}")) }
         item { Note(AppInfo.signatureStatus(vm.signatureShort)) }
+        item {
+            Chip(
+                onClick = { noBrowser = !openLink(ctx, AppInfo.GITHUB_URL) },
+                icon = { Text("</>", maxLines = 1) },
+                label = { Text("GitHub", maxLines = 1) },
+                secondaryLabel = { Text(AppInfo.GITHUB_SHORT, maxLines = 1) },
+                colors = kindColors(ChipKind.NAV, ChipDefaults.secondaryChipColors()),
+                modifier = Modifier.fillMaxWidth(0.9f),
+            )
+        }
+        if (noBrowser) {
+            item { Note(tr("這支手錶沒有可以開網頁的程式。網址：${AppInfo.GITHUB_URL}", "This watch has no app that can open web pages. Address: ${AppInfo.GITHUB_URL}")) }
+        }
         item {
             Chip(
                 onClick = onOpenChangelog,
@@ -149,4 +165,15 @@ fun SettingsAbout(vm: CounterViewModel, onOpenChangelog: () -> Unit = {}) {
             }
         }
     }
+}
+
+/** 用系統開啟網址；沒有能處理的程式回傳 false（不會當掉）。 */
+private fun openLink(ctx: android.content.Context, url: String): Boolean = try {
+    ctx.startActivity(
+        android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
+            .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+    )
+    true
+} catch (e: Exception) {
+    false
 }

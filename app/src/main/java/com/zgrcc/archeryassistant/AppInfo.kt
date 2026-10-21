@@ -7,6 +7,10 @@ object AppInfo {
     /** 作者名稱，各處畫面都用這一個 */
     const val AUTHOR = "ZGrCc"
 
+    /** 專案頁面（v1.17.1）：「關於」頁的 GitHub 按鈕打開它。 */
+    const val GITHUB_URL = "https://github.com/pl168959903/ArcheryCounter"
+    const val GITHUB_SHORT = "pl168959903/ArcheryCounter"
+
     /**
      * 固定金鑰的指紋前 4 組（SHA-256）。手錶上顯示的簽章如果和它一樣，就是用固定金鑰編譯的，
      * 之後可以直接 adb install -r 覆蓋安裝。若重新產生了金鑰，要把這裡改成新的前 4 組。

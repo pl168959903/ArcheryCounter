@@ -143,3 +143,11 @@ class V1171Test {
         assertTrue(e.all { Changelog.paragraphs(it).isNotEmpty() })
     }
 }
+
+class AppLinkTest {
+    @org.junit.Test
+    fun githubUrlMatchesRepo() {
+        org.junit.Assert.assertEquals("https://github.com/" + ReleaseParser.REPO, AppInfo.GITHUB_URL)
+        org.junit.Assert.assertEquals(ReleaseParser.REPO, AppInfo.GITHUB_SHORT)
+    }
+}
