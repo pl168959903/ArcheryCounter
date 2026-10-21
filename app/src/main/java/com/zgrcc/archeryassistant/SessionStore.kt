@@ -186,6 +186,28 @@ class SessionStore(baseDir: File) {
         if (f.isFile) ShareFile(f.length()) { f.inputStream() } else null
     }
 
+    /** 「下載全部」zip（v1.19）：全部記錄 JSON 加設定備份，不含原始資料 CSV。沒有東西可打包回傳 null；串流讀完或關閉後刪掉暫存檔。 */
+    fun shareZip(): ShareFile? = onIo(null) {
+        val names = namesNow().filter { it.endsWith(".json") || it == SettingsBackup.FILE_NAME }
+        if (names.isEmpty()) return@onIo null
+        val tmp = File.createTempFile("archery_share", ".zip")
+        try {
+            tmp.outputStream().use { out ->
+                ShareZip.write(out, names.map { n -> n to { File(dir, n).takeIf { it.isFile }?.inputStream() as java.io.InputStream? } })
+            }
+        } catch (e: Exception) {
+            tmp.delete()
+            return@onIo null
+        }
+        ShareFile(tmp.length()) {
+            object : java.io.FilterInputStream(tmp.inputStream()) {
+                override fun close() {
+                    try { super.close() } finally { tmp.delete() }
+                }
+            }
+        }
+    }
+
     /** 寫入設定備份檔（先寫暫存檔再改名）。回傳是否成功。 */
     fun writeSettingsBackup(text: String): Boolean = onIo(false) {
         try {
@@ -218,19 +240,19 @@ class SessionStore(baseDir: File) {
      * 匯入一筆記錄 JSON（v1.17，從別台裝置抓回）。先確認能解析、id 安全，再用原文寫入（不重新編碼，保留未知欄位）。
      * 已存在且 [overwrite] 為 false 時略過。
      */
-    fun importJson(name: String, bytes: ByteArray, overwrite: Boolean): ImportOutcome = onIo(ImportOutcome.INVALID) {
+    fun importJsonWithId(name: String, bytes: ByteArray, overwrite: Boolean): Pair<ImportOutcome, String> = onIo(ImportOutcome.INVALID to "") {
         val id = name.removeSuffix(".json")
-        if (!name.endsWith(".json") || !isSafeId(id) || bytes.size > MAX_IMPORT_BYTES) return@onIo ImportOutcome.INVALID
+        if (!name.endsWith(".json") || !isSafeId(id) || bytes.size > MAX_IMPORT_BYTES) return@onIo ImportOutcome.INVALID to ""
         val text = try {
             String(bytes, Charsets.UTF_8)
         } catch (e: Exception) {
-            return@onIo ImportOutcome.INVALID
+            return@onIo ImportOutcome.INVALID to ""
         }
         val incoming = try {
             SessionJson.decode(text, id)
         } catch (e: Exception) {
             null
-        } ?: return@onIo ImportOutcome.INVALID
+        } ?: return@onIo ImportOutcome.INVALID to ""
         var tid = id
         var data = bytes
         // 同 id 但唯一碼不同 = 不同手錶剛好同一秒開始：改用新 id 匯入，不覆蓋也不略過
@@ -247,7 +269,7 @@ class SessionStore(baseDir: File) {
             }
         }
         val target = jsonFile(tid)
-        if (target.exists() && !overwrite) return@onIo ImportOutcome.SKIPPED
+        if (target.exists() && !overwrite) return@onIo ImportOutcome.SKIPPED to tid
         try {
             dir.mkdirs()
             val tmp = File(dir, "$tid.json.tmp")
@@ -256,11 +278,14 @@ class SessionStore(baseDir: File) {
                 target.writeBytes(data)
                 tmp.delete()
             }
-            ImportOutcome.IMPORTED
+            ImportOutcome.IMPORTED to tid
         } catch (e: IOException) {
-            ImportOutcome.INVALID
+            ImportOutcome.INVALID to ""
         }
     }
+
+    fun importJson(name: String, bytes: ByteArray, overwrite: Boolean): ImportOutcome =
+        importJsonWithId(name, bytes, overwrite).first
 
     /** 匯入原始資料 CSV；必須是 `<安全 id>.csv`，不能是匯出檔。已存在且 [overwrite] 為 false 時略過。 */
     fun importRaw(name: String, input: java.io.InputStream, overwrite: Boolean): ImportOutcome = onIo(ImportOutcome.INVALID) {
@@ -339,7 +364,7 @@ class SessionStore(baseDir: File) {
  *
  * 结构：
  *   { "id", "startMs", "endMs"（-1 表示没有正常结束）, "threshold", "windowSec", "hasGyro", "rawCsv",
- *     "tags"?: ["室外70米", "反曲"], "cal"?: true, "app"?, "dev"?, "uid"?, "det"?, "comp"?: { "sec", "apn", "pr" }, "marks"?: [ { "l", "s", "e"? } ],
+ *     "tags"?: ["室外70米", "反曲"], "cal"?: true, "app"?, "dev"?, "uid"?, "det"?, "note"?, "comp"?: { "sec", "apn", "pr" }, "marks"?: [ { "l", "s", "e"? } ],
  *     "shots":  [ { "rel", "peak", "thr", "acc"?, "gyr"?, "x"?（1=誤判）, "wf"?（波形）,
  *                   "fa"?, "fg"?（放箭後跟隨晃動量）, "sc"?（環數） } ],
  *     "manual": [ { "rel", "d" } ] }
@@ -364,6 +389,7 @@ internal object SessionJson {
         if (s.dev.isNotEmpty()) append(",\"dev\":").append(quote(s.dev))
         if (s.uid.isNotEmpty()) append(",\"uid\":").append(quote(s.uid))
         if (s.det.isNotEmpty()) append(",\"det\":").append(quote(s.det))
+        if (s.note.isNotEmpty()) append(",\"note\":").append(quote(s.note))
         s.comp?.let {
             append(",\"comp\":{\"sec\":").append(it.secondsPerEnd)
             append(",\"apn\":").append(it.arrowsPerEnd)
@@ -461,6 +487,7 @@ internal object SessionJson {
                 dev = (root["dev"] as? String).orEmpty().take(60),
                 uid = (root["uid"] as? String).orEmpty().filter { it.isLetterOrDigit() }.take(16),
                 det = (root["det"] as? String).orEmpty().take(200),
+                note = (root["note"] as? String).orEmpty().take(60),
                 comp = (root["comp"] as? Map<*, *>)?.let { c ->
                     val sec = (c["sec"] as? Number)?.toInt() ?: return@let null
                     val apn = (c["apn"] as? Number)?.toInt() ?: return@let null

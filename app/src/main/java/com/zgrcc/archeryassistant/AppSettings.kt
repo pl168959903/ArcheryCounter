@@ -438,6 +438,55 @@ class AppSettings(private val prefs: SharedPreferences) {
         prefs.edit().putBoolean(KEY_MAIN_THRESHOLD, v).apply()
     }
 
+    private val _recordNote = MutableStateFlow(prefs.getBoolean(KEY_RECORD_NOTE, true))
+    /** 記錄備註（v1.19）：詳情頁可寫一句備註，列表與報告顯示。 預設：開 */
+    val recordNote: StateFlow<Boolean> = _recordNote.asStateFlow()
+    fun setRecordNote(v: Boolean) {
+        _recordNote.value = v
+        prefs.edit().putBoolean(KEY_RECORD_NOTE, v).apply()
+    }
+
+    private val _flagSuspicious = MutableStateFlow(prefs.getBoolean(KEY_FLAG_SUSPICIOUS, true))
+    /** 標示可疑記錄（v1.19）。 預設：開 */
+    val flagSuspicious: StateFlow<Boolean> = _flagSuspicious.asStateFlow()
+    fun setFlagSuspicious(v: Boolean) {
+        _flagSuspicious.value = v
+        prefs.edit().putBoolean(KEY_FLAG_SUSPICIOUS, v).apply()
+    }
+
+    private val _historyFilter = MutableStateFlow(prefs.getBoolean(KEY_HISTORY_FILTER, true))
+    /** 記錄頁篩選（v1.19）。 預設：開 */
+    val historyFilter: StateFlow<Boolean> = _historyFilter.asStateFlow()
+    fun setHistoryFilter(v: Boolean) {
+        _historyFilter.value = v
+        prefs.edit().putBoolean(KEY_HISTORY_FILTER, v).apply()
+    }
+
+    private val _shareZip = MutableStateFlow(prefs.getBoolean(KEY_SHARE_ZIP, true))
+    /** 區網分享提供「下載全部（zip）」（v1.19）。 預設：開 */
+    val shareZip: StateFlow<Boolean> = _shareZip.asStateFlow()
+    fun setShareZip(v: Boolean) {
+        _shareZip.value = v
+        prefs.edit().putBoolean(KEY_SHARE_ZIP, v).apply()
+    }
+
+    private val _importUndo = MutableStateFlow(prefs.getBoolean(KEY_IMPORT_UNDO, true))
+    /** 匯入完成後可復原這次匯入（v1.19）。 預設：開 */
+    val importUndo: StateFlow<Boolean> = _importUndo.asStateFlow()
+    fun setImportUndo(v: Boolean) {
+        _importUndo.value = v
+        prefs.edit().putBoolean(KEY_IMPORT_UNDO, v).apply()
+    }
+
+    private val _shareAutoStopMin = MutableStateFlow(prefs.getInt(KEY_SHARE_AUTO_STOP, ShareAutoStop.DEFAULT_MIN).let { if (it in ShareAutoStop.OPTIONS) it else ShareAutoStop.DEFAULT_MIN })
+    /** 分享自動結束的分鐘數，0 = 不自動結束（v1.19）。預設：10（和以前相同） */
+    val shareAutoStopMin: StateFlow<Int> = _shareAutoStopMin.asStateFlow()
+    fun setShareAutoStopMin(v: Int) {
+        val x = if (v in ShareAutoStop.OPTIONS) v else ShareAutoStop.DEFAULT_MIN
+        _shareAutoStopMin.value = x
+        prefs.edit().putInt(KEY_SHARE_AUTO_STOP, x).apply()
+    }
+
     private val _reportExport = MutableStateFlow(prefs.getBoolean(KEY_REPORT_EXPORT, true))
     /** 資料頁提供「匯出報告」（網頁報告 report.html）。預設：開 */
     val reportExport: StateFlow<Boolean> = _reportExport.asStateFlow()
@@ -940,6 +989,12 @@ class AppSettings(private val prefs: SharedPreferences) {
         setAdvancedDetect(true)
         setRecordDevice(true)
         setMainThreshold(false)
+        setShareAutoStopMin(ShareAutoStop.DEFAULT_MIN)
+        setImportUndo(true)
+        setShareZip(true)
+        setHistoryFilter(true)
+        setFlagSuspicious(true)
+        setRecordNote(true)
         setReportExport(true)
         setLanShare(false)
         setShareRemember(true)
@@ -1024,6 +1079,12 @@ class AppSettings(private val prefs: SharedPreferences) {
         private const val KEY_ADVANCED_DETECT = "advanced_detect"
         private const val KEY_RECORD_DEVICE = "record_device"
         private const val KEY_MAIN_THRESHOLD = "main_threshold"
+        private const val KEY_SHARE_AUTO_STOP = "share_auto_stop_min"
+        private const val KEY_IMPORT_UNDO = "import_undo"
+        private const val KEY_SHARE_ZIP = "share_zip"
+        private const val KEY_HISTORY_FILTER = "history_filter"
+        private const val KEY_FLAG_SUSPICIOUS = "flag_suspicious"
+        private const val KEY_RECORD_NOTE = "record_note"
         private const val KEY_REPORT_EXPORT = "report_export"
         private const val KEY_LAN_SHARE = "lan_share"
         private const val KEY_SHARE_REMEMBER = "share_remember"

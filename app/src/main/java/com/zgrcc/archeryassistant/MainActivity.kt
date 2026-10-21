@@ -65,6 +65,7 @@ private const val ROUTE_GROUPS = "groups"
 private const val ROUTE_OVERVIEW = "overview"
 private const val ROUTE_HIST_TREND = "history_trend"
 private const val ROUTE_HIST_COMPARE = "history_compare"
+private const val ROUTE_HIST_FILTER = "history_filter"
 private const val ROUTE_CHANGELOG = "changelog"
 private const val ROUTE_LINK_OPTIONS = "link_options"
 private const val ROUTE_LINK_DEVICE = "link_device"
@@ -204,6 +205,7 @@ private fun AppNav(vm: CounterViewModel, launch: String?, onLaunchHandled: () ->
                 },
                 onOpenTrendMenu = { nav.navigate(ROUTE_HIST_TREND) },
                 onOpenCompareMenu = { nav.navigate(ROUTE_HIST_COMPARE) },
+                onOpenFilter = { nav.navigate(ROUTE_HIST_FILTER) },
             )
         }
         for ((route, compare) in listOf(ROUTE_HIST_TREND to false, ROUTE_HIST_COMPARE to true)) {
@@ -237,6 +239,7 @@ private fun AppNav(vm: CounterViewModel, launch: String?, onLaunchHandled: () ->
         composable(ROUTE_CHANGELOG) { ChangelogScreen(vm) }
         composable(ROUTE_LINK_OPTIONS) { LinkOptionsScreen(vm) }
         composable(ROUTE_LINK_LOG) { ConnectLogScreen(vm) }
+        composable(ROUTE_HIST_FILTER) { HistoryFilterScreen(vm) }
         composable(ROUTE_LINK_DEVICE) { LinkDeviceScreen(vm) }
         composable(ROUTE_MATCH_COMPARE) {
             MatchCompareScreen(

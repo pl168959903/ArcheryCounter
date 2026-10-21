@@ -114,6 +114,17 @@ object ShareCodec {
 }
 
 /** 連線記錄與信任裝置的文字（畫面用）。 */
+/** 分享自動結束的選項（v1.19）。 */
+object ShareAutoStop {
+    val OPTIONS = listOf(0, 10, 30, 60)
+    const val DEFAULT_MIN = 10
+    fun next(cur: Int): Int {
+        val i = OPTIONS.indexOf(cur)
+        return if (i < 0) DEFAULT_MIN else OPTIONS[(i + 1) % OPTIONS.size]
+    }
+    fun label(min: Int): String = if (min <= 0) tr("不自動結束", "Never") else tr("$min 分鐘", "$min min")
+}
+
 object ShareText {
     fun result(r: ShareResult): String = when (r) {
         ShareResult.OK_PIN -> tr("PIN 進入", "Entered with PIN")

@@ -48,6 +48,8 @@ class ShareRouter(
     private val gate: TrustGate? = null,
     private val clock: () -> Long = { System.currentTimeMillis() },
     private val deviceName: String = "",
+    /** 「下載全部（zip）」；null = 不提供（v1.19） */
+    private val zip: (() -> ShareFile?)? = null,
 ) {
     private var fails = 0
     private val tickets = LinkedHashMap<String, Long>()
@@ -119,6 +121,10 @@ class ShareRouter(
                 val ok = gate?.revoke(token) == true
                 ShareResponse(if (ok) 200 else 404, "text/plain; charset=utf-8", (if (ok) "OK" else "Not Found").toByteArray(Charsets.UTF_8))
             }
+            path == "/all.zip" && zip != null -> {
+                val f = zip.invoke()
+                if (f == null) text(404, "Not Found") else ShareResponse(200, "application/zip", file = f, headers = extra)
+            }
             path == "/list" -> ShareResponse(
                 200, "text/plain; charset=utf-8",
                 listFiles().joinToString("\n") { n -> n + "\t" + (lookup(n)?.length ?: 0L) }.toByteArray(Charsets.UTF_8), headers = extra,
@@ -167,6 +173,10 @@ class ShareRouter(
         sb.append("<h1>").append(if (zh) "射箭助手 · 分享" else "Archery Assistant · Share").append("</h1>")
         sb.append("<p><a class=\"big\" href=\"/${ReportBuilder.FILE_NAME}$auth\">")
             .append(if (zh) "開啟網頁報告（即時產生）" else "Open web report (built now)").append("</a></p>")
+        if (zip != null) {
+            sb.append("<p><a class=\"big\" href=\"/all.zip$auth\">")
+                .append(if (zh) "下載全部記錄（zip）" else "Download all records (zip)").append("</a></p>")
+        }
         sb.append("<h2>").append(if (zh) "檔案" else "Files").append("</h2><ul>")
         for (n in files) {
             val len = lookup(n)?.length ?: 0L

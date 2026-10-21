@@ -32,6 +32,10 @@ data class ImportResult(
     val ids: List<String> = emptyList(),
     /** 有取得對方的設定備份檔（放在 sessions 資料夾，要到「連線」頁按還原才會套用）。 */
     val settings: Boolean = false,
+    /** 其中本機原本沒有、這次新增的記錄 id（復原匯入只刪這些）（v1.19）。 */
+    val freshIds: List<String> = emptyList(),
+    /** 覆蓋了本機原有記錄的筆數（這些無法復原）。 */
+    val overwritten: Int = 0,
 )
 
 /** 匯入預覽：會新增哪些、本機已有哪些（已有的依「覆蓋」設定略過或覆蓋）。 */
@@ -162,11 +166,17 @@ class SessionImporter(private val store: SessionStore, private val source: Impor
         val items = ImportPlanner.wanted(remote, withRaw)
         var imported = 0; var skipped = 0; var failed = 0; var raw = 0
         val ids = mutableListOf<String>()
+        val fresh = mutableListOf<String>()
+        var overwritten = 0
+        val before = store.localIds()
         items.forEachIndexed { i, f ->
+            var savedId = ""
             val outcome = try {
                 if (f.name.endsWith(".json")) {
                     val bytes = source.open(f.name).use { it.readBytes() }
-                    store.importJson(f.name, bytes, overwrite)
+                    val (o, sid) = store.importJsonWithId(f.name, bytes, overwrite)
+                    savedId = sid
+                    o
                 } else {
                     source.open(f.name).use { store.importRaw(f.name, it, overwrite) }
                 }
@@ -176,7 +186,8 @@ class SessionImporter(private val store: SessionStore, private val source: Impor
             when (outcome) {
                 ImportOutcome.IMPORTED -> if (f.name.endsWith(".json")) {
                     imported++
-                    ids.add(f.name.removeSuffix(".json"))
+                    ids.add(savedId)
+                    if (savedId in before) overwritten++ else fresh.add(savedId)
                 } else {
                     raw++
                 }
@@ -194,7 +205,7 @@ class SessionImporter(private val store: SessionStore, private val source: Impor
                 false
             }
         }
-        return ImportResult(imported, skipped, failed, raw, ids = ids, settings = gotSettings)
+        return ImportResult(imported, skipped, failed, raw, ids = ids, settings = gotSettings, freshIds = fresh, overwritten = overwritten)
     }
 }
 
@@ -290,6 +301,8 @@ data class ImportUi(
     val result: ImportResult? = null,
     /** 預覽結果（等你按確認）；null 表示沒有在預覽。 */
     val preview: ImportPreview? = null,
+    /** 剛復原了幾筆匯入（v1.19）；0 = 沒有 */
+    val undone: Int = 0,
 )
 
 /** 匯入結果的文字。 */
@@ -304,6 +317,7 @@ object ImportText {
             (if (r.raw > 0) tr("（含原始資料 ${r.raw} 個）", " (+${r.raw} raw files)") else "") +
             (if (r.skipped > 0) tr("，略過 ${r.skipped} 筆已有的", ", ${r.skipped} skipped (already here)") else "") +
             (if (r.failed > 0) tr("，失敗 ${r.failed} 個", ", ${r.failed} failed") else "") +
+            (if (r.overwritten > 0) tr("，其中 ${r.overwritten} 筆覆蓋了本機原有記錄，無法復原", ", ${r.overwritten} overwrote local records and cannot be undone") else "") +
             (if (r.settings) tr("。已取得對方的設定備份，要套用請到下方按「還原設定」", ". Got the other device's settings backup; tap Restore settings below to apply it") else "")
     }
 }

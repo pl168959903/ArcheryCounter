@@ -39,6 +39,9 @@ fun SettingsRecord(vm: CounterViewModel) {
     val recordTrace by s.recordTrace.collectAsStateWithLifecycle()
     val quickCheck by s.quickCheck.collectAsStateWithLifecycle()
     val recordDevice by s.recordDevice.collectAsStateWithLifecycle()
+    val recordNote by s.recordNote.collectAsStateWithLifecycle()
+    val flagSuspicious by s.flagSuspicious.collectAsStateWithLifecycle()
+    val historyFilter by s.historyFilter.collectAsStateWithLifecycle()
 
     ScalingLazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -48,6 +51,13 @@ fun SettingsRecord(vm: CounterViewModel) {
         item { SectionTitle(SettingsCategories.name(2)) }
         item { ToggleChip(tr("快速檢查", "Quick check"), quickCheck) { s.setQuickCheck(it) } }
         item { Note(tr("記錄詳情多一個「快速檢查」，逐箭滑動看波形，一鍵標記誤判或恢復。只影響顯示，立即生效", "Adds Quick check to record details: step through shots with waveforms and mark or restore false detections in one tap. Display only. Takes effect immediately")) }
+
+        item { ToggleChip(tr("記錄備註", "Record notes"), recordNote) { s.setRecordNote(it) } }
+        item { Note(tr("記錄詳情可寫一句備註（最多 60 字），顯示在記錄列表和網頁報告。立即生效", "Write a short note (up to 60 chars) in record details; shown in the list and web report. Takes effect immediately")) }
+        item { ToggleChip(tr("標示可疑記錄", "Flag suspicious records"), flagSuspicious) { s.setFlagSuspicious(it) } }
+        item { Note(tr("沒正常結束、超過 2 分鐘卻沒偵測到箭、或箭數是中位數 2 倍以上的記錄，會標「⚠ 可疑」。校準不判斷。立即生效", "Records that did not end normally, had no arrows for over 2 minutes, or have over twice the median count are marked Suspicious. Calibration is not checked. Takes effect immediately")) }
+        item { ToggleChip(tr("記錄篩選", "Records filter"), historyFilter) { s.setHistoryFilter(it) } }
+        item { Note(tr("記錄頁多一個「篩選」按鈕，可依標籤和日期範圍過濾列表。立即生效", "Adds a Filter button to the Records page to filter the list by tag and date range. Takes effect immediately")) }
 
         item { ToggleChip(tr("記錄裝置型號", "Record device model"), recordDevice) { s.setRecordDevice(it) } }
         item { Note(tr("記錄檔會寫入手錶型號，方便分辨資料來源。App 版本、唯一碼與偵測設定一律寫入，不含個人資料。從下一次記錄開始", "Writes the watch model into records to tell sources apart. App version, unique ID and detection summary are always written; no personal data. Starts with the next record")) }

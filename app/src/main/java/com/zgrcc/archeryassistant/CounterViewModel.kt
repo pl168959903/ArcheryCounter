@@ -795,6 +795,19 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
      * 回傳時存檔已經排進佇列，之後再讀取一定讀到新內容。
      */
     /** 事後修改這次記錄的條件標籤。進行中的記錄不能改。 */
+    /** 記錄備註（v1.19）：去掉換行、前後空白，最多 60 字。 */
+    suspend fun setSessionNote(id: String, note: String): Unit =
+        updateSession(id) { it.copy(note = note.replace('\n', ' ').replace('\r', ' ').trim().take(60)) }
+
+    // 記錄頁篩選（v1.19）：只在這次開啟 App 期間有效
+    private val _histTag = MutableStateFlow("")
+    val histTag: StateFlow<String> = _histTag.asStateFlow()
+    private val _histDays = MutableStateFlow(0)
+    val histDays: StateFlow<Int> = _histDays.asStateFlow()
+    fun cycleHistTag() { _histTag.value = HistoryFilter.nextTag(_histTag.value, HistoryFilter.tags(sessions.value)) }
+    fun cycleHistDays() { _histDays.value = HistoryFilter.nextDays(_histDays.value) }
+    fun clearHistFilter() { _histTag.value = ""; _histDays.value = 0 }
+
     suspend fun setSessionTags(id: String, tags: List<String>): Unit =
         updateSession(id) { it.copy(tags = tags) }
 
@@ -880,6 +893,8 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
             iconBase64 = icon,
             arrowsPerEnd = settings.arrowsPerEnd.value,
             filterTag = settings.reportTag.value.takeIf { it.isNotBlank() },
+            showNotes = settings.recordNote.value,
+            flags = if (settings.flagSuspicious.value) Suspicion.flags(sessions.value, _activeId.value) else emptyMap(),
             origins = if (settings.importMark.value) ImportMarks(prefs).all() else emptyMap(),
         )
     }
@@ -1152,6 +1167,19 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         android.os.Process.killProcess(android.os.Process.myPid())
     }
 
+    /** 復原這次匯入（v1.19）：只刪這次新增的記錄；覆蓋掉本機原有的無法還原。 */
+    fun undoImport() {
+        val r = _import.value.result ?: return
+        val ids = r.freshIds.filter { it != _activeId.value }
+        if (ids.isEmpty() || _import.value.running) return
+        viewModelScope.launch(Dispatchers.IO) {
+            store.deleteMany(ids)
+            ImportMarks(prefs).forget(ids)
+            _import.value = ImportUi(undone = ids.size)
+            publishSessions()
+        }
+    }
+
     fun clearImportResult() {
         if (!_import.value.running) _import.value = ImportUi()
     }
@@ -1218,6 +1246,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
             zh = !I18n.english,
             gate = gate,
             deviceName = android.os.Build.MODEL ?: "",
+            zip = if (settings.shareZip.value) ({ store.shareZip() }) else null,
         )
         val server = ShareServer(router)
         if (!server.start()) {
@@ -1228,9 +1257,13 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         _share.value = ShareState(running = true, url = "http://$ip:${ShareServer.PORT}", pin = pin)
         if (settings.importDiscover.value) nsd.advertise(android.os.Build.MODEL ?: "watch", ShareServer.PORT)
         shareTimer?.cancel()
-        shareTimer = viewModelScope.launch {
-            kotlinx.coroutines.delay(ShareState.AUTO_STOP_MS)
-            stopShare()
+        val autoMin = settings.shareAutoStopMin.value
+        if (autoMin > 0) {
+            shareTimer = viewModelScope.launch {
+                kotlinx.coroutines.delay(autoMin * 60_000L)
+                buzzer.pattern(longArrayOf(0, 200, 100, 200))
+                stopShare()
+            }
         }
     }
 

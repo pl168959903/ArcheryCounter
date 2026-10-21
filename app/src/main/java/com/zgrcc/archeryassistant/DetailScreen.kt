@@ -124,6 +124,13 @@ private fun DetailContent(
     }
     val pace = remember(session, paceOn) { if (paceOn && !session.calibration) PaceAnalyzer.analyze(session) else null }
     val scope = rememberCoroutineScope()
+    val noteOn by vm.settings.recordNote.collectAsStateWithLifecycle()
+    val flagOn by vm.settings.flagSuspicious.collectAsStateWithLifecycle()
+    val allSessions by vm.sessions.collectAsStateWithLifecycle()
+    val suspectKind = remember(session, allSessions, flagOn, isActive) {
+        if (flagOn) Suspicion.check(session, Suspicion.median(allSessions), isActive) else null
+    }
+    var noteDraft by remember(session.id, session.note) { mutableStateOf(session.note) }
 
     ScalingLazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -149,6 +156,21 @@ private fun DetailContent(
         item { Body(summaryText(session, stats, isActive)) }
         RecordMeta.sourceLine(session).takeIf { it.isNotEmpty() }?.let { src ->
             item { Note(tr("來源：", "Source: ") + src) }
+        }
+        suspectKind?.let { k -> item { Note("⚠ " + Suspicion.text(k)) } }
+        if (noteOn && !isActive) {
+            item { Text(tr("備註", "Note"), style = MaterialTheme.typography.caption1) }
+            item { LinkField(noteDraft, tr("寫一句話（最多 60 字）", "A short note (up to 60 chars)")) { noteDraft = it.take(60) } }
+            if (noteDraft.trim() != session.note) {
+                item {
+                    Chip(
+                        onClick = { scope.launch { vm.setSessionNote(session.id, noteDraft) } },
+                        label = { Text(tr("儲存備註", "Save note"), maxLines = 1) },
+                        colors = kindColors(ChipKind.GO, ChipDefaults.primaryChipColors()),
+                        modifier = Modifier.fillMaxWidth(0.9f),
+                    )
+                }
+            }
         }
         if (isSteadiest) {
             item { Body(tr("★ 個人最佳：這是你最穩的一次練習（平均晃動最低）", "★ Personal best: your steadiest practice session (lowest average shake)")) }

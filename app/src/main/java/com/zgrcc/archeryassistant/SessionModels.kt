@@ -78,6 +78,8 @@ data class Session(
     val uid: String = "",
     /** 偵測設定摘要（進階判定、取樣率等）；舊記錄為空 */
     val det: String = "",
+    /** 使用者寫的備註（v1.19），最多 60 字；沒有為空 */
+    val note: String = "",
 ) {
     /** 有效的箭（没有被标记为误判的）。 */
     fun validShots(): List<ShotEntry> = shots.filter { !it.cancelled }

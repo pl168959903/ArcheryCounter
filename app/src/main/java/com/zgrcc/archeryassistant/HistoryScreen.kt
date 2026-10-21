@@ -21,7 +21,7 @@ import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
 
 @Composable
-fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrendMenu: () -> Unit, onOpenCompareMenu: () -> Unit) {
+fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrendMenu: () -> Unit, onOpenCompareMenu: () -> Unit, onOpenFilter: () -> Unit = {}) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     var openFailed by remember { mutableStateOf(false) }
@@ -34,6 +34,15 @@ fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrendMen
     val bestOn by vm.settings.personalBest.collectAsStateWithLifecycle()
     val reportViewOn by vm.settings.reportView.collectAsStateWithLifecycle()
     val origins = remember(sessions) { vm.importOrigins() }
+    val noteOn by vm.settings.recordNote.collectAsStateWithLifecycle()
+    val flagOn by vm.settings.flagSuspicious.collectAsStateWithLifecycle()
+    val filterOn by vm.settings.historyFilter.collectAsStateWithLifecycle()
+    val histTag by vm.histTag.collectAsStateWithLifecycle()
+    val histDays by vm.histDays.collectAsStateWithLifecycle()
+    val flags = remember(sessions, activeId, flagOn) { if (flagOn) Suspicion.flags(sessions, activeId) else emptyMap() }
+    val shown = remember(sessions, filterOn, histTag, histDays) {
+        if (filterOn) HistoryFilter.apply(sessions, histTag, histDays, System.currentTimeMillis()) else sessions
+    }
     val steadiestId = remember(sessions, bestOn) { if (bestOn) PersonalBest.steadiestId(sessions) else null }
 
 
@@ -48,7 +57,7 @@ fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrendMen
     LaunchedEffect(Unit) { vm.refreshSessions() }
 
     // 勾選的記錄可能已經被刪掉（或正在進行），只算還存在、可刪的
-    val deletable = sessions.filter { it.id != activeId }.map { it.id }.toSet()
+    val deletable = shown.filter { it.id != activeId }.map { it.id }.toSet()
     val chosen = selected.intersect(deletable)
 
     ScalingLazyColumn(
@@ -68,6 +77,25 @@ fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrendMen
                     },
                     label = { Text(if (manage) tr("完成", "Done") else tr("管理", "Manage"), maxLines = 1) },
                     colors = if (manage) ChipDefaults.primaryChipColors() else ChipDefaults.secondaryChipColors(),
+                    modifier = Modifier.fillMaxWidth(0.9f),
+                )
+            }
+        }
+
+        if (filterOn && sessions.isNotEmpty() && !manage) {
+            item {
+                Chip(
+                    onClick = onOpenFilter,
+                    label = { Text(tr("篩選", "Filter") + navMark(), maxLines = 1) },
+                    secondaryLabel = {
+                        Text(
+                            if (HistoryFilter.active(histTag, histDays)) {
+                                (if (histTag.isNotEmpty()) histTag + " · " else "") + HistoryFilter.daysLabel(histDays)
+                            } else tr("全部記錄", "All records"),
+                            maxLines = 2,
+                        )
+                    },
+                    colors = if (HistoryFilter.active(histTag, histDays)) ChipDefaults.primaryChipColors() else kindColors(ChipKind.NAV, ChipDefaults.secondaryChipColors()),
                     modifier = Modifier.fillMaxWidth(0.9f),
                 )
             }
@@ -169,7 +197,11 @@ fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrendMen
             item { Note(tr("尚無記錄。按「開始偵測」後，每次偵測都會自動存成一筆記錄", "No records yet. Each time you press Start detection, a record is saved automatically")) }
         }
 
-        sessions.forEach { s ->
+        sessions.takeIf { it.isNotEmpty() && shown.isEmpty() }?.let {
+            item { Note(tr("沒有符合篩選的記錄", "No records match the filter")) }
+        }
+
+        shown.forEach { s ->
             item {
                 val isActive = s.id == activeId
                 val tag = when {
@@ -192,6 +224,8 @@ fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrendMen
                     append(tr("${s.finalCount()} 箭 · ${Fmt.duration(s.durationMs())}$tag", "${s.finalCount()} arrows · ${Fmt.duration(s.durationMs())}$tag"))
                     Tags.label(s.tags)?.let { append("\n").append(it) }
                     origins[s.id]?.let { append("\n⇩ ").append(it) }
+                    flags[s.id]?.let { append("\n⚠ ").append(Suspicion.shortText(it)) }
+                    if (noteOn && s.note.isNotEmpty()) append("\n✎ ").append(s.note)
                     if (avg != null) append(tr("\n平均晃動 ${Fmt.num(avg)}", "\nAvg shake ${Fmt.num(avg)}"))
                 }
 
@@ -208,7 +242,7 @@ fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrendMen
                     secondaryLabel = {
                         Text(
                             if (manage && isActive) tr("進行中，無法選取", "In progress; cannot select") else second,
-                            maxLines = 3,
+                            maxLines = 5,
                         )
                     },
                     colors = when {

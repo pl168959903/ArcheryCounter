@@ -23,6 +23,10 @@ data class ReportMeta(
     val filterTag: String? = null,
     /** 記錄 id → 匯入來源裝置名稱（v1.18）；報告裡標示「來自 X」。 */
     val origins: Map<String, String> = emptyMap(),
+    /** 顯示記錄備註（v1.19） */
+    val showNotes: Boolean = true,
+    /** 記錄 id → 可疑種類（v1.19）；空 = 不標示 */
+    val flags: Map<String, SuspectKind> = emptyMap(),
 )
 
 /**
@@ -217,6 +221,8 @@ object ReportBuilder {
             if (st.scoredCount > 0) kpi(sb, Fmt.numOrDash(st.scoreAvg, 1), tr("平均環數", "Avg score"))
         }
         sb.append("</div>\n")
+        if (meta.showNotes && s.note.isNotEmpty()) sb.append("<div class=\"note\">${esc("✎ " + s.note)}</div>\n")
+        meta.flags[s.id]?.let { sb.append("<div class=\"note\">${esc("⚠ " + Suspicion.text(it))}</div>\n") }
         RecordMeta.sourceLine(s).takeIf { it.isNotEmpty() }?.let { sb.append("<div class=\"note\">${esc(it)}</div>\n") }
         if (s.endMs == null) sb.append("<div class=\"note\">${esc(tr("這筆記錄沒有正常結束（中斷）。", "This record did not end normally (interrupted)."))}</div>\n")
         if (st.cancelled > 0) sb.append("<div class=\"note\">${esc(tr("另有 ${st.cancelled} 筆被標為誤判，已排除。", "${st.cancelled} detections were marked as false and excluded."))}</div>\n")

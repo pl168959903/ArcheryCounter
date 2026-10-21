@@ -33,6 +33,9 @@ fun LinkOptionsScreen(vm: CounterViewModel) {
     val withSettings by s.importSettings.collectAsStateWithLifecycle()
     val overwrite by s.importOverwrite.collectAsStateWithLifecycle()
     val raw by s.importRaw.collectAsStateWithLifecycle()
+    val zipOn by s.shareZip.collectAsStateWithLifecycle()
+    val undoOn by s.importUndo.collectAsStateWithLifecycle()
+    val autoStop by s.shareAutoStopMin.collectAsStateWithLifecycle()
     val sessions by vm.sessions.collectAsStateWithLifecycle()
     val allTags = remember(sessions) { sessions.flatMap { it.tags }.distinct().sorted() }
 
@@ -55,6 +58,18 @@ fun LinkOptionsScreen(vm: CounterViewModel) {
         item { ToggleChip(tr("記錄連線", "Log connections"), logOn) { s.setShareLog(it) } }
         item { Note(tr("開啟後記錄今天誰連進來（位址、瀏覽器或 App、成功或失敗），只存在這支裝置上，過了午夜自動清掉，最多 100 筆。預設開", "When on, records who connected today (address, browser or app, success or failure), stored only on this device, cleared after midnight, up to 100 entries. On by default")) }
 
+        item {
+            Chip(
+                onClick = { s.setShareAutoStopMin(ShareAutoStop.next(autoStop)) },
+                label = { Text(tr("分享自動結束", "Auto-stop sharing"), maxLines = 1) },
+                secondaryLabel = { Text(ShareAutoStop.label(autoStop), maxLines = 1) },
+                colors = kindColors(ChipKind.NORMAL, ChipDefaults.secondaryChipColors()),
+                modifier = Modifier.fillMaxWidth(0.9f),
+            )
+        }
+        item { Note(tr("點一下切換：不自動結束／10／30／60 分鐘。時間到自動停止分享並震動一次。預設 10 分鐘。下次開始分享時生效", "Tap to cycle: never / 10 / 30 / 60 min. Sharing stops by itself and buzzes once. Default 10 min. Takes effect the next time sharing starts")) }
+        item { ToggleChip(tr("分享打包下載", "Download-all zip"), zipOn) { s.setShareZip(it) } }
+        item { Note(tr("開啟：網頁首頁多一個「下載全部記錄（zip）」，含全部記錄與設定備份，不含原始資料。下次開始分享時生效。預設開", "On: the web page gets a Download all records (zip) link with all records and the settings backup, without raw data. Takes effect the next time sharing starts. Default on")) }
         item { ToggleChip(tr("PIN 輸入錯誤時震動", "Vibrate on wrong PIN"), alert) { s.setShareAlert(it) } }
         item { Note(tr("有人輸入錯誤 PIN 時震動兩下提醒。預設關閉", "Two short vibrations when someone enters a wrong PIN. Off by default")) }
 
@@ -82,6 +97,8 @@ fun LinkOptionsScreen(vm: CounterViewModel) {
         item { Note(tr("開啟：若對方有設定備份檔，一併取回（不會自動套用，要到「連線」頁按「還原設定」）。預設關", "On: if the other device has a settings backup file, fetch it too (not applied automatically; tap Restore settings on the Connection page). Off by default")) }
         item { ToggleChip(tr("覆蓋已有記錄", "Overwrite existing"), overwrite) { s.setImportOverwrite(it) } }
         item { Note(tr("開啟：對方的版本會蓋掉本機同一筆（你在這台改過的自評等會被取代）。預設關", "On: the other device's copy replaces the local one (edits like self-ratings made here are lost). Off by default")) }
+        item { ToggleChip(tr("可復原匯入", "Undo import"), undoOn) { s.setImportUndo(it) } }
+        item { Note(tr("開啟：匯入完成後多一顆「復原這次匯入」，只刪這次新增的記錄；覆蓋掉的無法還原。預設開", "On: after an import, an Undo button deletes the records this import added; overwritten ones cannot be restored. Default on")) }
         item { ToggleChip(tr("同時匯入原始資料", "Include raw data"), raw) { s.setImportRaw(it) } }
         item { Note(tr("開啟：一併抓原始資料 CSV，檔案大、較慢。預設關", "On: also fetch raw data CSV; large and slower. Off by default")) }
     }

@@ -36,7 +36,7 @@ import androidx.wear.compose.material.Text
 
 /** 有外框、沒填時顯示提示字的輸入框，讓人一眼看出哪裡要輸入（v1.18.3）。 */
 @Composable
-private fun LinkField(value: String, hint: String, numeric: Boolean = false, onChange: (String) -> Unit) {
+internal fun LinkField(value: String, hint: String, numeric: Boolean = false, onChange: (String) -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth(0.9f)
@@ -72,6 +72,7 @@ fun LinkDeviceScreen(vm: CounterViewModel) {
     val link by vm.link.collectAsStateWithLifecycle()
     val importUi by vm.importUi.collectAsStateWithLifecycle()
     val overwrite by vm.settings.importOverwrite.collectAsStateWithLifecycle()
+    val undoOn by vm.settings.importUndo.collectAsStateWithLifecycle()
     var addr by remember(link.address) { mutableStateOf(link.address) }
     var pin by remember { mutableStateOf("") }
 
@@ -157,8 +158,20 @@ fun LinkDeviceScreen(vm: CounterViewModel) {
                 )
             }
         }
+        if (importUi.undone > 0) item { Note(tr("已復原 ${importUi.undone} 筆匯入", "Undid ${importUi.undone} imported records")) }
         importUi.result?.let { r ->
             item { Note(ImportText.describe(r)) }
+            if (undoOn && r.error == null && r.freshIds.isNotEmpty()) {
+                item {
+                    Chip(
+                        onClick = { vm.undoImport() },
+                        label = { Text(tr("復原這次匯入", "Undo this import"), maxLines = 1) },
+                        secondaryLabel = { Text(tr("刪除新增的 ${r.freshIds.size} 筆", "Delete the ${r.freshIds.size} added"), maxLines = 1) },
+                        colors = kindColors(ChipKind.DANGER, ChipDefaults.secondaryChipColors()),
+                        modifier = Modifier.fillMaxWidth(0.9f),
+                    )
+                }
+            }
             item {
                 Chip(
                     onClick = { vm.clearImportResult() },
