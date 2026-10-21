@@ -80,13 +80,6 @@ class ScreenRulesTest {
     }
 
     @Test
-    fun feelRowInQuickCheckOnlyWhenSettingOn() {
-        assertFalse(ScreenRules.showFeelRowInQuickCheck(false, shot(feel = Feel.GOOD)))
-        assertTrue(ScreenRules.showFeelRowInQuickCheck(true, shot()))
-        assertFalse(ScreenRules.showFeelRowInQuickCheck(true, shot(cancelled = true)))
-    }
-
-    @Test
     fun calibrationAdviceRules() {
         val ok = sess("c", cal = true, raw = true)
         assertTrue(ScreenRules.showCalibrationAdvice(true, ok, isActive = false))

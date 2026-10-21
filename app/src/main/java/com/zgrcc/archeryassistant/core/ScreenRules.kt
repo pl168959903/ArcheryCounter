@@ -29,9 +29,6 @@ object ScreenRules {
     fun showFeelRow(setting: Boolean, shot: ShotEntry): Boolean =
         (setting || Feel.valid(shot.feel) != null) && !shot.cancelled
 
-    /** 快速檢查只在設定開啟時顯示自評按鈕（不因為已有自評而強制出現）。 */
-    fun showFeelRowInQuickCheck(setting: Boolean, shot: ShotEntry): Boolean = setting && !shot.cancelled
-
     /** 校準分析按鈕：設定開啟、是校準記錄、有原始資料，而且已經結束（進行中的不能分析）。 */
     fun showCalibrationAdvice(setting: Boolean, session: Session, isActive: Boolean): Boolean =
         setting && session.calibration && session.rawCsv && !isActive && session.endMs != null

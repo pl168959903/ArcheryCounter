@@ -174,21 +174,6 @@ class V111Test {
         assertNull(a.suggested)
     }
 
-    // ---------- 快速檢查 ----------
-    @Test
-    fun quickCheckMoves() {
-        assertEquals(-1, QuickCheck.start(0))
-        assertEquals(0, QuickCheck.start(5))
-        assertEquals(1, QuickCheck.move(5, 0, 1))
-        assertEquals(0, QuickCheck.move(5, 0, -1))
-        assertEquals(4, QuickCheck.move(5, 4, 1))
-        assertEquals(0, QuickCheck.move(0, 3, 1))
-        assertEquals(3, QuickCheck.afterMark(5, 2))
-        assertEquals(4, QuickCheck.afterMark(5, 4))
-        assertEquals("3 / 5", QuickCheck.progress(5, 2))
-        assertNotNull(QuickCheck)
-    }
-
     // ---------- 磁貼 ----------
     @Test
     fun tileLaunchParsing() {
