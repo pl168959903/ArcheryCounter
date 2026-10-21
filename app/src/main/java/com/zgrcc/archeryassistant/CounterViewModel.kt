@@ -869,6 +869,15 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
     // ── 區網分享（v1.16.1）──
     private var shareServer: ShareServer? = null
     private var shareTimer: kotlinx.coroutines.Job? = null
+    private val shareData by lazy { ShareData(prefs) }
+    /** 已信任的裝置與今天的連線記錄（v1.16.3）。 */
+    val trustedDevices: StateFlow<List<TrustedDevice>> get() = shareData.devices
+    val shareEvents: StateFlow<List<ShareEvent>> get() = shareData.events
+    fun renameTrusted(id: String, name: String) = shareData.rename(id, name)
+    fun removeTrusted(id: String) = shareData.remove(id)
+    fun clearTrusted() = shareData.clearDevices()
+    fun clearShareLog() = shareData.clearLog()
+    fun onlineTrusted(): List<TrustedDevice> = shareData.online()
     private val _share = MutableStateFlow(ShareState())
     val share: StateFlow<ShareState> = _share.asStateFlow()
 
@@ -881,12 +890,24 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
             return
         }
         val pin = String.format("%04d", java.security.SecureRandom().nextInt(10000))
+        val gate = object : TrustGate {
+            override val enabled: Boolean get() = settings.shareRemember.value
+            override fun verify(token: String) = shareData.verify(token)
+            override fun issue(ip: String, agent: String) = shareData.issue(ip, agent)
+            override fun record(event: ShareEvent) {
+                if (settings.shareLog.value) shareData.log(event)
+                if (event.result == ShareResult.WRONG_PIN && settings.shareAlert.value) {
+                    buzzer.pattern(longArrayOf(0, 120, 80, 120))
+                }
+            }
+        }
         val router = ShareRouter(
             pin = pin,
             listFiles = { store.shareNames() },
             lookup = { store.shareFile(it) },
             buildReport = { ReportBuilder.build(store.allSessions(), reportMeta()) },
             zh = !I18n.english,
+            gate = gate,
         )
         val server = ShareServer(router)
         if (!server.start()) {

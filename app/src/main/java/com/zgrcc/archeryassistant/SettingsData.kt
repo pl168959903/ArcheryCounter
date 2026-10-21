@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -14,7 +13,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
@@ -37,15 +35,6 @@ fun SettingsData(vm: CounterViewModel) {
     var exportResult by remember { mutableStateOf<Boolean?>(null) }
     val reportExport by s.reportExport.collectAsStateWithLifecycle()
     var reportResult by remember { mutableStateOf<Boolean?>(null) }
-    val lanShare by s.lanShare.collectAsStateWithLifecycle()
-    val share by vm.share.collectAsStateWithLifecycle()
-    val view = LocalView.current
-    // 分享中保持螢幕亮著；離開這一頁或關掉開關就停止分享
-    DisposableEffect(share.running) {
-        view.keepScreenOn = share.running
-        onDispose { view.keepScreenOn = false }
-    }
-    DisposableEffect(Unit) { onDispose { vm.stopShare() } }
 
     // 儲存空間：按下才查；刪除原始資料要再確認一次
     var usage by remember { mutableStateOf<StorageUsage?>(null) }
@@ -112,42 +101,6 @@ fun SettingsData(vm: CounterViewModel) {
                     null -> Note(tr("產生報告需要幾秒鐘，記錄很多時會更久", "Building the report takes a few seconds, longer with many records"))
                     true -> Note(tr("已匯出 report.html 到 sessions 資料夾", "Exported report.html to the sessions folder"))
                     false -> Note(tr("匯出失敗，請確認手錶儲存空間", "Export failed; check the watch storage"))
-                }
-            }
-        }
-
-        item { ToggleChip(tr("區網分享", "LAN share"), lanShare) { on -> s.setLanShare(on); if (!on) vm.stopShare() } }
-        item { Note(tr("開啟後，這一頁多一個「開始分享」按鈕。手錶和手機連同一個 Wi-Fi 時，在手機瀏覽器輸入畫面上的網址和 PIN，就能直接看報告、下載資料，不必用 adb。只提供唯讀下載，PIN 錯 10 次就鎖住，10 分鐘後或離開此頁自動關閉。預設關閉", "When on, this page gets a Start sharing button. With the watch and phone on the same Wi-Fi, enter the address and PIN shown into the phone browser to view the report and download data without adb. Read-only downloads; 10 wrong PINs lock it; it stops after 10 minutes or when you leave this page. Off by default")) }
-        if (lanShare) {
-            if (!share.running) {
-                item {
-                    Chip(
-                        onClick = { vm.startShare() },
-                        label = { Text(tr("開始分享", "Start sharing"), maxLines = 1) },
-                        colors = kindColors(ChipKind.GO, ChipDefaults.primaryChipColors()),
-                        modifier = Modifier.fillMaxWidth(0.9f),
-                    )
-                }
-                share.error?.let { e ->
-                    item {
-                        Note(
-                            when (e) {
-                                ShareError.NO_WIFI -> tr("找不到區網位址，請確認手錶已連上 Wi-Fi", "No LAN address; make sure the watch is on Wi-Fi")
-                                ShareError.PORT -> tr("連線埠 ${ShareServer.PORT} 被占用，請稍後再試", "Port ${ShareServer.PORT} is busy; try again later")
-                            }
-                        )
-                    }
-                }
-            } else {
-                item { Body(tr("手機瀏覽器輸入：\n${share.url}\nPIN：${share.pin}", "On the phone browser open:\n${share.url}\nPIN: ${share.pin}")) }
-                item { Note(tr("分享中，螢幕會保持亮著。10 分鐘後自動關閉", "Sharing; the screen stays on. Stops automatically after 10 minutes")) }
-                item {
-                    Chip(
-                        onClick = { vm.stopShare() },
-                        label = { Text(tr("停止分享", "Stop sharing"), maxLines = 1) },
-                        colors = kindColors(ChipKind.DANGER, ChipDefaults.primaryChipColors()),
-                        modifier = Modifier.fillMaxWidth(0.9f),
-                    )
                 }
             }
         }

@@ -12,8 +12,9 @@ object SettingsCategories {
     const val MATCH = 4
     const val CHARTS = 5
     const val DATA = 6
-    const val ABOUT = 7
-    const val COUNT = 8
+    const val CONNECT = 7
+    const val ABOUT = 8
+    const val COUNT = 9
 
     fun name(category: Int): String = when (category) {
         GENERAL -> tr("一般", "General")
@@ -23,6 +24,7 @@ object SettingsCategories {
         MATCH -> tr("比賽模式", "Match mode")
         CHARTS -> tr("圖表與顯示", "Charts & display")
         DATA -> tr("資料", "Data")
+        CONNECT -> tr("連線", "Connection")
         ABOUT -> tr("關於與重設", "About & reset")
         else -> ""
     }

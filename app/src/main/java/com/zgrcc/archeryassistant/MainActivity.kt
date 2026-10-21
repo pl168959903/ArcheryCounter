@@ -171,7 +171,7 @@ private fun AppNav(vm: CounterViewModel, launch: String?, onLaunchHandled: () ->
                 onOpenCalibration = { nav.navigate(ROUTE_CALIBRATION) },
             )
         }
-        // 設定的各個分類頁（settings_0 … settings_7）
+        // 設定的各個分類頁（settings_0 … settings_8）
         for (c in 0 until SettingsCategories.COUNT) {
             composable(SettingsCategories.route(c)) {
                 SettingsScreen(

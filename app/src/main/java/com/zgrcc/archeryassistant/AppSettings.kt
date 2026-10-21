@@ -438,6 +438,30 @@ class AppSettings(private val prefs: SharedPreferences) {
         prefs.edit().putBoolean(KEY_LAN_SHARE, v).apply()
     }
 
+    private val _shareRemember = MutableStateFlow(prefs.getBoolean(KEY_SHARE_REMEMBER, false))
+    /** 區網分享的網頁提供「記住這個裝置」（之後免輸入 PIN）。預設：關 */
+    val shareRemember: StateFlow<Boolean> = _shareRemember.asStateFlow()
+    fun setShareRemember(v: Boolean) {
+        _shareRemember.value = v
+        prefs.edit().putBoolean(KEY_SHARE_REMEMBER, v).apply()
+    }
+
+    private val _shareLog = MutableStateFlow(prefs.getBoolean(KEY_SHARE_LOG, true))
+    /** 記錄區網分享的連線（只留今天）。預設：開 */
+    val shareLog: StateFlow<Boolean> = _shareLog.asStateFlow()
+    fun setShareLog(v: Boolean) {
+        _shareLog.value = v
+        prefs.edit().putBoolean(KEY_SHARE_LOG, v).apply()
+    }
+
+    private val _shareAlert = MutableStateFlow(prefs.getBoolean(KEY_SHARE_ALERT, false))
+    /** 有人輸入錯誤 PIN 時震動提醒。預設：關 */
+    val shareAlert: StateFlow<Boolean> = _shareAlert.asStateFlow()
+    fun setShareAlert(v: Boolean) {
+        _shareAlert.value = v
+        prefs.edit().putBoolean(KEY_SHARE_ALERT, v).apply()
+    }
+
     private val _calAdvice = MutableStateFlow(prefs.getBoolean(KEY_CAL_ADVICE, true))
     /** 校準錄製完成後與校準記錄詳情提供「分析校準資料」。預設：開 */
     val calAdvice: StateFlow<Boolean> = _calAdvice.asStateFlow()
@@ -822,6 +846,9 @@ class AppSettings(private val prefs: SharedPreferences) {
         setAdvancedDetect(true)
         setReportExport(true)
         setLanShare(false)
+        setShareRemember(false)
+        setShareLog(true)
+        setShareAlert(false)
         setDiscFullscreen(true)
         setRecordTrace(false)
         setTraceGyro(false)
@@ -890,6 +917,9 @@ class AppSettings(private val prefs: SharedPreferences) {
         private const val KEY_ADVANCED_DETECT = "advanced_detect"
         private const val KEY_REPORT_EXPORT = "report_export"
         private const val KEY_LAN_SHARE = "lan_share"
+        private const val KEY_SHARE_REMEMBER = "share_remember"
+        private const val KEY_SHARE_LOG = "share_log"
+        private const val KEY_SHARE_ALERT = "share_alert"
         private const val KEY_UPDATE_LAST = "update_last_check"
         private const val KEY_UPDATE_SKIPPED = "update_skipped"
         private const val KEY_DISC_FULLSCREEN = "disc_fullscreen"

@@ -52,20 +52,31 @@ class ShareServer(private val router: ShareRouter, private val port: Int = PORT)
         try {
             c.use {
                 it.soTimeout = 8000
-                if (!ShareRouter.isLan(it.inetAddress)) return
+                val ip = it.inetAddress.hostAddress ?: ""
+                if (!ShareRouter.isLan(it.inetAddress)) {
+                    router.noteRefused(ip)
+                    return
+                }
                 val input = it.getInputStream().bufferedReader(Charsets.ISO_8859_1)
                 val line = input.readLine()?.take(2048) ?: return
                 // 讀掉其餘標頭（最多 100 行），不使用
+                var agent = ""
+                var cookie = ""
                 var n = 0
                 while (n++ < 100) {
                     val h = input.readLine() ?: break
                     if (h.isEmpty()) break
+                    when {
+                        h.startsWith("User-Agent:", ignoreCase = true) -> agent = h.substringAfter(':').trim().take(300)
+                        h.startsWith("Cookie:", ignoreCase = true) -> cookie = h.substringAfter(':').trim().take(600)
+                    }
                 }
                 val parts = line.split(' ')
-                val r = if (parts.size >= 2) router.handle(parts[0], parts[1])
+                val r = if (parts.size >= 2) router.handle(parts[0], parts[1], ShareRequest(ip, agent, cookie))
                 else ShareResponse(400, "text/plain; charset=utf-8", "Bad Request".toByteArray())
                 val head = "HTTP/1.1 ${r.status} ${ShareRouter.reason(r.status)}\r\n" +
                     "Content-Type: ${r.contentType}\r\nContent-Length: ${r.length}\r\n" +
+                    r.headers.joinToString("") { h -> h + "\r\n" } +
                     "Cache-Control: no-store\r\nConnection: close\r\n\r\n"
                 val out = it.getOutputStream()
                 out.write(head.toByteArray(Charsets.ISO_8859_1))

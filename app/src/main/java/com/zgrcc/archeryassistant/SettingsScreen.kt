@@ -25,7 +25,7 @@ import kotlinx.coroutines.launch
 /**
  * 設定頁路由（v1.14.1 起拆分）：[category] 為 -1 時顯示分類列表，否則交給對應分類的檔案。
  * 分類內容在 SettingsGeneral / SettingsDetect / SettingsRecord / SettingsTrain / SettingsMatch /
- * SettingsDisplay / SettingsData / SettingsAbout，共用元件在 SettingsCommon。
+ * SettingsDisplay / SettingsData / SettingsConnect / SettingsAbout，共用元件在 SettingsCommon。
  */
 @Composable
 fun SettingsScreen(
@@ -42,7 +42,8 @@ fun SettingsScreen(
         4 -> SettingsMatch(vm)
         5 -> SettingsDisplay(vm)
         6 -> SettingsData(vm)
-        7 -> SettingsAbout(vm)
+        7 -> SettingsConnect(vm)
+        8 -> SettingsAbout(vm)
         else -> SettingsCategoryList(onOpenCategory)
     }
 }
