@@ -25,14 +25,13 @@ import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
 import kotlinx.coroutines.launch
 
-/** 設定「關於與重設」分類（SettingsCategories 7）。 */
+/** 設定「關於」分類（SettingsCategories.ABOUT）：版本、簽章、更新、改版內容。 */
 @Composable
 fun SettingsAbout(vm: CounterViewModel, onOpenChangelog: () -> Unit = {}) {
     val s = vm.settings
     val threshold by vm.threshold.collectAsStateWithLifecycle()
     val updateMode by s.updateMode.collectAsStateWithLifecycle()
     val updateUi by vm.update.collectAsStateWithLifecycle()
-    var confirmReset by remember { mutableStateOf(false) }
     val ctx = LocalContext.current
     var noBrowser by remember { mutableStateOf(false) }
 
@@ -147,38 +146,6 @@ fun SettingsAbout(vm: CounterViewModel, onOpenChangelog: () -> Unit = {}) {
             else -> Unit
         }
         item { Note(tr("記錄資料夾（用 adb pull 取出）：\n${vm.dataPath}", "Records folder (pull with adb):\n${vm.dataPath}")) }
-        if (!confirmReset) {
-            item {
-                Chip(
-                    onClick = { confirmReset = true },
-                    label = { Text(tr("恢復預設設定", "Restore default settings"), maxLines = 1) },
-                    colors = kindColors(ChipKind.DANGER, ChipDefaults.secondaryChipColors()),
-                    modifier = Modifier.fillMaxWidth(0.9f),
-                )
-            }
-            item { Note(tr("把設定頁所有項目還原成預設值。不動記錄、主畫面的箭數和閾值", "Resets every item on this page to its default. Records, the main count and the threshold are untouched")) }
-        } else {
-            item { Note(tr("確定要把所有設定還原成預設值嗎？", "Reset all settings to defaults?")) }
-            item {
-                Chip(
-                    onClick = {
-                        vm.resetSettings()
-                        confirmReset = false
-                    },
-                    label = { Text(tr("確定還原", "Reset"), maxLines = 1) },
-                    colors = kindColors(ChipKind.DANGER, ChipDefaults.primaryChipColors()),
-                    modifier = Modifier.fillMaxWidth(0.9f),
-                )
-            }
-            item {
-                Chip(
-                    onClick = { confirmReset = false },
-                    label = { Text(tr("取消", "Cancel"), maxLines = 1) },
-                    colors = kindColors(ChipKind.NORMAL, ChipDefaults.secondaryChipColors()),
-                    modifier = Modifier.fillMaxWidth(0.9f),
-                )
-            }
-        }
     }
 }
 

@@ -47,7 +47,8 @@ fun SettingsScreen(
         5 -> SettingsDisplay(vm)
         6 -> SettingsData(vm)
         7 -> SettingsConnect(vm, onOpenLinkOptions, onOpenLinkDevice, onOpenLinkLog)
-        8 -> SettingsAbout(vm, onOpenChangelog)
+        8 -> SettingsReset(vm)
+        9 -> SettingsAbout(vm, onOpenChangelog)
         else -> SettingsCategoryList(onOpenCategory)
     }
 }

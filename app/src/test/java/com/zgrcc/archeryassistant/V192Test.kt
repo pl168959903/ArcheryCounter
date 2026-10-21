@@ -33,7 +33,7 @@ class V192Test {
     fun orderMatchesDesign() {
         I18n.english = false
         assertEquals(
-            listOf("一般", "偵測", "記錄", "訓練", "比賽模式", "圖表與顯示", "資料", "連線", "關於與重設"),
+            listOf("一般", "偵測", "記錄", "訓練", "比賽模式", "圖表與顯示", "資料", "連線", "重設與備份", "關於"),
             (0 until SettingsCategories.COUNT).map { SettingsCategories.name(it) },
         )
     }

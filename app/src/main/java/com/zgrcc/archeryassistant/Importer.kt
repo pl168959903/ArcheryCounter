@@ -318,7 +318,7 @@ object ImportText {
             (if (r.skipped > 0) tr("，略過 ${r.skipped} 筆已有的", ", ${r.skipped} skipped (already here)") else "") +
             (if (r.failed > 0) tr("，失敗 ${r.failed} 個", ", ${r.failed} failed") else "") +
             (if (r.overwritten > 0) tr("，其中 ${r.overwritten} 筆覆蓋了本機原有記錄，無法復原", ", ${r.overwritten} overwrote local records and cannot be undone") else "") +
-            (if (r.settings) tr("。已取得對方的設定備份，要套用請到下方按「還原設定」", ". Got the other device's settings backup; tap Restore settings below to apply it") else "")
+            (if (r.settings) tr("。已取得對方的設定備份，要套用請到設定「重設與備份」按「還原設定」", ". Got the other device's settings backup; apply it with Restore settings under Settings > Reset & backup") else "")
     }
 }
 

@@ -39,15 +39,8 @@ fun SettingsConnect(vm: CounterViewModel, onOpenOptions: () -> Unit = {}, onOpen
     val events by vm.shareEvents.collectAsStateWithLifecycle()
     val discover by s.importDiscover.collectAsStateWithLifecycle()
     val shareQr by s.shareQr.collectAsStateWithLifecycle()
-    val backupOn by s.settingsBackup.collectAsStateWithLifecycle()
     val found by vm.foundDevices.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
-    var backupResult by remember { mutableStateOf<Boolean?>(null) }
-    var backupCount by remember { mutableStateOf<Int?>(null) }
-    var backupTick by remember { mutableStateOf(0) }
-    var restoreConfirm by remember { mutableStateOf(false) }
-    var restored by remember { mutableStateOf<Int?>(null) }
-    LaunchedEffect(backupOn, backupTick) { backupCount = if (backupOn) vm.settingsBackupCount() else null }
     LaunchedEffect(discover) {
         vm.leaveLinkDevice()
         if (discover) vm.startDiscovery()
@@ -203,67 +196,6 @@ fun SettingsConnect(vm: CounterViewModel, onOpenOptions: () -> Unit = {}, onOpen
             )
         }
         item { Note(tr("點進裝置後輸入對方畫面上的 PIN，就能看對方的網頁報告或把資料匯入這支裝置", "Open a device and enter the PIN shown on it to view its web report or import its data here")) }
-
-        // ── 設定備份與還原 ──
-        item { ToggleChip(tr("設定備份與還原", "Settings backup and restore"), backupOn) { s.setSettingsBackup(it) } }
-        item { Note(tr("• 備份：把全部設定存成 sessions/settings_backup.txt\n• 還原：從該檔套用，重新開啟 App 才生效\n不含記錄、本次箭數、信任裝置。", "• Back up: saves all settings to sessions/settings_backup.txt\n• Restore: applies that file; reopen the app to take effect\nRecords, the current count and trusted devices are not included.")) }
-        if (backupOn) {
-            item {
-                Chip(
-                    onClick = {
-                        scope.launch {
-                            backupResult = vm.exportSettingsBackup()
-                            backupTick++
-                        }
-                    },
-                    label = { Text(tr("備份設定", "Back up settings"), maxLines = 1) },
-                    colors = kindColors(ChipKind.NORMAL, ChipDefaults.secondaryChipColors()),
-                    modifier = Modifier.fillMaxWidth(0.9f),
-                )
-            }
-            backupResult?.let { ok ->
-                item { Note(if (ok) tr("已存成 sessions/settings_backup.txt", "Saved to sessions/settings_backup.txt") else tr("備份失敗，請確認儲存空間", "Backup failed; check storage")) }
-            }
-            val cnt = backupCount
-            if (cnt != null && restored == null) {
-                item {
-                    Chip(
-                        onClick = {
-                            if (!restoreConfirm) {
-                                restoreConfirm = true
-                            } else {
-                                scope.launch {
-                                    restored = vm.restoreSettingsBackup() ?: -1
-                                    restoreConfirm = false
-                                }
-                            }
-                        },
-                        label = { Text(if (restoreConfirm) tr("確定還原", "Confirm restore") else tr("還原設定", "Restore settings"), maxLines = 1) },
-                        secondaryLabel = { Text(tr("備份檔有 $cnt 項", "$cnt items in backup"), maxLines = 1) },
-                        colors = kindColors(ChipKind.DANGER, if (restoreConfirm) ChipDefaults.primaryChipColors() else ChipDefaults.secondaryChipColors()),
-                        modifier = Modifier.fillMaxWidth(0.9f),
-                    )
-                }
-                if (restoreConfirm) item { Note(tr("會用備份檔覆蓋目前的設定（記錄不受影響）。再按一次確定", "This overwrites your current settings with the backup (records are not affected). Tap again to confirm")) }
-            } else if (cnt == null && restored == null) {
-                item { Note(tr("目前沒有備份檔。先按「備份設定」，或用「一併取得設定備份」從另一台取回", "No backup file yet. Tap Back up settings, or fetch one from another device with Also get settings backup")) }
-            }
-            restored?.let { n ->
-                if (n >= 0) {
-                    item { Note(tr("已還原 $n 項設定。請關閉 App 後重新開啟才會生效", "Restored $n settings. Close and reopen the app to apply them")) }
-                    item {
-                        Chip(
-                            onClick = { vm.exitApp() },
-                            label = { Text(tr("關閉 App", "Close app"), maxLines = 1) },
-                            colors = kindColors(ChipKind.GO, ChipDefaults.primaryChipColors()),
-                            modifier = Modifier.fillMaxWidth(0.9f),
-                        )
-                    }
-                } else {
-                    item { Note(tr("還原失敗", "Restore failed")) }
-                }
-            }
-        }
 
         // ── 已信任的裝置 ──
         item { SectionTitle(tr("已信任的裝置", "Trusted devices")) }
