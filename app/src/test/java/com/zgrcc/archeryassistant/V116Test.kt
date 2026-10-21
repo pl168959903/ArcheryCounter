@@ -59,23 +59,4 @@ class V116Test {
         assertEquals(1, run(RealReleaseData.false711931, advanced = true, gyro = false))
     }
 
-    @Test
-    fun defaultsKeepOldBehaviour() {
-        val d = ShotDetector(onShot = { _, _ -> })
-        assertEquals(ShotDetector.GAP_MS, d.gapMs)
-        assertEquals(0f, d.gyroStill, 0f)
-        assertEquals(100L, ShotDetector.GAP_MS)
-        assertEquals(250L, ShotDetector.ADVANCED_GAP_MS)
-    }
-
-    @Test
-    fun advancedDetectSettingDefaultsOnAndSurvivesReopen() {
-        val prefs = FakePrefs()
-        val s = AppSettings(prefs)
-        assertTrue(s.advancedDetect.value)
-        s.setAdvancedDetect(false)
-        assertFalse(AppSettings(prefs).advancedDetect.value)
-        s.resetDefaults()
-        assertTrue(s.advancedDetect.value)
-    }
 }

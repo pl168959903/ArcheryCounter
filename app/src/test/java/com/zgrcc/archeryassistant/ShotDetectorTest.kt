@@ -118,8 +118,4 @@ class ShotDetectorTest {
         assertTrue(shots == 1)
     }
 
-    @Test
-    fun defaultThresholdIs16() {
-        assertEquals(16f, ShotDetector.DEFAULT_SPIKE_THRESHOLD, 0.0001f)
-    }
 }

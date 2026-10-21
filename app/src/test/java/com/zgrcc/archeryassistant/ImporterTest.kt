@@ -162,19 +162,6 @@ class ImporterTest {
     }
 
     @Test
-    fun v17SettingsDefaults() {
-        val s = AppSettings(FakePrefs())
-        assertFalse(s.importOverwrite.value)
-        assertFalse(s.importRaw.value)
-        assertTrue(s.reportView.value)
-        s.setImportOverwrite(true); s.setImportRaw(true); s.setReportView(false)
-        s.resetDefaults()
-        assertFalse(s.importOverwrite.value)
-        assertFalse(s.importRaw.value)
-        assertTrue(s.reportView.value)
-    }
-
-    @Test
     fun listEndpointNeedsAuthAndIsPlainText() {
         val r = ShareRouter("1234", { listOf("a.json") }, { ShareFile(5) { ByteArrayInputStream(ByteArray(5)) } }, { "" })
         assertEquals(403, r.handle("GET", "/list").status)

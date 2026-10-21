@@ -52,11 +52,6 @@ class V1171Test {
     }
 
     @Test
-    fun freshInstallDefaultsToEveryStart() {
-        assertEquals(UpdateMode.EVERY_START, AppSettings(FakePrefs()).updateMode.value)
-    }
-
-    @Test
     fun legacySettingsAreMigrated() {
         val off = FakePrefs().also { it.edit().putBoolean("update_auto", false).apply() }
         assertEquals(UpdateMode.OFF, AppSettings(off).updateMode.value)

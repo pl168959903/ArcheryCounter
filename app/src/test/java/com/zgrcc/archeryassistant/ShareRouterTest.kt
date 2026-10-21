@@ -135,13 +135,4 @@ class ShareRouterTest {
         assertEquals("2.0 MB", ShareRouter.size(2L * 1_048_576))
     }
 
-    @Test
-    fun settingDefaultsOffAndResets() {
-        val s = AppSettings(FakePrefs())
-        assertFalse(s.lanShare.value)
-        s.setLanShare(true)
-        assertTrue(s.lanShare.value)
-        s.resetDefaults()
-        assertFalse(s.lanShare.value)
-    }
 }

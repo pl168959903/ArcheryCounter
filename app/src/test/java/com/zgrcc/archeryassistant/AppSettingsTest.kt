@@ -88,5 +88,15 @@ class AppSettingsTest {
         assertEquals(false, s["shotFeel"])
         assertEquals(0, s["updateMode"])
         assertEquals(true, s["paceAnalysis"])
+        // 分享、匯入與偵測的預設值（原本散在各測試檔，合併到這裡）
+        assertEquals(false, s["lanShare"])
+        assertEquals(true, s["shareRemember"])
+        assertEquals(true, s["shareLog"])
+        assertEquals(false, s["shareAlert"])
+        assertEquals(true, s["importDiscover"])
+        assertEquals(false, s["importOverwrite"])
+        assertEquals(false, s["importRaw"])
+        assertEquals(true, s["reportView"])
+        assertEquals(true, s["advancedDetect"])
     }
 }

@@ -136,11 +136,4 @@ class V1181Test {
         }
     }
 
-    @Test
-    fun defaultsAfterChange() {
-        val s = AppSettings(FakePrefs())
-        assertTrue(s.shareRemember.value)
-        assertTrue(s.importDiscover.value)
-        assertTrue(s.reportView.value)
-    }
 }

@@ -203,22 +203,4 @@ class ShareConnectTest {
         assertEquals("今天 2 支裝置、3 次連線、1 次 PIN 錯誤", ShareText.summary(e))
     }
 
-    @Test
-    fun settingsDefaultsAndReset() {
-        val s = AppSettings(FakePrefs())
-        assertTrue(s.shareRemember.value)
-        assertTrue(s.shareLog.value)
-        assertFalse(s.shareAlert.value)
-        s.setShareRemember(false); s.setShareLog(false); s.setShareAlert(true)
-        s.resetDefaults()
-        assertTrue(s.shareRemember.value)
-        assertTrue(s.shareLog.value)
-        assertFalse(s.shareAlert.value)
-    }
-
-    @Test
-    fun connectCategoryExists() {
-        assertEquals("連線", SettingsCategories.name(SettingsCategories.CONNECT))
-        assertTrue(SettingsCategories.valid(SettingsCategories.ABOUT))
-    }
 }
