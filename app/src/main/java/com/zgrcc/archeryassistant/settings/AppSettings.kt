@@ -156,11 +156,7 @@ class AppSettings(private val prefs: SharedPreferences) {
     /** 最近幾趟比剛開始抖很多時震動提醒一次。預設：開 */
     val fatigueAlert: StateFlow<Boolean> = _fatigueAlert.asStateFlow()
 
-    fun setFatigueAlert(v: Boolean) {
-        val value = v
-        _fatigueAlert.value = value
-        prefs.edit().putBoolean(KEY_FATIGUE_ALERT, value).apply()
-    }
+    fun setFatigueAlert(v: Boolean) = putBool(_fatigueAlert, KEY_FATIGUE_ALERT, v)
 
     private val _fatiguePct = MutableStateFlow(prefs.getInt(KEY_FATIGUE_PCT, FatigueRule.DEFAULT_PCT).coerceIn(FatigueRule.MIN_PCT, FatigueRule.MAX_PCT))
     /** 疲勞提醒的門檻（%）。預設：25 */
@@ -176,11 +172,7 @@ class AppSettings(private val prefs: SharedPreferences) {
     /** 比賽模式總開關：關閉時主畫面不顯示比賽入口。預設：開 */
     val compEnabled: StateFlow<Boolean> = _compEnabled.asStateFlow()
 
-    fun setCompEnabled(v: Boolean) {
-        val value = v
-        _compEnabled.value = value
-        prefs.edit().putBoolean(KEY_COMP_ENABLED, value).apply()
-    }
+    fun setCompEnabled(v: Boolean) = putBool(_compEnabled, KEY_COMP_ENABLED, v)
 
     private val _compFormat = MutableStateFlow(prefs.getInt(KEY_COMP_FORMAT, CompFormat.INDOOR_18).coerceIn(0, CompFormat.MAX_ID))
     /** 比賽賽制：0 室內18米、1 室外70米、2 自訂。預設：室內18米 */
@@ -246,21 +238,13 @@ class AppSettings(private val prefs: SharedPreferences) {
     /** 每趟剩 30 秒震動提醒。預設：開 */
     val compRemind30: StateFlow<Boolean> = _compRemind30.asStateFlow()
 
-    fun setCompRemind30(v: Boolean) {
-        val value = v
-        _compRemind30.value = value
-        prefs.edit().putBoolean(KEY_COMP_R30, value).apply()
-    }
+    fun setCompRemind30(v: Boolean) = putBool(_compRemind30, KEY_COMP_R30, v)
 
     private val _compRemind10 = MutableStateFlow(prefs.getBoolean(KEY_COMP_R10, true))
     /** 每趟剩 10 秒震動提醒。預設：開 */
     val compRemind10: StateFlow<Boolean> = _compRemind10.asStateFlow()
 
-    fun setCompRemind10(v: Boolean) {
-        val value = v
-        _compRemind10.value = value
-        prefs.edit().putBoolean(KEY_COMP_R10, value).apply()
-    }
+    fun setCompRemind10(v: Boolean) = putBool(_compRemind10, KEY_COMP_R10, v)
 
     private val _compAutoNext = MutableStateFlow(prefs.getInt(KEY_COMP_AUTO_NEXT, CompLimits.DEFAULT_AUTO_NEXT).let { if (it in CompLimits.AUTO_NEXT_OPTIONS) it else CompLimits.DEFAULT_AUTO_NEXT })
     /** 休息幾秒後自動開始下一趟，0 = 手動按「下一趟」。預設：0 */
@@ -276,21 +260,13 @@ class AppSettings(private val prefs: SharedPreferences) {
     /** 比賽畫面配色：準備紅底白字、射擊綠底黑字。預設：開 */
     val compColors: StateFlow<Boolean> = _compColors.asStateFlow()
 
-    fun setCompColors(v: Boolean) {
-        val value = v
-        _compColors.value = value
-        prefs.edit().putBoolean(KEY_COMP_COLORS, value).apply()
-    }
+    fun setCompColors(v: Boolean) = putBool(_compColors, KEY_COMP_COLORS, v)
 
     private val _soundEnabled = MutableStateFlow(prefs.getBoolean(KEY_SOUND_ENABLED, true))
     /** 比賽模式聲音總開關。預設：開 */
     val soundEnabled: StateFlow<Boolean> = _soundEnabled.asStateFlow()
 
-    fun setSoundEnabled(v: Boolean) {
-        val value = v
-        _soundEnabled.value = value
-        prefs.edit().putBoolean(KEY_SOUND_ENABLED, value).apply()
-    }
+    fun setSoundEnabled(v: Boolean) = putBool(_soundEnabled, KEY_SOUND_ENABLED, v)
 
     private val _soundVolume = MutableStateFlow(prefs.getInt(KEY_SOUND_VOLUME, MatchSound.DEFAULT_VOLUME_INDEX).coerceIn(0, MatchSound.VOLUMES.size - 1))
     /** 比賽聲音音量檔位。預設：高（75%） */
@@ -316,81 +292,50 @@ class AppSettings(private val prefs: SharedPreferences) {
     /** 準備倒數最後 3 秒的聲音。預設：開 */
     val soundCount: StateFlow<Boolean> = _soundCount.asStateFlow()
 
-    fun setSoundCount(v: Boolean) {
-        val value = v
-        _soundCount.value = value
-        prefs.edit().putBoolean(KEY_SOUND_COUNT, value).apply()
-    }
+    fun setSoundCount(v: Boolean) = putBool(_soundCount, KEY_SOUND_COUNT, v)
 
     private val _soundGo = MutableStateFlow(prefs.getBoolean(KEY_SOUND_GO, true))
     /** 開始射擊的聲音。預設：開 */
     val soundGo: StateFlow<Boolean> = _soundGo.asStateFlow()
 
-    fun setSoundGo(v: Boolean) {
-        val value = v
-        _soundGo.value = value
-        prefs.edit().putBoolean(KEY_SOUND_GO, value).apply()
-    }
+    fun setSoundGo(v: Boolean) = putBool(_soundGo, KEY_SOUND_GO, v)
 
     private val _soundWarn = MutableStateFlow(prefs.getBoolean(KEY_SOUND_WARN, true))
     /** 剩 30、10 秒提醒的聲音。預設：開 */
     val soundWarn: StateFlow<Boolean> = _soundWarn.asStateFlow()
 
-    fun setSoundWarn(v: Boolean) {
-        val value = v
-        _soundWarn.value = value
-        prefs.edit().putBoolean(KEY_SOUND_WARN, value).apply()
-    }
+    fun setSoundWarn(v: Boolean) = putBool(_soundWarn, KEY_SOUND_WARN, v)
 
     private val _soundEnd = MutableStateFlow(prefs.getBoolean(KEY_SOUND_END, true))
     /** 時間到、射滿箭數的聲音。預設：開 */
     val soundEnd: StateFlow<Boolean> = _soundEnd.asStateFlow()
 
-    fun setSoundEnd(v: Boolean) {
-        val value = v
-        _soundEnd.value = value
-        prefs.edit().putBoolean(KEY_SOUND_END, value).apply()
-    }
+    fun setSoundEnd(v: Boolean) = putBool(_soundEnd, KEY_SOUND_END, v)
 
     private val _paceAnalysis = MutableStateFlow(prefs.getBoolean(KEY_PACE, true))
     /** 比賽記錄顯示節奏分析。預設：開 */
     val paceAnalysis: StateFlow<Boolean> = _paceAnalysis.asStateFlow()
-    fun setPaceAnalysis(v: Boolean) {
-        _paceAnalysis.value = v
-        prefs.edit().putBoolean(KEY_PACE, v).apply()
-    }
+    fun setPaceAnalysis(v: Boolean) = putBool(_paceAnalysis, KEY_PACE, v)
 
     private val _groupCompare = MutableStateFlow(prefs.getBoolean(KEY_GROUP_COMPARE, true))
     /** 記錄列表顯示「條件對比」。預設：開 */
     val groupCompare: StateFlow<Boolean> = _groupCompare.asStateFlow()
-    fun setGroupCompare(v: Boolean) {
-        _groupCompare.value = v
-        prefs.edit().putBoolean(KEY_GROUP_COMPARE, v).apply()
-    }
+    fun setGroupCompare(v: Boolean) = putBool(_groupCompare, KEY_GROUP_COMPARE, v)
 
     private val _personalBest = MutableStateFlow(prefs.getBoolean(KEY_PERSONAL_BEST, true))
     /** 顯示個人最佳的 ★ 標記。預設：開 */
     val personalBest: StateFlow<Boolean> = _personalBest.asStateFlow()
-    fun setPersonalBest(v: Boolean) {
-        _personalBest.value = v
-        prefs.edit().putBoolean(KEY_PERSONAL_BEST, v).apply()
-    }
+    fun setPersonalBest(v: Boolean) = putBool(_personalBest, KEY_PERSONAL_BEST, v)
 
     private val _overview = MutableStateFlow(prefs.getBoolean(KEY_OVERVIEW, true))
     /** 記錄列表顯示「訓練總覽」。預設：開 */
     val overview: StateFlow<Boolean> = _overview.asStateFlow()
-    fun setOverview(v: Boolean) {
-        _overview.value = v
-        prefs.edit().putBoolean(KEY_OVERVIEW, v).apply()
-    }
+    fun setOverview(v: Boolean) = putBool(_overview, KEY_OVERVIEW, v)
 
     private val _autoClean = MutableStateFlow(prefs.getBoolean(KEY_AUTO_CLEAN, false))
     /** 開啟應用時自動清理舊記錄的原始資料、波形和 2D 軌跡。預設：關 */
     val autoClean: StateFlow<Boolean> = _autoClean.asStateFlow()
-    fun setAutoClean(v: Boolean) {
-        _autoClean.value = v
-        prefs.edit().putBoolean(KEY_AUTO_CLEAN, v).apply()
-    }
+    fun setAutoClean(v: Boolean) = putBool(_autoClean, KEY_AUTO_CLEAN, v)
 
     private val _autoCleanDays = MutableStateFlow(AutoClean.validDays(prefs.getInt(KEY_AUTO_CLEAN_DAYS, AutoClean.DEFAULT_DAYS)))
     /** 超過幾天的記錄才清理（30／60／90）。預設：60 */
@@ -409,90 +354,57 @@ class AppSettings(private val prefs: SharedPreferences) {
     private val _shotFeel = MutableStateFlow(prefs.getBoolean(KEY_SHOT_FEEL, false))
     /** 單箭頁提供「差／普通／好」自評。預設：關 */
     val shotFeel: StateFlow<Boolean> = _shotFeel.asStateFlow()
-    fun setShotFeel(v: Boolean) {
-        _shotFeel.value = v
-        prefs.edit().putBoolean(KEY_SHOT_FEEL, v).apply()
-    }
+    fun setShotFeel(v: Boolean) = putBool(_shotFeel, KEY_SHOT_FEEL, v)
 
     private val _advancedDetect = MutableStateFlow(prefs.getBoolean(KEY_ADVANCED_DETECT, true))
     /** 進階放箭判定（v1.16 試用）：穩定檢查緩衝加長、加上角速度穩定條件。預設：開 */
     val advancedDetect: StateFlow<Boolean> = _advancedDetect.asStateFlow()
-    fun setAdvancedDetect(v: Boolean) {
-        _advancedDetect.value = v
-        prefs.edit().putBoolean(KEY_ADVANCED_DETECT, v).apply()
-    }
+    fun setAdvancedDetect(v: Boolean) = putBool(_advancedDetect, KEY_ADVANCED_DETECT, v)
 
     private val _recordDevice = MutableStateFlow(prefs.getBoolean(KEY_RECORD_DEVICE, true))
     /** 記錄檔寫入裝置型號（v1.18.1）。App 版本、唯一碼與偵測設定一律寫入。預設：開 */
     val recordDevice: StateFlow<Boolean> = _recordDevice.asStateFlow()
-    fun setRecordDevice(v: Boolean) {
-        _recordDevice.value = v
-        prefs.edit().putBoolean(KEY_RECORD_DEVICE, v).apply()
-    }
+    fun setRecordDevice(v: Boolean) = putBool(_recordDevice, KEY_RECORD_DEVICE, v)
 
     private val _mainThreshold = MutableStateFlow(prefs.getBoolean(KEY_MAIN_THRESHOLD, false))
     /** 主畫面顯示閾值調整（v1.18.5）。閾值預設只在設定「偵測」裡調整。預設：關 */
     val mainThreshold: StateFlow<Boolean> = _mainThreshold.asStateFlow()
-    fun setMainThreshold(v: Boolean) {
-        _mainThreshold.value = v
-        prefs.edit().putBoolean(KEY_MAIN_THRESHOLD, v).apply()
-    }
+    fun setMainThreshold(v: Boolean) = putBool(_mainThreshold, KEY_MAIN_THRESHOLD, v)
 
     private val _recordNote = MutableStateFlow(prefs.getBoolean(KEY_RECORD_NOTE, true))
     /** 記錄備註（v1.19）：詳情頁可寫一句備註，列表與報告顯示。 預設：開 */
     val recordNote: StateFlow<Boolean> = _recordNote.asStateFlow()
-    fun setRecordNote(v: Boolean) {
-        _recordNote.value = v
-        prefs.edit().putBoolean(KEY_RECORD_NOTE, v).apply()
-    }
+    fun setRecordNote(v: Boolean) = putBool(_recordNote, KEY_RECORD_NOTE, v)
 
     private val _flagSuspicious = MutableStateFlow(prefs.getBoolean(KEY_FLAG_SUSPICIOUS, true))
     /** 標示可疑記錄（v1.19）。 預設：開 */
     val flagSuspicious: StateFlow<Boolean> = _flagSuspicious.asStateFlow()
-    fun setFlagSuspicious(v: Boolean) {
-        _flagSuspicious.value = v
-        prefs.edit().putBoolean(KEY_FLAG_SUSPICIOUS, v).apply()
-    }
+    fun setFlagSuspicious(v: Boolean) = putBool(_flagSuspicious, KEY_FLAG_SUSPICIOUS, v)
 
     private val _recordMeasuredHz = MutableStateFlow(prefs.getBoolean(KEY_RECORD_MEASURED_HZ, true))
     /** 記錄實測取樣率（v1.19.4）：結束時把實測 Hz 寫進偵測摘要。 預設：開 */
     val recordMeasuredHz: StateFlow<Boolean> = _recordMeasuredHz.asStateFlow()
-    fun setRecordMeasuredHz(v: Boolean) {
-        _recordMeasuredHz.value = v
-        prefs.edit().putBoolean(KEY_RECORD_MEASURED_HZ, v).apply()
-    }
+    fun setRecordMeasuredHz(v: Boolean) = putBool(_recordMeasuredHz, KEY_RECORD_MEASURED_HZ, v)
 
     private val _flagFastShots = MutableStateFlow(prefs.getBoolean(KEY_FLAG_FAST_SHOTS, true))
     /** 標示短間隔可疑箭（v1.19.4）。 預設：開 */
     val flagFastShots: StateFlow<Boolean> = _flagFastShots.asStateFlow()
-    fun setFlagFastShots(v: Boolean) {
-        _flagFastShots.value = v
-        prefs.edit().putBoolean(KEY_FLAG_FAST_SHOTS, v).apply()
-    }
+    fun setFlagFastShots(v: Boolean) = putBool(_flagFastShots, KEY_FLAG_FAST_SHOTS, v)
 
     private val _positionTrend = MutableStateFlow(prefs.getBoolean(KEY_POSITION_TREND, true))
     /** 箭序趨勢（v1.19.4）：一趟裡第幾箭的平均晃動。 預設：開 */
     val positionTrend: StateFlow<Boolean> = _positionTrend.asStateFlow()
-    fun setPositionTrend(v: Boolean) {
-        _positionTrend.value = v
-        prefs.edit().putBoolean(KEY_POSITION_TREND, v).apply()
-    }
+    fun setPositionTrend(v: Boolean) = putBool(_positionTrend, KEY_POSITION_TREND, v)
 
     private val _trendExtra = MutableStateFlow(prefs.getBoolean(KEY_TREND_EXTRA, true))
     /** 跨次趨勢加入節奏與放箭後晃動（v1.19.4）。 預設：開 */
     val trendExtra: StateFlow<Boolean> = _trendExtra.asStateFlow()
-    fun setTrendExtra(v: Boolean) {
-        _trendExtra.value = v
-        prefs.edit().putBoolean(KEY_TREND_EXTRA, v).apply()
-    }
+    fun setTrendExtra(v: Boolean) = putBool(_trendExtra, KEY_TREND_EXTRA, v)
 
     private val _autoEnds = MutableStateFlow(prefs.getBoolean(KEY_AUTO_ENDS, true))
     /** 自動分趟（v1.19.4）：詳情的逐趟只看兩箭間隔，不再用固定箭數切。 預設：開 */
     val autoEnds: StateFlow<Boolean> = _autoEnds.asStateFlow()
-    fun setAutoEnds(v: Boolean) {
-        _autoEnds.value = v
-        prefs.edit().putBoolean(KEY_AUTO_ENDS, v).apply()
-    }
+    fun setAutoEnds(v: Boolean) = putBool(_autoEnds, KEY_AUTO_ENDS, v)
 
     private val _phoneMode = MutableStateFlow(PhoneMode.valid(prefs.getInt(KEY_PHONE_MODE, PhoneMode.AUTO)))
     /** 手機模式（v1.20）：0 自動（不是手表就進手機模式）、1 手機模式、2 手錶模式。 預設：自動 */
@@ -506,58 +418,37 @@ class AppSettings(private val prefs: SharedPreferences) {
     private val _shotTapNav = MutableStateFlow(prefs.getBoolean(KEY_SHOT_TAP_NAV, true))
     /** 單箭頁點擊換箭（v1.20.2）：點非按鈕的地方，左半邊上一箭、右半邊下一箭。 預設：開 */
     val shotTapNav: StateFlow<Boolean> = _shotTapNav.asStateFlow()
-    fun setShotTapNav(v: Boolean) {
-        _shotTapNav.value = v
-        prefs.edit().putBoolean(KEY_SHOT_TAP_NAV, v).apply()
-    }
+    fun setShotTapNav(v: Boolean) = putBool(_shotTapNav, KEY_SHOT_TAP_NAV, v)
 
     private val _scoreShake = MutableStateFlow(prefs.getBoolean(KEY_SCORE_SHAKE, true))
     /** 環數與晃動分析（v1.21）：記錄詳情比較高環數與其他箭的平均晃動。 預設：開 */
     val scoreShake: StateFlow<Boolean> = _scoreShake.asStateFlow()
-    fun setScoreShake(v: Boolean) {
-        _scoreShake.value = v
-        prefs.edit().putBoolean(KEY_SCORE_SHAKE, v).apply()
-    }
+    fun setScoreShake(v: Boolean) = putBool(_scoreShake, KEY_SCORE_SHAKE, v)
 
     private val _endChart = MutableStateFlow(prefs.getBoolean(KEY_END_CHART, true))
     /** 逐趟趨勢圖（v1.21）：記錄詳情畫出各趟平均晃動。 預設：開 */
     val endChart: StateFlow<Boolean> = _endChart.asStateFlow()
-    fun setEndChart(v: Boolean) {
-        _endChart.value = v
-        prefs.edit().putBoolean(KEY_END_CHART, v).apply()
-    }
+    fun setEndChart(v: Boolean) = putBool(_endChart, KEY_END_CHART, v)
 
     private val _rateWarn = MutableStateFlow(prefs.getBoolean(KEY_RATE_WARN, true))
     /** 取樣率不足提醒（v1.21）：實測取樣率低於設定的 85% 時，主畫面提醒。 預設：開 */
     val rateWarn: StateFlow<Boolean> = _rateWarn.asStateFlow()
-    fun setRateWarn(v: Boolean) {
-        _rateWarn.value = v
-        prefs.edit().putBoolean(KEY_RATE_WARN, v).apply()
-    }
+    fun setRateWarn(v: Boolean) = putBool(_rateWarn, KEY_RATE_WARN, v)
 
     private val _historyFilter = MutableStateFlow(prefs.getBoolean(KEY_HISTORY_FILTER, true))
     /** 記錄頁篩選（v1.19）。 預設：開 */
     val historyFilter: StateFlow<Boolean> = _historyFilter.asStateFlow()
-    fun setHistoryFilter(v: Boolean) {
-        _historyFilter.value = v
-        prefs.edit().putBoolean(KEY_HISTORY_FILTER, v).apply()
-    }
+    fun setHistoryFilter(v: Boolean) = putBool(_historyFilter, KEY_HISTORY_FILTER, v)
 
     private val _shareZip = MutableStateFlow(prefs.getBoolean(KEY_SHARE_ZIP, true))
     /** 區網分享提供「下載全部（zip）」（v1.19）。 預設：開 */
     val shareZip: StateFlow<Boolean> = _shareZip.asStateFlow()
-    fun setShareZip(v: Boolean) {
-        _shareZip.value = v
-        prefs.edit().putBoolean(KEY_SHARE_ZIP, v).apply()
-    }
+    fun setShareZip(v: Boolean) = putBool(_shareZip, KEY_SHARE_ZIP, v)
 
     private val _importUndo = MutableStateFlow(prefs.getBoolean(KEY_IMPORT_UNDO, true))
     /** 匯入完成後可復原這次匯入（v1.19）。 預設：開 */
     val importUndo: StateFlow<Boolean> = _importUndo.asStateFlow()
-    fun setImportUndo(v: Boolean) {
-        _importUndo.value = v
-        prefs.edit().putBoolean(KEY_IMPORT_UNDO, v).apply()
-    }
+    fun setImportUndo(v: Boolean) = putBool(_importUndo, KEY_IMPORT_UNDO, v)
 
     private val _shareAutoStopMin = MutableStateFlow(prefs.getInt(KEY_SHARE_AUTO_STOP, ShareAutoStop.DEFAULT_MIN).let { if (it in ShareAutoStop.OPTIONS) it else ShareAutoStop.DEFAULT_MIN })
     /** 分享自動結束的分鐘數，0 = 不自動結束（v1.19）。預設：10（和以前相同） */
@@ -571,106 +462,67 @@ class AppSettings(private val prefs: SharedPreferences) {
     private val _lanShare = MutableStateFlow(prefs.getBoolean(KEY_LAN_SHARE, false))
     /** 資料頁提供「區網分享」（手機瀏覽器下載報告與資料）。預設：關 */
     val lanShare: StateFlow<Boolean> = _lanShare.asStateFlow()
-    fun setLanShare(v: Boolean) {
-        _lanShare.value = v
-        prefs.edit().putBoolean(KEY_LAN_SHARE, v).apply()
-    }
+    fun setLanShare(v: Boolean) = putBool(_lanShare, KEY_LAN_SHARE, v)
 
     private val _shareRemember = MutableStateFlow(prefs.getBoolean(KEY_SHARE_REMEMBER, true))
     /** 區網分享的網頁提供「記住這個裝置」（之後免輸入 PIN）；別台的 App 通過 PIN 後也會被記住。預設：開 */
     val shareRemember: StateFlow<Boolean> = _shareRemember.asStateFlow()
-    fun setShareRemember(v: Boolean) {
-        _shareRemember.value = v
-        prefs.edit().putBoolean(KEY_SHARE_REMEMBER, v).apply()
-    }
+    fun setShareRemember(v: Boolean) = putBool(_shareRemember, KEY_SHARE_REMEMBER, v)
 
     private val _shareLog = MutableStateFlow(prefs.getBoolean(KEY_SHARE_LOG, true))
     /** 記錄區網分享的連線（只留今天）。預設：開 */
     val shareLog: StateFlow<Boolean> = _shareLog.asStateFlow()
-    fun setShareLog(v: Boolean) {
-        _shareLog.value = v
-        prefs.edit().putBoolean(KEY_SHARE_LOG, v).apply()
-    }
+    fun setShareLog(v: Boolean) = putBool(_shareLog, KEY_SHARE_LOG, v)
 
     private val _shareAlert = MutableStateFlow(prefs.getBoolean(KEY_SHARE_ALERT, false))
     /** 有人輸入錯誤 PIN 時震動提醒。預設：關 */
     val shareAlert: StateFlow<Boolean> = _shareAlert.asStateFlow()
-    fun setShareAlert(v: Boolean) {
-        _shareAlert.value = v
-        prefs.edit().putBoolean(KEY_SHARE_ALERT, v).apply()
-    }
+    fun setShareAlert(v: Boolean) = putBool(_shareAlert, KEY_SHARE_ALERT, v)
 
     private val _importOverwrite = MutableStateFlow(prefs.getBoolean(KEY_IMPORT_OVERWRITE, false))
     /** 匯入時覆蓋本機已有的同一筆記錄。 預設：關 */
     val importOverwrite: StateFlow<Boolean> = _importOverwrite.asStateFlow()
-    fun setImportOverwrite(v: Boolean) {
-        _importOverwrite.value = v
-        prefs.edit().putBoolean(KEY_IMPORT_OVERWRITE, v).apply()
-    }
+    fun setImportOverwrite(v: Boolean) = putBool(_importOverwrite, KEY_IMPORT_OVERWRITE, v)
 
     private val _importRaw = MutableStateFlow(prefs.getBoolean(KEY_IMPORT_RAW, false))
     /** 匯入時一併抓原始資料 CSV（檔案較大）。 預設：關 */
     val importRaw: StateFlow<Boolean> = _importRaw.asStateFlow()
-    fun setImportRaw(v: Boolean) {
-        _importRaw.value = v
-        prefs.edit().putBoolean(KEY_IMPORT_RAW, v).apply()
-    }
+    fun setImportRaw(v: Boolean) = putBool(_importRaw, KEY_IMPORT_RAW, v)
 
     private val _reportView = MutableStateFlow(prefs.getBoolean(KEY_REPORT_VIEW, true))
     /** 「連線」頁提供「開啟網頁報告」（在這台裝置上直接看）。 預設：開 */
     val reportView: StateFlow<Boolean> = _reportView.asStateFlow()
-    fun setReportView(v: Boolean) {
-        _reportView.value = v
-        prefs.edit().putBoolean(KEY_REPORT_VIEW, v).apply()
-    }
+    fun setReportView(v: Boolean) = putBool(_reportView, KEY_REPORT_VIEW, v)
 
     private val _shareQr = MutableStateFlow(prefs.getBoolean(KEY_SHARE_QR, true))
     /** 分享中顯示 QR Code，手機掃描就能開。 預設：開 */
     val shareQr: StateFlow<Boolean> = _shareQr.asStateFlow()
-    fun setShareQr(v: Boolean) {
-        _shareQr.value = v
-        prefs.edit().putBoolean(KEY_SHARE_QR, v).apply()
-    }
+    fun setShareQr(v: Boolean) = putBool(_shareQr, KEY_SHARE_QR, v)
 
     private val _importDiscover = MutableStateFlow(prefs.getBoolean(KEY_IMPORT_DISCOVER, true))
     /** 區網自動尋找：分享時讓別台找得到，連線頁列出找到的裝置。 預設：開 */
     val importDiscover: StateFlow<Boolean> = _importDiscover.asStateFlow()
-    fun setImportDiscover(v: Boolean) {
-        _importDiscover.value = v
-        prefs.edit().putBoolean(KEY_IMPORT_DISCOVER, v).apply()
-    }
+    fun setImportDiscover(v: Boolean) = putBool(_importDiscover, KEY_IMPORT_DISCOVER, v)
 
     private val _importMark = MutableStateFlow(prefs.getBoolean(KEY_IMPORT_MARK, true))
     /** 標示從別台匯入的記錄來源（記錄列表與報告）。 預設：開 */
     val importMark: StateFlow<Boolean> = _importMark.asStateFlow()
-    fun setImportMark(v: Boolean) {
-        _importMark.value = v
-        prefs.edit().putBoolean(KEY_IMPORT_MARK, v).apply()
-    }
+    fun setImportMark(v: Boolean) = putBool(_importMark, KEY_IMPORT_MARK, v)
 
     private val _importPreview = MutableStateFlow(prefs.getBoolean(KEY_IMPORT_PREVIEW, true))
     /** 匯入前先預覽，確認後才寫入。 預設：開 */
     val importPreview: StateFlow<Boolean> = _importPreview.asStateFlow()
-    fun setImportPreview(v: Boolean) {
-        _importPreview.value = v
-        prefs.edit().putBoolean(KEY_IMPORT_PREVIEW, v).apply()
-    }
+    fun setImportPreview(v: Boolean) = putBool(_importPreview, KEY_IMPORT_PREVIEW, v)
 
     private val _importSettings = MutableStateFlow(prefs.getBoolean(KEY_IMPORT_SETTINGS, false))
     /** 匯入時一併取得對方的設定備份檔。 預設：關 */
     val importSettings: StateFlow<Boolean> = _importSettings.asStateFlow()
-    fun setImportSettings(v: Boolean) {
-        _importSettings.value = v
-        prefs.edit().putBoolean(KEY_IMPORT_SETTINGS, v).apply()
-    }
+    fun setImportSettings(v: Boolean) = putBool(_importSettings, KEY_IMPORT_SETTINGS, v)
 
     private val _settingsBackup = MutableStateFlow(prefs.getBoolean(KEY_SETTINGS_BACKUP, true))
     /** 「連線」頁提供設定備份與還原。 預設：開 */
     val settingsBackup: StateFlow<Boolean> = _settingsBackup.asStateFlow()
-    fun setSettingsBackup(v: Boolean) {
-        _settingsBackup.value = v
-        prefs.edit().putBoolean(KEY_SETTINGS_BACKUP, v).apply()
-    }
+    fun setSettingsBackup(v: Boolean) = putBool(_settingsBackup, KEY_SETTINGS_BACKUP, v)
 
     private val _reportTag = MutableStateFlow(prefs.getString(KEY_REPORT_TAG, "") ?: "")
     /** 網頁報告只包含帶這個標籤的記錄；空字串 = 全部。 預設：全部 */
@@ -683,10 +535,7 @@ class AppSettings(private val prefs: SharedPreferences) {
     private val _calAdvice = MutableStateFlow(prefs.getBoolean(KEY_CAL_ADVICE, true))
     /** 校準錄製完成後與校準記錄詳情提供「分析校準資料」。預設：開 */
     val calAdvice: StateFlow<Boolean> = _calAdvice.asStateFlow()
-    fun setCalAdvice(v: Boolean) {
-        _calAdvice.value = v
-        prefs.edit().putBoolean(KEY_CAL_ADVICE, v).apply()
-    }
+    fun setCalAdvice(v: Boolean) = putBool(_calAdvice, KEY_CAL_ADVICE, v)
 
     private val _updateMode = MutableStateFlow(readUpdateMode())
     /** 自動檢查更新的方式：0 每次啟動、1 每天第一次啟動、2 無自動檢查。預設：0。舊版的兩個開關會轉換過來 */
@@ -729,102 +578,67 @@ class AppSettings(private val prefs: SharedPreferences) {
     /** 點一下主畫面的即時圓盤，放大成全屏。預設：開 */
     val discFullscreen: StateFlow<Boolean> = _discFullscreen.asStateFlow()
 
-    fun setDiscFullscreen(v: Boolean) {
-        _discFullscreen.value = v
-        prefs.edit().putBoolean(KEY_DISC_FULLSCREEN, v).apply()
-    }
+    fun setDiscFullscreen(v: Boolean) = putBool(_discFullscreen, KEY_DISC_FULLSCREEN, v)
 
     private val _live2d = MutableStateFlow(prefs.getBoolean(KEY_LIVE_2D, false))
     /** 偵測中主畫面顯示即時晃動圓盤（取代即時波形）。預設：關 */
     val live2d: StateFlow<Boolean> = _live2d.asStateFlow()
 
-    fun setLive2d(v: Boolean) {
-        _live2d.value = v
-        prefs.edit().putBoolean(KEY_LIVE_2D, v).apply()
-    }
+    fun setLive2d(v: Boolean) = putBool(_live2d, KEY_LIVE_2D, v)
 
     private val _recordTrace = MutableStateFlow(prefs.getBoolean(KEY_RECORD_TRACE, false))
     /** 每一箭另存放箭前的 2D 軌跡。預設：關 */
     val recordTrace: StateFlow<Boolean> = _recordTrace.asStateFlow()
 
-    fun setRecordTrace(v: Boolean) {
-        _recordTrace.value = v
-        prefs.edit().putBoolean(KEY_RECORD_TRACE, v).apply()
-    }
+    fun setRecordTrace(v: Boolean) = putBool(_recordTrace, KEY_RECORD_TRACE, v)
 
     private val _traceGyro = MutableStateFlow(prefs.getBoolean(KEY_TRACE_GYRO, false))
     /** 2D 圖用角速度（true）還是加速度（false）。預設：加速度 */
     val traceGyro: StateFlow<Boolean> = _traceGyro.asStateFlow()
 
-    fun setTraceGyro(v: Boolean) {
-        _traceGyro.value = v
-        prefs.edit().putBoolean(KEY_TRACE_GYRO, v).apply()
-    }
+    fun setTraceGyro(v: Boolean) = putBool(_traceGyro, KEY_TRACE_GYRO, v)
 
     private val _chipKinds = MutableStateFlow(prefs.getBoolean(KEY_CHIP_KINDS, true))
     /** 按鈕依用途分色（綠＝開始／確認、藍＝進入另一頁、紅＝刪除）。預設：開 */
     val chipKinds: StateFlow<Boolean> = _chipKinds.asStateFlow()
 
-    fun setChipKinds(v: Boolean) {
-        _chipKinds.value = v
-        prefs.edit().putBoolean(KEY_CHIP_KINDS, v).apply()
-    }
+    fun setChipKinds(v: Boolean) = putBool(_chipKinds, KEY_CHIP_KINDS, v)
 
     private val _matchCompare = MutableStateFlow(prefs.getBoolean(KEY_MATCH_COMPARE, true))
     /** 記錄頁顯示「比賽對比」入口。預設：開 */
     val matchCompare: StateFlow<Boolean> = _matchCompare.asStateFlow()
 
-    fun setMatchCompare(v: Boolean) {
-        _matchCompare.value = v
-        prefs.edit().putBoolean(KEY_MATCH_COMPARE, v).apply()
-    }
+    fun setMatchCompare(v: Boolean) = putBool(_matchCompare, KEY_MATCH_COMPARE, v)
 
     private val _sensitivityAdvice = MutableStateFlow(prefs.getBoolean(KEY_SENSITIVITY_ADVICE, true))
     /** 閾值建議裡同時顯示「靜止條件」與「冷卻」的建議。預設：開 */
     val sensitivityAdvice: StateFlow<Boolean> = _sensitivityAdvice.asStateFlow()
 
-    fun setSensitivityAdvice(v: Boolean) {
-        _sensitivityAdvice.value = v
-        prefs.edit().putBoolean(KEY_SENSITIVITY_ADVICE, v).apply()
-    }
+    fun setSensitivityAdvice(v: Boolean) = putBool(_sensitivityAdvice, KEY_SENSITIVITY_ADVICE, v)
 
     private val _quickCheck = MutableStateFlow(prefs.getBoolean(KEY_QUICK_CHECK, true))
     /** 記錄詳情在有可疑箭時顯示「檢查可疑箭」入口。預設：開 */
     val quickCheck: StateFlow<Boolean> = _quickCheck.asStateFlow()
 
-    fun setQuickCheck(v: Boolean) {
-        _quickCheck.value = v
-        prefs.edit().putBoolean(KEY_QUICK_CHECK, v).apply()
-    }
+    fun setQuickCheck(v: Boolean) = putBool(_quickCheck, KEY_QUICK_CHECK, v)
 
     private val _tileLaunch = MutableStateFlow(prefs.getBoolean(KEY_TILE_LAUNCH, true))
     /** 從磁貼的按鈕進入時直接開始偵測／比賽；關閉時磁貼只會打開應用。預設：開 */
     val tileLaunch: StateFlow<Boolean> = _tileLaunch.asStateFlow()
 
-    fun setTileLaunch(v: Boolean) {
-        _tileLaunch.value = v
-        prefs.edit().putBoolean(KEY_TILE_LAUNCH, v).apply()
-    }
+    fun setTileLaunch(v: Boolean) = putBool(_tileLaunch, KEY_TILE_LAUNCH, v)
 
     private val _compScoreEntry = MutableStateFlow(prefs.getBoolean(KEY_COMP_SCORE_ENTRY, true))
     /** 比賽休息時可輸入該趟各箭環數。預設：開 */
     val compScoreEntry: StateFlow<Boolean> = _compScoreEntry.asStateFlow()
 
-    fun setCompScoreEntry(v: Boolean) {
-        val value = v
-        _compScoreEntry.value = value
-        prefs.edit().putBoolean(KEY_COMP_SCORE_ENTRY, value).apply()
-    }
+    fun setCompScoreEntry(v: Boolean) = putBool(_compScoreEntry, KEY_COMP_SCORE_ENTRY, v)
 
     private val _compArrowTimer = MutableStateFlow(prefs.getBoolean(KEY_COMP_ARROW_TIMER, false))
     /** 單箭限時提醒。預設：關 */
     val compArrowTimer: StateFlow<Boolean> = _compArrowTimer.asStateFlow()
 
-    fun setCompArrowTimer(v: Boolean) {
-        val value = v
-        _compArrowTimer.value = value
-        prefs.edit().putBoolean(KEY_COMP_ARROW_TIMER, value).apply()
-    }
+    fun setCompArrowTimer(v: Boolean) = putBool(_compArrowTimer, KEY_COMP_ARROW_TIMER, v)
 
     private val _compArrowSec = MutableStateFlow(prefs.getInt(KEY_COMP_ARROW_SEC, CompLimits.DEFAULT_ARROW_SEC).coerceIn(CompLimits.MIN_ARROW_SEC, CompLimits.MAX_ARROW_SEC))
     /** 單箭限時秒數。預設：40 */
@@ -845,30 +659,15 @@ class AppSettings(private val prefs: SharedPreferences) {
         prefs.edit().putString(KEY_COMP_SAVED, v).apply()
     }
 
-    fun setSplashTap(v: Boolean) {
-        _splashTap.value = v
-        prefs.edit().putBoolean(KEY_SPLASH_TAP, v).apply()
-    }
+    fun setSplashTap(v: Boolean) = putBool(_splashTap, KEY_SPLASH_TAP, v)
 
-    fun setSplash(v: Boolean) {
-        _splash.value = v
-        prefs.edit().putBoolean(KEY_SPLASH, v).apply()
-    }
+    fun setSplash(v: Boolean) = putBool(_splash, KEY_SPLASH, v)
 
-    fun setKeepScreenOn(v: Boolean) {
-        _keepScreenOn.value = v
-        prefs.edit().putBoolean(KEY_KEEP_SCREEN_ON, v).apply()
-    }
+    fun setKeepScreenOn(v: Boolean) = putBool(_keepScreenOn, KEY_KEEP_SCREEN_ON, v)
 
-    fun setWakeLock(v: Boolean) {
-        _wakeLock.value = v
-        prefs.edit().putBoolean(KEY_WAKE_LOCK, v).apply()
-    }
+    fun setWakeLock(v: Boolean) = putBool(_wakeLock, KEY_WAKE_LOCK, v)
 
-    fun setRecordRaw(v: Boolean) {
-        _recordRaw.value = v
-        prefs.edit().putBoolean(KEY_RECORD_RAW, v).apply()
-    }
+    fun setRecordRaw(v: Boolean) = putBool(_recordRaw, KEY_RECORD_RAW, v)
 
     fun setWindowSec(v: Int) {
         val value = v.coerceIn(MIN_WINDOW_SEC, MAX_WINDOW_SEC)
@@ -876,25 +675,13 @@ class AppSettings(private val prefs: SharedPreferences) {
         prefs.edit().putInt(KEY_WINDOW_SEC, value).apply()
     }
 
-    fun setShowTrendChart(v: Boolean) {
-        _showTrendChart.value = v
-        prefs.edit().putBoolean(KEY_SHOW_TREND, v).apply()
-    }
+    fun setShowTrendChart(v: Boolean) = putBool(_showTrendChart, KEY_SHOW_TREND, v)
 
-    fun setRecordWaveform(v: Boolean) {
-        _recordWaveform.value = v
-        prefs.edit().putBoolean(KEY_RECORD_WAVEFORM, v).apply()
-    }
+    fun setRecordWaveform(v: Boolean) = putBool(_recordWaveform, KEY_RECORD_WAVEFORM, v)
 
-    fun setLiveWaveform(v: Boolean) {
-        _liveWaveform.value = v
-        prefs.edit().putBoolean(KEY_LIVE_WAVEFORM, v).apply()
-    }
+    fun setLiveWaveform(v: Boolean) = putBool(_liveWaveform, KEY_LIVE_WAVEFORM, v)
 
-    fun setShowEnds(v: Boolean) {
-        _showEnds.value = v
-        prefs.edit().putBoolean(KEY_SHOW_ENDS, v).apply()
-    }
+    fun setShowEnds(v: Boolean) = putBool(_showEnds, KEY_SHOW_ENDS, v)
 
     fun setArrowsPerEnd(v: Int) {
         val value = v.coerceIn(MIN_ARROWS_PER_END, MAX_ARROWS_PER_END)
@@ -908,20 +695,11 @@ class AppSettings(private val prefs: SharedPreferences) {
         prefs.edit().putInt(KEY_END_VIBRATION, value).apply()
     }
 
-    fun setFollowThrough(v: Boolean) {
-        _followThrough.value = v
-        prefs.edit().putBoolean(KEY_FOLLOW_THROUGH, v).apply()
-    }
+    fun setFollowThrough(v: Boolean) = putBool(_followThrough, KEY_FOLLOW_THROUGH, v)
 
-    fun setShowSessionTrend(v: Boolean) {
-        _showSessionTrend.value = v
-        prefs.edit().putBoolean(KEY_SESSION_TREND, v).apply()
-    }
+    fun setShowSessionTrend(v: Boolean) = putBool(_showSessionTrend, KEY_SESSION_TREND, v)
 
-    fun setRecordScore(v: Boolean) {
-        _recordScore.value = v
-        prefs.edit().putBoolean(KEY_RECORD_SCORE, v).apply()
-    }
+    fun setRecordScore(v: Boolean) = putBool(_recordScore, KEY_RECORD_SCORE, v)
 
     fun setStillThreshold(v: Int) {
         val value = v.coerceIn(MIN_STILL_THRESHOLD, MAX_STILL_THRESHOLD)
@@ -935,15 +713,9 @@ class AppSettings(private val prefs: SharedPreferences) {
         prefs.edit().putInt(KEY_COOLDOWN_SEC, value).apply()
     }
 
-    fun setTouchLock(v: Boolean) {
-        _touchLock.value = v
-        prefs.edit().putBoolean(KEY_TOUCH_LOCK, v).apply()
-    }
+    fun setTouchLock(v: Boolean) = putBool(_touchLock, KEY_TOUCH_LOCK, v)
 
-    fun setTagsEnabled(v: Boolean) {
-        _tagsEnabled.value = v
-        prefs.edit().putBoolean(KEY_TAGS_ENABLED, v).apply()
-    }
+    fun setTagsEnabled(v: Boolean) = putBool(_tagsEnabled, KEY_TAGS_ENABLED, v)
 
     fun setDistanceTag(v: String?) {
         _distanceTag.value = v.orEmpty()
@@ -955,10 +727,7 @@ class AppSettings(private val prefs: SharedPreferences) {
         prefs.edit().putString(KEY_BOW_TAG, v.orEmpty()).apply()
     }
 
-    fun setAutoPause(v: Boolean) {
-        _autoPause.value = v
-        prefs.edit().putBoolean(KEY_AUTO_PAUSE, v).apply()
-    }
+    fun setAutoPause(v: Boolean) = putBool(_autoPause, KEY_AUTO_PAUSE, v)
 
     fun setAutoPauseMin(v: Int) {
         val value = v.coerceIn(AutoPause.MIN_MINUTES, AutoPause.MAX_MINUTES)
@@ -966,10 +735,7 @@ class AppSettings(private val prefs: SharedPreferences) {
         prefs.edit().putInt(KEY_AUTO_PAUSE_MIN, value).apply()
     }
 
-    fun setLowBattery(v: Boolean) {
-        _lowBattery.value = v
-        prefs.edit().putBoolean(KEY_LOW_BATTERY, v).apply()
-    }
+    fun setLowBattery(v: Boolean) = putBool(_lowBattery, KEY_LOW_BATTERY, v)
 
     fun setDailyGoal(v: Int) {
         val value = v.coerceIn(0, Goal.MAX)
@@ -977,15 +743,9 @@ class AppSettings(private val prefs: SharedPreferences) {
         prefs.edit().putInt(KEY_DAILY_GOAL, value).apply()
     }
 
-    fun setEndFeedback(v: Boolean) {
-        _endFeedback.value = v
-        prefs.edit().putBoolean(KEY_END_FEEDBACK, v).apply()
-    }
+    fun setEndFeedback(v: Boolean) = putBool(_endFeedback, KEY_END_FEEDBACK, v)
 
-    fun setDimWhenRunning(v: Boolean) {
-        _dimWhenRunning.value = v
-        prefs.edit().putBoolean(KEY_DIM, v).apply()
-    }
+    fun setDimWhenRunning(v: Boolean) = putBool(_dimWhenRunning, KEY_DIM, v)
 
     fun setDimLevel(v: Int) {
         val value = v.coerceIn(0, Brightness.LEVELS.size - 1)
@@ -994,6 +754,11 @@ class AppSettings(private val prefs: SharedPreferences) {
     }
 
     /** 把設定頁的所有項目還原成預設值。不動記錄、主畫面的箭數和閾值。 */
+    private fun putBool(flow: MutableStateFlow<Boolean>, key: String, value: Boolean) {
+        flow.value = value
+        prefs.edit().putBoolean(key, value).apply()
+    }
+
     fun resetDefaults() {
         setSplash(true)
         setSplashTap(true)
