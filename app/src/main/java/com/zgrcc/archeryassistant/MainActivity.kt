@@ -63,11 +63,11 @@ private const val ROUTE_MATCH_COMPARE = "match_compare"
 private const val ROUTE_QUICK_CHECK = "quick_check"
 private const val ROUTE_GROUPS = "groups"
 private const val ROUTE_OVERVIEW = "overview"
-private const val ROUTE_REPORT = "report_view"
+private const val ROUTE_HIST_TREND = "history_trend"
+private const val ROUTE_HIST_COMPARE = "history_compare"
 private const val ROUTE_CHANGELOG = "changelog"
 private const val ROUTE_LINK_OPTIONS = "link_options"
 private const val ROUTE_LINK_DEVICE = "link_device"
-private const val ROUTE_LINK_REPORT = "link_report"
 private const val ROUTE_DISC = "disc"
 
 @Composable
@@ -121,7 +121,9 @@ fun ArcheryApp(vm: CounterViewModel = viewModel(), launch: String? = null, onLau
       CompositionLocalProvider(LocalChipKinds provides chipKinds) {
         MaterialTheme {
             if (showSplash) {
+                val upd by vm.update.collectAsStateWithLifecycle()
                 SplashScreen(
+                    newVersion = if (upd.kind == UpdateKind.AVAILABLE) upd.info?.tag else null,
                     versionLabel = vm.versionLabel,
                     signature = vm.signatureShort,
                     waitForTap = splashTap,
@@ -198,12 +200,21 @@ private fun AppNav(vm: CounterViewModel, launch: String?, onLaunchHandled: () ->
                     vm.selectSession(id)
                     nav.navigate(ROUTE_DETAIL)
                 },
-                onOpenTrend = { nav.navigate(ROUTE_TREND) },
-                onOpenMatchCompare = { nav.navigate(ROUTE_MATCH_COMPARE) },
-                onOpenGroups = { nav.navigate(ROUTE_GROUPS) },
-                onOpenOverview = { nav.navigate(ROUTE_OVERVIEW) },
-                onOpenReport = { nav.navigate(ROUTE_REPORT) },
+                onOpenTrendMenu = { nav.navigate(ROUTE_HIST_TREND) },
+                onOpenCompareMenu = { nav.navigate(ROUTE_HIST_COMPARE) },
             )
+        }
+        for ((route, compare) in listOf(ROUTE_HIST_TREND to false, ROUTE_HIST_COMPARE to true)) {
+            composable(route) {
+                HistoryMenuScreen(
+                    vm = vm,
+                    compare = compare,
+                    onOpenTrend = { nav.navigate(ROUTE_TREND) },
+                    onOpenOverview = { nav.navigate(ROUTE_OVERVIEW) },
+                    onOpenMatchCompare = { nav.navigate(ROUTE_MATCH_COMPARE) },
+                    onOpenGroups = { nav.navigate(ROUTE_GROUPS) },
+                )
+            }
         }
         composable(ROUTE_DETAIL) {
             DetailScreen(
@@ -221,11 +232,9 @@ private fun AppNav(vm: CounterViewModel, launch: String?, onLaunchHandled: () ->
         }
         composable(ROUTE_GROUPS) { GroupCompareScreen(vm) }
         composable(ROUTE_OVERVIEW) { OverviewScreen(vm) }
-        composable(ROUTE_REPORT) { ReportScreen(vm) }
         composable(ROUTE_CHANGELOG) { ChangelogScreen(vm) }
         composable(ROUTE_LINK_OPTIONS) { LinkOptionsScreen(vm) }
-        composable(ROUTE_LINK_DEVICE) { LinkDeviceScreen(vm, onOpenReport = { nav.navigate(ROUTE_LINK_REPORT) }) }
-        composable(ROUTE_LINK_REPORT) { RemoteReportScreen(vm) }
+        composable(ROUTE_LINK_DEVICE) { LinkDeviceScreen(vm) }
         composable(ROUTE_MATCH_COMPARE) {
             MatchCompareScreen(
                 vm = vm,

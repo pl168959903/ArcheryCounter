@@ -5,7 +5,14 @@ import android.webkit.CookieManager
 import android.webkit.WebView
 import android.widget.TextView
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.BasicTextField
@@ -26,16 +33,29 @@ import androidx.wear.compose.material.ChipDefaults
 import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
 
+/** 有外框、沒填時顯示提示字的輸入框，讓人一眼看出哪裡要輸入（v1.18.3）。 */
 @Composable
-private fun LinkField(value: String, onChange: (String) -> Unit) {
-    BasicTextField(
-        value = value,
-        onValueChange = onChange,
-        singleLine = true,
-        textStyle = MaterialTheme.typography.body1.copy(color = MaterialTheme.colors.onBackground),
-        cursorBrush = SolidColor(MaterialTheme.colors.primary),
-        modifier = Modifier.fillMaxWidth(0.9f),
-    )
+private fun LinkField(value: String, hint: String, numeric: Boolean = false, onChange: (String) -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth(0.9f)
+            .border(1.5.dp, MaterialTheme.colors.primary, RoundedCornerShape(14.dp))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        if (value.isEmpty()) {
+            Text(hint, style = MaterialTheme.typography.body2, color = MaterialTheme.colors.onSurfaceVariant)
+        }
+        BasicTextField(
+            value = value,
+            onValueChange = onChange,
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = if (numeric) KeyboardType.NumberPassword else KeyboardType.Uri),
+            textStyle = MaterialTheme.typography.body1.copy(color = MaterialTheme.colors.onBackground),
+            cursorBrush = SolidColor(MaterialTheme.colors.primary),
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
 }
 
 /**
@@ -43,7 +63,9 @@ private fun LinkField(value: String, onChange: (String) -> Unit) {
  * 通過後可以開啟對方的網頁報告，或把對方的資料匯入這支裝置（含預覽、結果、清除結果）。
  */
 @Composable
-fun LinkDeviceScreen(vm: CounterViewModel, onOpenReport: () -> Unit) {
+fun LinkDeviceScreen(vm: CounterViewModel) {
+    val ctx = LocalContext.current
+    var openFailed by remember { mutableStateOf(false) }
     val link by vm.link.collectAsStateWithLifecycle()
     val importUi by vm.importUi.collectAsStateWithLifecycle()
     val overwrite by vm.settings.importOverwrite.collectAsStateWithLifecycle()
@@ -58,13 +80,13 @@ fun LinkDeviceScreen(vm: CounterViewModel, onOpenReport: () -> Unit) {
         item { SectionTitle(link.name.ifBlank { tr("裝置", "Device") }) }
         if (!link.verified) {
             if (link.manual) {
-                item { Note(tr("對方位址（例如 192.168.1.23:8080）", "Other device address (e.g. 192.168.1.23:8080)")) }
-                item { LinkField(addr) { addr = it.take(40) } }
+                item { Body(tr("對方位址", "Other device address")) }
+                item { LinkField(addr, "192.168.1.23:8080") { addr = it.take(40) } }
             } else {
                 item { Note(link.address) }
             }
-            item { Note(tr("PIN（對方「連線」頁開始分享後顯示的 4 位數；以前連過的可以留空）", "PIN (the 4 digits shown on the other device after it starts sharing; leave empty if you connected before)")) }
-            item { LinkField(pin) { pin = it.filter { c -> c.isDigit() }.take(4) } }
+            item { Body(tr("輸入 PIN", "Enter PIN")) }
+            item { LinkField(pin, tr("對方畫面上的 4 位數", "4 digits on the other device"), numeric = true) { pin = it.filter { c -> c.isDigit() }.take(4) } }
             item {
                 Chip(
                     onClick = { vm.verifyLink(addr, pin) },
@@ -74,6 +96,7 @@ fun LinkDeviceScreen(vm: CounterViewModel, onOpenReport: () -> Unit) {
                     modifier = Modifier.fillMaxWidth(0.9f),
                 )
             }
+            item { Note(tr("PIN 在對方「連線」頁按「開始分享」後顯示。以前連過、對方有記住的可以留空", "The PIN appears on the other device's Connect page after Start sharing. Leave it empty if that device remembers you")) }
             link.error?.let { e -> item { Note(ImportText.describe(ImportResult(error = e))) } }
             return@ScalingLazyColumn
         }
@@ -81,13 +104,17 @@ fun LinkDeviceScreen(vm: CounterViewModel, onOpenReport: () -> Unit) {
         item { Note(tr("已連線 ${link.address}", "Connected ${link.address}")) }
         item {
             Chip(
-                onClick = onOpenReport,
+                onClick = {
+                    val u = vm.remoteReportUrl()
+                    openFailed = u == null || !ExternalOpen.url(ctx, u)
+                },
                 label = { Text(tr("開啟網頁報告", "Open web report") + navMark(), maxLines = 1) },
-                secondaryLabel = { Text(tr("顯示這台裝置的資料", "This device's data"), maxLines = 1) },
+                secondaryLabel = { Text(tr("用瀏覽器開啟對方的資料", "Open its data in the browser"), maxLines = 1) },
                 colors = kindColors(ChipKind.NAV, ChipDefaults.secondaryChipColors()),
                 modifier = Modifier.fillMaxWidth(0.9f),
             )
         }
+        if (openFailed) item { Note(tr("找不到可以開啟網頁的程式（瀏覽器）", "No browser found to open the page")) }
         item {
             Chip(
                 onClick = { vm.startImport() },
@@ -135,41 +162,6 @@ fun LinkDeviceScreen(vm: CounterViewModel, onOpenReport: () -> Unit) {
                     modifier = Modifier.fillMaxWidth(0.9f),
                 )
             }
-        }
-    }
-}
-
-/** 顯示對方裝置的網頁報告（v1.18.1）。報告不含腳本，所以不開 JavaScript。 */
-@Composable
-fun RemoteReportScreen(vm: CounterViewModel) {
-    val target = remember { vm.remoteReport() }
-    val missing = tr("這台裝置沒有網頁檢視元件，或網址無效", "No web view available on this device, or the address is invalid")
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        if (target == null) {
-            Text(missing)
-        } else {
-            AndroidView(
-                modifier = Modifier.fillMaxSize(),
-                factory = { ctx ->
-                    val v: View = try {
-                        WebView(ctx).apply {
-                            settings.javaScriptEnabled = false
-                            settings.allowFileAccess = false
-                            settings.builtInZoomControls = true
-                            settings.displayZoomControls = false
-                            val token = target.second
-                            if (token != null) {
-                                // 已被對方信任：帶上憑證，不必再給 PIN
-                                CookieManager.getInstance().setCookie(target.first, "${ShareRouter.COOKIE}=$token")
-                            }
-                            loadUrl(target.first)
-                        }
-                    } catch (e: Exception) {
-                        TextView(ctx).apply { text = missing }
-                    }
-                    v
-                },
-            )
         }
     }
 }

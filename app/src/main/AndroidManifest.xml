@@ -40,6 +40,17 @@
             </intent-filter>
         </activity>
 
+        <!-- 把網頁報告交給外部瀏覽器開啟（v1.18.3）：只分享 cache/reports 底下的檔案 -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
         <!-- 接收系統安裝程式的結果（更新用） -->
         <receiver
             android:name=".UpdateInstallReceiver"

@@ -36,3 +36,12 @@ object ScreenRules {
     fun showCalibrationAdvice(setting: Boolean, session: Session, isActive: Boolean): Boolean =
         setting && session.calibration && session.rawCsv && !isActive && session.endMs != null
 }
+
+/** 記錄頁的入口分組（v1.18.3）。純規則。 */
+object HistoryGroups {
+    /** 「趨勢」入口：跨次趨勢或訓練總覽任一個可用就顯示。 */
+    fun trendVisible(e: ScreenRules.HistoryEntries) = e.trend || e.overview
+
+    /** 「對比」入口：比賽對比或條件對比任一個可用就顯示。 */
+    fun compareVisible(e: ScreenRules.HistoryEntries) = e.matchCompare || e.groups
+}

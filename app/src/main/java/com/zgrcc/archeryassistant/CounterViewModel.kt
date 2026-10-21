@@ -999,12 +999,10 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
     }
 
     /** 對方報告的網址與信任憑證（有憑證就不帶 PIN）。 */
-    fun remoteReport(): Pair<String, String?>? {
+    fun remoteReportUrl(): String? {
         val l = _link.value
         val base = ImportAddress.parse(l.address) ?: return null
-        val token = tokenFor(base)
-        return if (token.isNotEmpty()) Pair("$base/${ReportBuilder.FILE_NAME}", token)
-        else Pair("$base/${ReportBuilder.FILE_NAME}?pin=${l.pin}", null)
+        return ReportLink.url(base, l.pin)
     }
 
     /** 按「開始匯入」：預覽開著就先預覽（等確認），否則直接匯入。 */

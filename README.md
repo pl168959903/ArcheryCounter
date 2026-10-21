@@ -270,7 +270,7 @@ manual: [{ rel, d }, ...]                     d = 實際加減的數量（+1 或
 | `LinkOptionsScreen.kt` / `LinkDeviceScreen.kt` | 連結設定頁／區域網裝置頁（輸入 PIN、看對方報告、匯入） |
 | `SettingsBackup.kt` / `NsdHelper.kt` / `QrCode.kt` | 設定備份編碼（純 Kotlin）／區網自動尋找（mDNS）／QR Code 顯示 |
 | `Changelog.kt` / `ChangelogScreen.kt` | 改版內容：解析 GitHub 上的 CHANGELOG.md 與畫面。純 Kotlin（畫面除外） |
-| `Importer.kt` / `ReportScreen.kt` | 從別台裝置匯入記錄（位址解析、規劃、HTTP 來源）／在本機看網頁報告 |
+| `Importer.kt` / `ExternalOpen.kt` | 從別台裝置匯入記錄（位址解析、規劃、HTTP 來源）／用外部瀏覽器開網頁報告 |
 | `ShareData.kt` | 區網分享的信任裝置與連線記錄儲存。純 Kotlin |
 | `SettingsConnect.kt` | 設定「連線」分類畫面 |
 | `ShareRouter.kt` / `ShareServer.kt` | 區網分享：路由與 PIN 驗證（純 Kotlin）／極簡 HTTP 伺服器 |

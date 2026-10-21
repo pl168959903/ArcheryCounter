@@ -47,6 +47,7 @@ fun SplashScreen(
     signature: String,
     waitForTap: Boolean,
     onDone: () -> Unit,
+    newVersion: String? = null,
 ) {
     val done by rememberUpdatedState(onDone)
     var elapsedMs by remember { mutableLongStateOf(0L) }
@@ -113,6 +114,16 @@ fun SplashScreen(
                     color = colors[i],
                     textAlign = TextAlign.Center,
                     modifier = Modifier.alpha(SplashTiming.lineAlpha(t, i)),
+                )
+            }
+            // 檢查到有新版本才顯示（黃字）；已是最新、檢查失敗、還沒查完都不顯示
+            if (!newVersion.isNullOrBlank()) {
+                Text(
+                    text = tr("有新版本 $newVersion", "New version $newVersion"),
+                    style = MaterialTheme.typography.caption1,
+                    color = Color(0xFFFFD54F),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = 2.dp),
                 )
             }
             if (waitForTap) {

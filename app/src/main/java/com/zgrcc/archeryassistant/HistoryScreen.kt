@@ -1,5 +1,6 @@
 package com.zgrcc.archeryassistant
 
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,7 +21,10 @@ import androidx.wear.compose.material.MaterialTheme
 import androidx.wear.compose.material.Text
 
 @Composable
-fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrend: () -> Unit, onOpenMatchCompare: () -> Unit, onOpenGroups: () -> Unit, onOpenOverview: () -> Unit, onOpenReport: () -> Unit = {}) {
+fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrendMenu: () -> Unit, onOpenCompareMenu: () -> Unit) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    var openFailed by remember { mutableStateOf(false) }
     val sessions by vm.sessions.collectAsStateWithLifecycle()
     val activeId by vm.activeSessionId.collectAsStateWithLifecycle()
     val showTrend by vm.settings.showSessionTrend.collectAsStateWithLifecycle()
@@ -117,48 +121,26 @@ fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrend: (
                     )
                 }
             }
-        } else if (entries.trend) {
-            item {
-                Chip(
-                    onClick = onOpenTrend,
-                    label = { Text(tr("跨次趨勢", "Trend across sessions") + navMark(), maxLines = 1) },
-                    secondaryLabel = { Text(tr("最近 ${minOf(sessions.size, 20)} 次的晃動量", "Shake over the last ${minOf(sessions.size, 20)} sessions"), maxLines = 1) },
-                    colors = kindColors(ChipKind.NAV, ChipDefaults.secondaryChipColors()),
-                    modifier = Modifier.fillMaxWidth(0.9f),
-                )
-            }
         }
 
-        val matchCount = sessions.count { !it.calibration && it.comp != null && it.endMs != null }
-        if (entries.matchCompare) {
+        // 趨勢、對比各收成一個入口（v1.18.3）
+        if (HistoryGroups.trendVisible(entries)) {
             item {
                 Chip(
-                    onClick = onOpenMatchCompare,
-                    label = { Text(tr("比賽對比", "Match comparison") + navMark(), maxLines = 1) },
-                    secondaryLabel = { Text(tr("$matchCount 場比賽", "$matchCount matches"), maxLines = 1) },
+                    onClick = onOpenTrendMenu,
+                    label = { Text(tr("趨勢", "Trends") + navMark(), maxLines = 1) },
+                    secondaryLabel = { Text(tr("跨次趨勢、訓練總覽", "Trend across sessions, overview"), maxLines = 1) },
                     colors = kindColors(ChipKind.NAV, ChipDefaults.secondaryChipColors()),
                     modifier = Modifier.fillMaxWidth(0.9f),
                 )
             }
         }
-
-        if (entries.groups) {
+        if (HistoryGroups.compareVisible(entries)) {
             item {
                 Chip(
-                    onClick = onOpenGroups,
-                    label = { Text(tr("條件對比", "Compare conditions") + navMark(), maxLines = 1) },
-                    secondaryLabel = { Text(tr("依距離、弓種分組", "Grouped by distance and bow"), maxLines = 1) },
-                    colors = kindColors(ChipKind.NAV, ChipDefaults.secondaryChipColors()),
-                    modifier = Modifier.fillMaxWidth(0.9f),
-                )
-            }
-        }
-        if (entries.overview) {
-            item {
-                Chip(
-                    onClick = onOpenOverview,
-                    label = { Text(tr("訓練總覽", "Training overview") + navMark(), maxLines = 1) },
-                    secondaryLabel = { Text(tr("每週、每月的箭數", "Arrows per week and month"), maxLines = 1) },
+                    onClick = onOpenCompareMenu,
+                    label = { Text(tr("對比", "Compare") + navMark(), maxLines = 1) },
+                    secondaryLabel = { Text(tr("比賽對比、條件對比", "Matches, conditions"), maxLines = 1) },
                     colors = kindColors(ChipKind.NAV, ChipDefaults.secondaryChipColors()),
                     modifier = Modifier.fillMaxWidth(0.9f),
                 )
@@ -168,14 +150,21 @@ fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrend: (
         if (reportViewOn && sessions.isNotEmpty() && !manage) {
             item {
                 Chip(
-                    onClick = onOpenReport,
+                    onClick = {
+                        scope.launch {
+                            val html = vm.reportHtml()
+                            openFailed = !ExternalOpen.localReport(ctx, html)
+                        }
+                    },
                     label = { Text(tr("網頁報告", "Web report") + navMark(), maxLines = 1) },
-                    secondaryLabel = { Text(tr("全部記錄的圖表與明細", "Charts and details of all records"), maxLines = 1) },
+                    secondaryLabel = { Text(tr("用瀏覽器開啟全部記錄", "Open all records in the browser"), maxLines = 1) },
                     colors = kindColors(ChipKind.NAV, ChipDefaults.secondaryChipColors()),
                     modifier = Modifier.fillMaxWidth(0.9f),
                 )
             }
         }
+
+        if (openFailed) item { Note(tr("找不到可以開啟網頁的程式（瀏覽器）", "No browser found to open the page")) }
 
         if (sessions.isEmpty()) {
             item { Note(tr("尚無記錄。按「開始偵測」後，每次偵測都會自動存成一筆記錄", "No records yet. Each time you press Start detection, a record is saved automatically")) }
@@ -234,7 +223,7 @@ fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrend: (
             }
         }
 
-        if (sessions.isNotEmpty() && !manage) {
+        if (sessions.isNotEmpty() && manage) {
             if (!confirmClear) {
                 item {
                     Chip(
@@ -251,6 +240,7 @@ fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrend: (
                         onClick = {
                             vm.deleteAllSessions()
                             confirmClear = false
+                            manage = false
                         },
                         label = { Text(tr("確定刪除", "Delete"), maxLines = 1) },
                         colors = kindColors(ChipKind.DANGER, ChipDefaults.primaryChipColors()),

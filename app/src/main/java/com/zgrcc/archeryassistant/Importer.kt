@@ -75,6 +75,12 @@ object ImportAddress {
     }
 }
 
+/** 給外部瀏覽器開的對方報告網址（v1.18.3）：有 PIN 就帶上，沒有就開到 PIN 輸入頁。純字串。 */
+object ReportLink {
+    fun url(base: String, pin: String): String =
+        base.trimEnd('/') + "/" + ReportBuilder.FILE_NAME + (if (pin.isNotEmpty()) "?pin=" + pin.filter { it.isDigit() } else "")
+}
+
 object ImportPlanner {
     /** 要抓哪些：JSON 一律列入（本機已有且不覆蓋的會在寫入時略過），原始資料 CSV 只在 [withRaw] 時列入，且只抓有對應記錄的。 */
     fun wanted(remote: List<RemoteFile>, withRaw: Boolean): List<RemoteFile> {
