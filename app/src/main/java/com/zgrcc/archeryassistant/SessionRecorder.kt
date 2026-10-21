@@ -212,6 +212,12 @@ class SessionRecorder(private val store: SessionStore) {
     }
 
     /** 目前這次記錄的最終箭數（有效的偵測箭數加手動加減，不小於 0）；沒有進行中的記錄為 0。 */
+    /** 結束前把實測取樣率寫進偵測摘要（v1.19.4）。 */
+    @Synchronized
+    fun noteMeasuredHz(hz: Float) {
+        if (id != null) det = RecordMeta.withMeasured(det, hz)
+    }
+
     @Synchronized
     fun currentFinalCount(): Int =
         if (id == null) 0 else (shots.count { !it.cancelled } + manual.sumOf { it.delta }).coerceAtLeast(0)

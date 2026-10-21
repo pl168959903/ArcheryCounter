@@ -33,6 +33,8 @@ fun SettingsDisplay(vm: CounterViewModel) {
     val running by vm.running.collectAsStateWithLifecycle()
     val matchCompare by s.matchCompare.collectAsStateWithLifecycle()
     val paceAnalysis by s.paceAnalysis.collectAsStateWithLifecycle()
+    val positionTrend by s.positionTrend.collectAsStateWithLifecycle()
+    val trendExtra by s.trendExtra.collectAsStateWithLifecycle()
     val groupCompare by s.groupCompare.collectAsStateWithLifecycle()
     val personalBest by s.personalBest.collectAsStateWithLifecycle()
     val overviewOn by s.overview.collectAsStateWithLifecycle()
@@ -55,6 +57,12 @@ fun SettingsDisplay(vm: CounterViewModel) {
 
         item { ToggleChip(tr("跨次趨勢", "Trend across sessions"), showSessionTrend) { s.setShowSessionTrend(it) } }
         item { Note(tr("記錄列表顯示每次的平均晃動量，並提供最近 20 次的趨勢圖。只影響顯示", "Shows each session's average shake in the list and a trend chart of the last 20. Display only")) }
+
+        item { ToggleChip(tr("跨次趨勢加節奏與跟隨", "Trend: pace and follow-through"), trendExtra) { s.setTrendExtra(it) } }
+        item { Note(tr("跨次趨勢多兩張圖：每箭節奏（趟內間隔中位數）與放箭後晃動量。只影響顯示", "Adds two charts to the session trend: pace (median gap within ends) and shake after release. Display only")) }
+
+        item { ToggleChip(tr("箭序趨勢", "Shot-order trend"), positionTrend) { s.setPositionTrend(it) } }
+        item { Note(tr("記錄詳情與跨次趨勢多一段「箭序趨勢」：每趟第 1、2、3… 箭的平均晃動，看後段是否變抖。只影響顯示", "Adds Shot-order trend to details and the session trend: average shake of the 1st, 2nd, 3rd… shot of each end, to see if later shots get shakier. Display only")) }
 
         item { ToggleChip(tr("比賽對比", "Match comparison"), matchCompare) { s.setMatchCompare(it) } }
         item { Note(tr("記錄列表多一個「比賽對比」，把比賽紀錄的日期、總環數、平均晃動、時間到的趟數放在一起比，並畫趨勢圖。只影響顯示", "Adds Match comparison to the records list: date, total score, average shake and timed-out ends side by side, with trend charts. Display only")) }

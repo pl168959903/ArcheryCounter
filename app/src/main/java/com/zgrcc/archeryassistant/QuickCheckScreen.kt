@@ -58,6 +58,8 @@ private fun QuickCheckContent(vm: CounterViewModel, session: Session, isActive: 
     val recordTrace by vm.settings.recordTrace.collectAsStateWithLifecycle()
     val discSize by vm.settings.discSize.collectAsStateWithLifecycle()
     val shotFeel by vm.settings.shotFeel.collectAsStateWithLifecycle()
+    val fastOn by vm.settings.flagFastShots.collectAsStateWithLifecycle()
+    val fastShots = remember(session, fastOn) { if (fastOn) FastShot.flagged(session) else emptySet() }
     val count = session.shots.size
     var pos by remember(session.id) { mutableStateOf(QuickCheck.start(count)) }
     val index = pos.coerceIn(0, (count - 1).coerceAtLeast(0))
@@ -90,6 +92,7 @@ private fun QuickCheckContent(vm: CounterViewModel, session: Session, isActive: 
                     }
                 )
             }
+            if (index in fastShots) item { Note(FastShot.text()) }
             val wave = shot.waveform
             if (wave != null) {
                 item { ShotWaveform(wave) }

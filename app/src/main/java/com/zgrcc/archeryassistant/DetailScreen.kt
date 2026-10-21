@@ -129,6 +129,10 @@ private fun DetailContent(
     val suspectKind = remember(session, allSessions, flagOn, isActive) {
         if (flagOn) Suspicion.check(session, Suspicion.median(allSessions), isActive) else null
     }
+    val fastOn by vm.settings.flagFastShots.collectAsStateWithLifecycle()
+    val posOn by vm.settings.positionTrend.collectAsStateWithLifecycle()
+    val fastShots = remember(session, fastOn) { if (fastOn) FastShot.flagged(session) else emptySet() }
+    val posRows = remember(session, posOn) { if (posOn) PositionTrend.rows(listOf(session)) else emptyList() }
     var noteDraft by remember(session.id, session.note) { mutableStateOf(session.note) }
 
     ScalingLazyColumn(
@@ -267,6 +271,12 @@ private fun DetailContent(
             ends.forEach { e -> item { Body(endText(session, e)) } }
         }
 
+        if (posRows.isNotEmpty()) {
+            item { SectionTitle(tr("箭序趨勢", "Shot-order trend")) }
+            PositionTrend.hint(posRows)?.let { h -> item { Note(h) } }
+            posRows.forEach { r -> item { Body(PositionTrend.rowText(r, session.hasGyro)) } }
+        }
+
         item { SectionTitle(tr("逐箭明細", "Shot by shot")) }
         if (timeline.isEmpty()) {
             item { Note(tr("這次沒有偵測到放箭", "No release detected this time")) }
@@ -292,7 +302,7 @@ private fun DetailContent(
                 } else {
                     Chip(
                         onClick = { onOpenShot(row.shotIndex) },
-                        label = { Text(shotText(session, row, shot), style = MaterialTheme.typography.caption1, maxLines = 5) },
+                        label = { Text(shotText(session, row, shot) + if (row.shotIndex in fastShots) "\n" + FastShot.shortText() else "", style = MaterialTheme.typography.caption1, maxLines = 5) },
                         colors = if (shot.cancelled) ChipDefaults.childChipColors() else kindColors(ChipKind.LIST, ChipDefaults.secondaryChipColors()),
                         modifier = Modifier.fillMaxWidth(0.95f),
                     )

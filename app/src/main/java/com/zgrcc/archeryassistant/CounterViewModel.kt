@@ -484,6 +484,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         _endFeedback.value = null
         battery.stop()
         synchronized(pendingFollow) { pendingFollow.clear() } // 還沒滿 1 秒的就不補了
+        if (settings.recordMeasuredHz.value) recorder.noteMeasuredHz(rateMeter.hz)
         recorder.stop(System.currentTimeMillis())
         _activeId.value = null
         updateWakeLock()

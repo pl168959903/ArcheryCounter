@@ -10,6 +10,12 @@ object RecordMeta {
         "adv=" + (if (advanced) "on" else "off") + ";hz=$hz;thr=" +
             String.format(Locale.US, "%.1f", threshold) + ";win=${windowSec}s"
 
+    /** 在偵測摘要後面加上實測取樣率（Hz，四捨五入）；量不到（≤0）就原樣回傳，已有就不重複加。 */
+    fun withMeasured(det: String, measuredHz: Float): String {
+        if (measuredHz < 1f || det.isEmpty() || det.contains("real=")) return det
+        return det + ";real=" + Math.round(measuredHz)
+    }
+
     /** 把摘要轉成給人看的文字；無法解析就原樣回傳。 */
     fun detectText(det: String): String {
         if (det.isEmpty()) return ""
@@ -20,7 +26,10 @@ object RecordMeta {
         if (m.isEmpty()) return det
         val parts = buildList {
             m["adv"]?.let { add(tr("進階判定", "Advanced") + " " + if (it == "on") tr("開", "on") else tr("關", "off")) }
-            m["hz"]?.let { add("$it Hz") }
+            m["hz"]?.let { hz ->
+                val real = m["real"]
+                add(if (real == null || real == hz) "$hz Hz" else tr("$hz Hz（實測 $real Hz）", "$hz Hz (measured $real Hz)"))
+            }
             m["thr"]?.let { add(tr("閾值", "Threshold") + " $it") }
             m["win"]?.let { add(tr("視窗", "Window") + " $it") }
         }

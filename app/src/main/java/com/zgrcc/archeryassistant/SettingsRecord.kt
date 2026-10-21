@@ -42,6 +42,8 @@ fun SettingsRecord(vm: CounterViewModel) {
     val recordNote by s.recordNote.collectAsStateWithLifecycle()
     val flagSuspicious by s.flagSuspicious.collectAsStateWithLifecycle()
     val historyFilter by s.historyFilter.collectAsStateWithLifecycle()
+    val flagFastShots by s.flagFastShots.collectAsStateWithLifecycle()
+    val recordMeasuredHz by s.recordMeasuredHz.collectAsStateWithLifecycle()
 
     ScalingLazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -56,6 +58,10 @@ fun SettingsRecord(vm: CounterViewModel) {
         item { Note(tr("記錄詳情可寫一句備註（最多 60 字），顯示在列表和網頁報告。", "Write a short note (up to 60 chars) in record details; shown in the list and web report.")) }
         item { ToggleChip(tr("標示可疑記錄", "Flag suspicious records"), flagSuspicious) { s.setFlagSuspicious(it) } }
         item { Note(tr("符合下列任一項會標「⚠ 可疑」：\n• 沒正常結束\n• 超過 2 分鐘沒偵測到箭\n• 箭數超過中位數 2 倍\n校準記錄不判斷。", "A record is marked Suspicious if any of these applies:\n• It did not end normally\n• No arrows detected for over 2 minutes\n• Arrow count is over twice the median\nCalibration records are not checked.")) }
+        item { ToggleChip(tr("標示可疑的箭", "Flag suspicious shots"), flagFastShots) { s.setFlagFastShots(it) } }
+        item { Note(tr("離上一箭不到一般間隔的一半、放箭後又幾乎沒動作的箭，在詳情與快速檢查標「⚠ 可疑」，只標示不會自動取消", "Shots much closer to the previous one than usual and with almost no follow-through are marked Suspicious in details and Quick check. Only marked, never cancelled automatically")) }
+        item { ToggleChip(tr("記錄實測取樣率", "Record measured sample rate"), recordMeasuredHz) { s.setRecordMeasuredHz(it) } }
+        item { Note(tr("結束時把手錶實際的取樣率寫進偵測摘要，例如設定 100 Hz 但手錶只給 50 Hz 就看得出來", "Writes the watch's actual sample rate into the detection summary when a record ends, so a requested 100 Hz that the watch only delivers at 50 Hz becomes visible")) }
         item { ToggleChip(tr("記錄篩選", "Records filter"), historyFilter) { s.setHistoryFilter(it) } }
         item { Note(tr("記錄頁多一個「篩選」按鈕，可依標籤和日期範圍過濾列表", "Adds a Filter button to the Records page to filter the list by tag and date range")) }
 

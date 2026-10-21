@@ -454,6 +454,38 @@ class AppSettings(private val prefs: SharedPreferences) {
         prefs.edit().putBoolean(KEY_FLAG_SUSPICIOUS, v).apply()
     }
 
+    private val _recordMeasuredHz = MutableStateFlow(prefs.getBoolean(KEY_RECORD_MEASURED_HZ, true))
+    /** 記錄實測取樣率（v1.19.4）：結束時把實測 Hz 寫進偵測摘要。 預設：開 */
+    val recordMeasuredHz: StateFlow<Boolean> = _recordMeasuredHz.asStateFlow()
+    fun setRecordMeasuredHz(v: Boolean) {
+        _recordMeasuredHz.value = v
+        prefs.edit().putBoolean(KEY_RECORD_MEASURED_HZ, v).apply()
+    }
+
+    private val _flagFastShots = MutableStateFlow(prefs.getBoolean(KEY_FLAG_FAST_SHOTS, true))
+    /** 標示短間隔可疑箭（v1.19.4）。 預設：開 */
+    val flagFastShots: StateFlow<Boolean> = _flagFastShots.asStateFlow()
+    fun setFlagFastShots(v: Boolean) {
+        _flagFastShots.value = v
+        prefs.edit().putBoolean(KEY_FLAG_FAST_SHOTS, v).apply()
+    }
+
+    private val _positionTrend = MutableStateFlow(prefs.getBoolean(KEY_POSITION_TREND, true))
+    /** 箭序趨勢（v1.19.4）：一趟裡第幾箭的平均晃動。 預設：開 */
+    val positionTrend: StateFlow<Boolean> = _positionTrend.asStateFlow()
+    fun setPositionTrend(v: Boolean) {
+        _positionTrend.value = v
+        prefs.edit().putBoolean(KEY_POSITION_TREND, v).apply()
+    }
+
+    private val _trendExtra = MutableStateFlow(prefs.getBoolean(KEY_TREND_EXTRA, true))
+    /** 跨次趨勢加入節奏與放箭後晃動（v1.19.4）。 預設：開 */
+    val trendExtra: StateFlow<Boolean> = _trendExtra.asStateFlow()
+    fun setTrendExtra(v: Boolean) {
+        _trendExtra.value = v
+        prefs.edit().putBoolean(KEY_TREND_EXTRA, v).apply()
+    }
+
     private val _historyFilter = MutableStateFlow(prefs.getBoolean(KEY_HISTORY_FILTER, true))
     /** 記錄頁篩選（v1.19）。 預設：開 */
     val historyFilter: StateFlow<Boolean> = _historyFilter.asStateFlow()
@@ -986,6 +1018,10 @@ class AppSettings(private val prefs: SharedPreferences) {
         setShareZip(true)
         setHistoryFilter(true)
         setFlagSuspicious(true)
+        setRecordMeasuredHz(true)
+        setFlagFastShots(true)
+        setPositionTrend(true)
+        setTrendExtra(true)
         setRecordNote(true)
         setLanShare(false)
         setShareRemember(true)
@@ -1075,6 +1111,10 @@ class AppSettings(private val prefs: SharedPreferences) {
         private const val KEY_SHARE_ZIP = "share_zip"
         private const val KEY_HISTORY_FILTER = "history_filter"
         private const val KEY_FLAG_SUSPICIOUS = "flag_suspicious"
+        private const val KEY_RECORD_MEASURED_HZ = "record_measured_hz"
+        private const val KEY_FLAG_FAST_SHOTS = "flag_fast_shots"
+        private const val KEY_POSITION_TREND = "position_trend"
+        private const val KEY_TREND_EXTRA = "trend_extra"
         private const val KEY_RECORD_NOTE = "record_note"
         private const val KEY_LAN_SHARE = "lan_share"
         private const val KEY_SHARE_REMEMBER = "share_remember"
