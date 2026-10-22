@@ -2,6 +2,10 @@
 
 這個專案的每個版本改了什麼。最新的在最上面。
 
+### v1.23.3
+- **目標 API 升到 36**：Google Play 要求手機 App 的 targetSdk 至少 36。編譯工具同步升級（Android Gradle Plugin 8.9.1、Gradle 8.11.1）。版本碼：GitHub 版 50、Play 手錶版 500、手機版 501。
+- 沒有改動程式邏輯，單元測試維持 470 項。標籤請打 `v1.23.3`。
+
 ### v1.23.2
 - **Play 版拆成兩份 AAB**：Google Play 不接受把 watch 功能設成 `required=false`。現在編譯時同時產生「手錶版」（`ArcheryAssistant-aab-watch`，watch 功能 required=true，Wear OS 外形規格）和「手機版」（`ArcheryAssistant-aab-phone`，不宣告 watch 功能，用來匯入與檢視記錄），兩份套件名稱相同（`com.zgrcc.archeryassistant.play`），版本碼分別是 490 與 491（Play 要求不重複）。GitHub 版 APK 不變（versionCode 49）。
 - 沒有改動程式邏輯，單元測試維持 470 項。標籤請打 `v1.23.2`。

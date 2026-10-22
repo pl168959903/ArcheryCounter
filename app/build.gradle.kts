@@ -6,14 +6,14 @@ plugins {
 
 android {
     namespace = "com.zgrcc.archeryassistant"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.zgrcc.archeryassistant"
         minSdk = 30
-        targetSdk = 35
-        versionCode = 49
-        versionName = "1.23.2"
+        targetSdk = 36
+        versionCode = 50
+        versionName = "1.23.3"
     }
 
     // 固定簽章：GitHub 編譯時由 Secrets 提供金鑰（見 README），這樣每次編譯出來的 APK 簽章都一樣，
@@ -75,13 +75,13 @@ android {
             dimension = "dist"
             // 套件名稱加 .play：Play 版與 GitHub 版是兩個不同的 App，可以同時裝在一支手錶上，資料各自獨立
             applicationIdSuffix = ".play"
-            versionCode = 49 * 10
+            versionCode = 50 * 10
             buildConfigField("boolean", "UPDATES", "false")
         }
         create("playPhone") {
             dimension = "dist"
             applicationIdSuffix = ".play"
-            versionCode = 49 * 10 + 1
+            versionCode = 50 * 10 + 1
             buildConfigField("boolean", "UPDATES", "false")
         }
     }

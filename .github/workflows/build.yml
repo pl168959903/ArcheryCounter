@@ -101,7 +101,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         if: steps.decide.outputs.build == 'true'
         with:
-          gradle-version: 8.9
+          gradle-version: 8.11.1
 
       # 固定簽章：倉庫的 Secrets 裡有 KEYSTORE_BASE64 才啟用；沒有就退回 debug 金鑰，編譯不會失敗
       - name: Prepare signing key
