@@ -59,8 +59,9 @@ android {
         buildConfig = true
     }
 
-    // 兩個發行版本（v1.23）：同一個套件名稱與版本號。
-    // github：APK，內建檢查更新與下載安裝。play：AAB 給 Google Play，沒有自我更新（Play 政策不允許），改版內容改讀內建檔案。
+    // 兩個發行版本（v1.23）：版本號相同。
+    // github：APK，內建檢查更新與下載安裝，套件名稱維持原本的，現有使用者照常更新。
+    // play：AAB 給 Google Play，套件名稱加 .play，沒有自我更新（Play 政策不允許），改版內容改讀內建檔案。
     flavorDimensions += "dist"
     productFlavors {
         create("github") {
@@ -69,6 +70,8 @@ android {
         }
         create("play") {
             dimension = "dist"
+            // 套件名稱加 .play：Play 版與 GitHub 版是兩個不同的 App，可以同時裝在一支手錶上，資料各自獨立
+            applicationIdSuffix = ".play"
             buildConfigField("boolean", "UPDATES", "false")
         }
     }

@@ -4,7 +4,7 @@
 
 ## 基本資料
 - 應用名稱：Archery Assistant
-- 套件名稱：com.zgrcc.archeryassistant
+- 套件名稱：**com.zgrcc.archeryassistant.play**（Play 版；GitHub 版是 com.zgrcc.archeryassistant，兩者可同時安裝）
 - 外形規格：**Wear OS**（只勾 Wear OS）
 - 類別：運動與健身（Sports / Health & Fitness）
 - 隱私權政策網址：https://github.com/pl168959903/ArcheryCounter/blob/main/PRIVACY.md

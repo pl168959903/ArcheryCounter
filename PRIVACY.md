@@ -1,6 +1,6 @@
 # 隱私權政策 / Privacy Policy
 
-**Archery Assistant**（套件名稱 `com.zgrcc.archeryassistant`）　作者：ZGrCc
+**Archery Assistant**（GitHub 版套件名稱 `com.zgrcc.archeryassistant`，Google Play 版 `com.zgrcc.archeryassistant.play`）　作者：ZGrCc
 
 最後更新 / Last updated: 2026-10（v1.23：加入區網分享與匯入的說明、區分 GitHub 版與 Google Play 版 / adds LAN sharing and import, separates the GitHub and Google Play editions）
 
@@ -10,7 +10,7 @@ Archery Assistant 是一個在 Wear OS 手錶上運作的射箭輔助工具，�
 
 **我們不蒐集你的資料。開發者沒有伺服器，也不會收到你的任何資料。**
 - 應用沒有廣告、分析或追蹤程式，也不會把你的資料上傳到網路上的任何服務。
-- 所有資料（箭數、設定、每次射擊的記錄與感測器數值）都只存在你的裝置本機，位於應用專屬的儲存空間：`/sdcard/Android/data/com.zgrcc.archeryassistant/files/`。你可以隨時在應用內刪除記錄，或解除安裝應用一併清除。
+- 所有資料（箭數、設定、每次射擊的記錄與感測器數值）都只存在你的裝置本機，位於應用專屬的儲存空間：`/sdcard/Android/data/<套件名稱>/files/`。兩個版本可以同時安裝，資料各自獨立。你可以隨時在應用內刪除記錄，或解除安裝應用一併清除。
 
 **區域網路分享與匯入（選用，由你主動開啟）**
 - 在「連線」設定裡，你可以讓手錶在同一個 Wi-Fi 區域網路內暫時分享記錄（會顯示網址與 4 位數 PIN，預設 10 分鐘後自動關閉），讓你自己的手機或電腦用瀏覽器查看，或讓本應用的手機版匯入。
@@ -34,7 +34,7 @@ Archery Assistant is an archery helper for Wear OS watches. It uses the watch's 
 
 **We do not collect your data. The developer runs no server and receives none of your data.**
 - The app contains no ads, analytics or trackers and never uploads your data to any online service.
-- All data (arrow counts, settings, session records and sensor values) stays on your device in the app's private storage: `/sdcard/Android/data/com.zgrcc.archeryassistant/files/`. You can delete records inside the app at any time, or uninstall the app to remove everything.
+- All data (arrow counts, settings, session records and sensor values) stays on your device in the app's private storage: `/sdcard/Android/data/<package name>/files/`. The two editions can be installed side by side and keep separate data. You can delete records inside the app at any time, or uninstall the app to remove everything.
 
 **Local-network sharing and import (optional, started by you)**
 - In the Connection settings you can let the watch share records temporarily on the same Wi-Fi network (it shows an address and a 4-digit PIN, and stops automatically after 10 minutes by default), so your own phone or computer can view them in a browser, or the phone version of this app can import them.

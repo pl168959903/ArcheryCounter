@@ -15,7 +15,7 @@ import java.util.concurrent.Executors
  *   <baseDir>/sessions/<id>.csv    原始传感器数据（只有开启「錄製原始資料」时才有）
  *
  * id 是开始时间，例如 20261019_211003。
- * baseDir 在手表上是 /sdcard/Android/data/com.zgrcc.archeryassistant/files/，可以用 adb pull 取出。
+ * baseDir 在手表上是 /sdcard/Android/data/<套件名稱>/files/（GitHub 版 com.zgrcc.archeryassistant，Play 版 com.zgrcc.archeryassistant.play），可以用 adb pull 取出。
  */
 class SessionStore(baseDir: File) {
 
