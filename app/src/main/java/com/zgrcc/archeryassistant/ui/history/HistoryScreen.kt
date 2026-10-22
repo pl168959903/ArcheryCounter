@@ -25,6 +25,7 @@ fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrendMen
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     var openFailed by remember { mutableStateOf(false) }
+    val phone = rememberPhoneMode(vm)
     val sessions by vm.sessions.collectAsStateWithLifecycle()
     val activeId by vm.activeSessionId.collectAsStateWithLifecycle()
     val showTrend by vm.settings.showSessionTrend.collectAsStateWithLifecycle()
@@ -114,6 +115,10 @@ fun HistoryScreen(vm: CounterViewModel, onOpen: (String) -> Unit, onOpenTrendMen
                     enabled = deletable.isNotEmpty(),
                     modifier = Modifier.fillMaxWidth(0.9f),
                 )
+            }
+            // 匯出只在手機畫面出現（v1.24）
+            if (phone && !confirmDelete) {
+                item { ExportBlock(vm, chosen, single = false) }
             }
             if (!confirmDelete) {
                 item {

@@ -32,7 +32,6 @@ fun MainScreen(
     onOpenDisc: () -> Unit,
     onOpenUpdate: () -> Unit = {},
     onOpenImport: () -> Unit = {},
-    onOpenSession: (String) -> Unit = {},
     onOpenTrend: () -> Unit = {},
 ) {
     val rateWarnOn by vm.settings.rateWarn.collectAsStateWithLifecycle()
@@ -67,7 +66,7 @@ fun MainScreen(
     if (phone) {
         PhoneHome(
             vm = vm,
-            onOpenSession = onOpenSession,
+            onOpenHistory = onOpenHistory,
             onOpenImport = onOpenImport,
             onOpenTrend = onOpenTrend,
             onOpenSettings = onOpenSettings,

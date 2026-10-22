@@ -30,4 +30,20 @@ object ExternalOpen {
     } catch (e: Exception) {
         false
     }
+
+    /** 把匯出的 zip 交給系統分享選單（v1.24）。找不到可分享的程式時回傳 false，不會當掉。 */
+    fun shareFile(ctx: Context, file: File, mime: String): Boolean = try {
+        val uri = FileProvider.getUriForFile(ctx, ctx.packageName + ".fileprovider", file)
+        val send = Intent(Intent.ACTION_SEND)
+            .setType(mime)
+            .putExtra(Intent.EXTRA_STREAM, uri)
+            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        ctx.startActivity(Intent.createChooser(send, file.name).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        true
+    } catch (e: Exception) {
+        false
+    }
 }
+
+/** 已經建立好的匯出檔（v1.24）：[records] 是打包了幾筆記錄。 */
+class ExportFile(val file: File, val name: String, val bytes: Long, val records: Int)

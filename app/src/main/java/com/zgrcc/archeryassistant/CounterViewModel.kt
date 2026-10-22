@@ -1037,6 +1037,34 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
         ReportBuilder.build(store.allSessions(), reportMeta())
     }
 
+    /** 手機匯出（v1.24）：把 [ids] 打包成 zip 放在快取資料夾，回傳檔案；沒有可匯出的記錄或失敗回傳 null。 */
+    suspend fun buildExport(ids: Set<String>, withRaw: Boolean): ExportFile? = withContext(Dispatchers.IO) {
+        try {
+            val sessions = RecordExport.pick(ids.mapNotNull { store.load(it) }, ids)
+            if (sessions.isEmpty()) return@withContext null
+            val html = ReportBuilder.build(sessions, reportMeta())
+            val name = RecordExport.zipName(sessions.map { it.id }, System.currentTimeMillis())
+            val dir = java.io.File(appContext.cacheDir, "export").apply { mkdirs() }
+            dir.listFiles()?.forEach { it.delete() }
+            val f = java.io.File(dir, name)
+            val n = store.writeExportZip(f, sessions, html, withRaw)
+            if (n == 0) null else ExportFile(f, name, f.length(), sessions.size)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    /** 把建好的匯出檔複製到使用者用系統「另存新檔」選的位置。 */
+    suspend fun saveExport(file: java.io.File, uri: android.net.Uri): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val out = appContext.contentResolver.openOutputStream(uri) ?: return@withContext false
+            out.use { o -> file.inputStream().use { it.copyTo(o) } }
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     /** 即時波形：最近幾秒的加速度合力大小（m/s²），由舊到新。 */
     fun liveSnapshot(): FloatArray = live.snapshot()
 

@@ -193,6 +193,38 @@ class SessionStore(baseDir: File) {
         }
     }
 
+    /**
+     * 手機匯出（v1.24）：把 [sessions] 打包成 [target] 這個 zip，內容與名稱見 [RecordExport]。
+     * [reportHtml] 是已經組好的網頁報告。回傳實際寫入幾個檔案，失敗回傳 0（並刪掉殘檔）。
+     */
+    fun writeExportZip(target: File, sessions: List<Session>, reportHtml: String, withRaw: Boolean): Int = onIo(0) {
+        val ids = sessions.map { it.id }
+        val byId = sessions.associateBy { it.id }
+        val rawIds = ids.filter { id -> byId[id]?.rawCsv == true && File(dir, "$id.csv").isFile }.toSet()
+        val names = RecordExport.entryNames(ids, rawIds, withRaw)
+        try {
+            target.parentFile?.mkdirs()
+            val n = target.outputStream().use { out ->
+                ShareZip.write(out, names.map { name ->
+                    name to {
+                        when {
+                            name == ExportCsv.SUMMARY_FILE -> ExportCsv.summary(sessions).toByteArray(Charsets.UTF_8).inputStream()
+                            name == ExportCsv.SHOTS_FILE -> ExportCsv.shots(sessions).toByteArray(Charsets.UTF_8).inputStream()
+                            name == ReportBuilder.FILE_NAME -> reportHtml.toByteArray(Charsets.UTF_8).inputStream()
+                            name.endsWith(".json") -> byId[name.removeSuffix(".json")]?.let { SessionJson.encode(it).toByteArray(Charsets.UTF_8).inputStream() }
+                            else -> File(dir, name).takeIf { it.isFile }?.inputStream()
+                        } as java.io.InputStream?
+                    }
+                })
+            }
+            if (n == 0) target.delete()
+            n
+        } catch (e: Exception) {
+            target.delete()
+            0
+        }
+    }
+
     /** 寫入設定備份檔（先寫暫存檔再改名）。回傳是否成功。 */
     fun writeSettingsBackup(text: String): Boolean = onIo(false) {
         try {

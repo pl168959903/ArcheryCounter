@@ -176,10 +176,6 @@ private fun AppNav(vm: CounterViewModel, launch: String?, onLaunchHandled: () ->
                 onOpenDisc = { nav.navigate(ROUTE_DISC) },
                 onOpenUpdate = { nav.navigate(SettingsCategories.route(SettingsCategories.ABOUT)) },
                 onOpenImport = { nav.navigate(SettingsCategories.route(SettingsCategories.CONNECT)) },
-                onOpenSession = { id ->
-                    vm.selectSession(id)
-                    nav.navigate(ROUTE_DETAIL)
-                },
                 onOpenTrend = { nav.navigate(ROUTE_HIST_TREND) },
             )
         }

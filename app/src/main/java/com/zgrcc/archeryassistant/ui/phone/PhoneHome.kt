@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -18,12 +17,12 @@ import androidx.wear.compose.material.Text
 
 /**
  * 手機首頁（v1.23）：手機不戴在手腕上，不做偵測，只匯入與檢視手錶的記錄。
- * 一般的單欄捲動清單：上面是「從手錶匯入」，下面是記錄卡片，點進去看詳情。
+ * 一般的單欄捲動清單：「從手錶匯入」、「記錄」（進記錄頁）、趨勢與對比、設定（v1.24 起記錄清單移到記錄頁）。
  */
 @Composable
 fun PhoneHome(
     vm: CounterViewModel,
-    onOpenSession: (String) -> Unit,
+    onOpenHistory: () -> Unit,
     onOpenImport: () -> Unit,
     onOpenTrend: () -> Unit,
     onOpenSettings: () -> Unit,
@@ -33,7 +32,6 @@ fun PhoneHome(
     val matchCompare by vm.settings.matchCompare.collectAsStateWithLifecycle()
     val groupCompare by vm.settings.groupCompare.collectAsStateWithLifecycle()
     val overviewOn by vm.settings.overview.collectAsStateWithLifecycle()
-    val origins = remember(sessions) { vm.importOrigins() }
     val entries = remember(sessions, showTrend, matchCompare, groupCompare, overviewOn) {
         ScreenRules.historyEntries(sessions, false, showTrend, matchCompare, groupCompare, overviewOn)
     }
@@ -62,40 +60,15 @@ fun PhoneHome(
             )
         }
         item { PhoneButton(tr("從手錶匯入", "Import from watch"), primary = true, onClick = onOpenImport) }
+        item {
+            PhoneButton(
+                if (sessions.isEmpty()) tr("記錄", "Records") else tr("記錄（${sessions.size}）", "Records (${sessions.size})"),
+                onClick = onOpenHistory,
+            )
+        }
         if (HistoryGroups.trendVisible(entries) || HistoryGroups.compareVisible(entries)) {
             item { PhoneButton(tr("趨勢與對比", "Trends and comparison"), onClick = onOpenTrend) }
         }
         item { PhoneButton(tr("設定", "Settings"), onClick = onOpenSettings) }
-
-        item {
-            Text(
-                if (sessions.isEmpty()) tr("記錄", "Records") else tr("記錄（${sessions.size}）", "Records (${sessions.size})"),
-                style = MaterialTheme.typography.title2,
-                color = Color.White,
-            )
-        }
-        if (sessions.isEmpty()) {
-            item {
-                Text(
-                    tr("還沒有記錄。按「從手錶匯入」，把手錶上的記錄抓過來", "No records yet. Tap Import from watch to bring records over"),
-                    style = MaterialTheme.typography.body2,
-                    color = Color(0xFFBDBDBD),
-                )
-            }
-        }
-        items(sessions, key = { it.id }) { s ->
-            val avg = if (s.calibration) null else computeStats(s).accelAvg
-            val lines = buildList {
-                add(
-                    (if (s.calibration) tr("校準 · ", "Calibration · ") else "") +
-                        tr("${s.finalCount()} 箭 · ${Fmt.duration(s.durationMs())}", "${s.finalCount()} arrows · ${Fmt.duration(s.durationMs())}"),
-                )
-                if (avg != null) add(tr("平均晃動 ${Fmt.num(avg)} m/s²", "Avg shake ${Fmt.num(avg)} m/s²"))
-                Tags.label(s.tags)?.let { add(it) }
-                origins[s.id]?.let { add("⇩ $it") }
-                if (s.note.isNotEmpty()) add("✎ ${s.note}")
-            }
-            PhoneCard(title = Fmt.dateTime(s.startMs), lines = lines, onClick = { onOpenSession(s.id) })
-        }
     }
 }

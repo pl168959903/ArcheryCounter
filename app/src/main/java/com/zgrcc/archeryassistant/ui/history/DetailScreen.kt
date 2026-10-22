@@ -108,6 +108,7 @@ private fun DetailContent(
     val accelSeries = remember(session) { metricSeries(session, gyro = false) }
     val gyroSeries = remember(session) { metricSeries(session, gyro = true) }
     var confirmDelete by remember { mutableStateOf(false) }
+    val phone = rememberPhoneMode(vm)
     val tagsEnabled by vm.settings.tagsEnabled.collectAsStateWithLifecycle()
     val paceOn by vm.settings.paceAnalysis.collectAsStateWithLifecycle()
     val bestOn by vm.settings.personalBest.collectAsStateWithLifecycle()
@@ -149,6 +150,10 @@ private fun DetailContent(
     ) {
         item {
             Text(Fmt.dateTime(session.startMs), style = MaterialTheme.typography.title3)
+        }
+        // 匯出這筆：只在手機畫面，放在最上面（箭很多時不用滑到底）。進行中的記錄不能匯出
+        if (phone && !isActive) {
+            item { ExportBlock(vm, setOf(session.id), single = true) }
         }
         if (session.calibration) {
             item { Body(tr("校準錄製（不計入箭數與趨勢）", "Calibration (not counted in arrows or trends)")) }
