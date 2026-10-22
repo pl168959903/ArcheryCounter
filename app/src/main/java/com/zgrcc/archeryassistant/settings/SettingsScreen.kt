@@ -49,12 +49,15 @@ fun SettingsScreen(
         7 -> SettingsConnect(vm, onOpenLinkOptions, onOpenLinkDevice, onOpenLinkLog)
         8 -> SettingsReset(vm)
         9 -> SettingsAbout(vm, onOpenChangelog)
-        else -> SettingsCategoryList(onOpenCategory)
+        else -> {
+            val phoneSetting by vm.settings.phoneMode.collectAsStateWithLifecycle()
+            SettingsCategoryList(onOpenCategory, PhoneMode.resolve(phoneSetting, vm.isWatch))
+        }
     }
 }
 
 @Composable
-private fun SettingsCategoryList(onOpenCategory: (Int) -> Unit) {
+private fun SettingsCategoryList(onOpenCategory: (Int) -> Unit, phone: Boolean) {
     ScalingLazyColumn(
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -62,6 +65,7 @@ private fun SettingsCategoryList(onOpenCategory: (Int) -> Unit) {
     ) {
         item { Text(tr("設定", "Settings"), style = MaterialTheme.typography.caption1) }
         for (c in 0 until SettingsCategories.COUNT) {
+            if (phone && SettingsCategories.hiddenOnPhone(c)) continue
             item {
                 Chip(
                     onClick = { onOpenCategory(c) },

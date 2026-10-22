@@ -62,7 +62,7 @@ jobs:
           if [ -n "$RUN" ] && [ "$RUN" != "null" ]; then
             mkdir -p prebuilt
             gh run download "$RUN" --name ArcheryCounter-apk --dir prebuilt || true
-            APK=$(find prebuilt -name app-release.apk 2>/dev/null | head -n 1)
+            APK=$(find prebuilt -name "*-release.apk" 2>/dev/null | head -n 1)
             if [ -n "$APK" ]; then
               echo "reuse=true" >> "$GITHUB_OUTPUT"
               echo "apk=$APK" >> "$GITHUB_OUTPUT"
@@ -130,13 +130,14 @@ jobs:
         if: steps.decide.outputs.build == 'true'
         run: |
           set -o pipefail
-          gradle :app:testDebugUnitTest --no-daemon 2>&1 | tee test.log || {
+          gradle :app:testGithubDebugUnitTest --no-daemon 2>&1 | tee test.log || {
             grep -E "^e: " test.log | sed 's/^e: file:\/\/\/.*archerycounter\///; s/^/::error::/' | head -40
             grep -E "FAILED|AssertionError|Exception" test.log | sed 's/^/::error::/' | head -40
             exit 1
           }
 
-      # 編譯 release APK 以及上架 Google Play 用的 AAB（v1.21 起不再編 debug APK）
+      # v1.23 起有兩個發行版本：GitHub 版（APK，有檢查更新）與 Google Play 版（AAB，沒有自我更新）。
+      # 兩個都編，Play 版編不過也會讓這次失敗
       - name: Build APKs and AAB
         if: steps.decide.outputs.build == 'true'
         env:
@@ -146,7 +147,7 @@ jobs:
         run: |
           set -o pipefail
           # 編譯錯誤同時輸出成註解，日誌讀不到時也看得到是哪一行
-          gradle :app:assembleRelease :app:bundleRelease --no-daemon 2>&1 | tee build.log || {
+          gradle :app:assembleGithubRelease :app:bundlePlayRelease --no-daemon 2>&1 | tee build.log || {
             grep -E "^e: " build.log | sed 's/^e: file:\/\/\/.*archerycounter\///; s/^/::error::/' | head -40
             exit 1
           }
@@ -156,7 +157,7 @@ jobs:
         with:
           name: ArcheryCounter-apk
           retention-days: 14
-          path: app/build/outputs/apk/release/app-release.apk
+          path: app/build/outputs/apk/github/release/app-github-release.apk
 
       # 上架 Google Play 用的 App Bundle（.aab），在 Actions 的 Artifacts 下載，不放進 GitHub Release
       - uses: actions/upload-artifact@v4
@@ -164,7 +165,7 @@ jobs:
         with:
           name: ArcheryAssistant-aab
           retention-days: 14
-          path: app/build/outputs/bundle/release/app-release.aab
+          path: app/build/outputs/bundle/playRelease/app-play-release.aab
 
       # 只有推送 v 開頭的標籤時才發布。只附 release 版，檔名帶版本號。
       # 同一個標籤重跑時，會覆蓋已存在的 Release 裡的同名檔案。
@@ -176,7 +177,7 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           FILE="ArcheryAssistant-v${VERSION}.apk"
-          SRC="app/build/outputs/apk/release/app-release.apk"
+          SRC="app/build/outputs/apk/github/release/app-github-release.apk"
           if [ -n "$REUSED_APK" ]; then SRC="$REUSED_APK"; fi
           cp "$SRC" "$FILE"
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then

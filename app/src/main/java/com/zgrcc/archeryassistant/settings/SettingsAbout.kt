@@ -58,7 +58,7 @@ fun SettingsAbout(vm: CounterViewModel, onOpenChangelog: () -> Unit = {}) {
         item { Body(tr("裝置 ${vm.deviceModel()}", "Device ${vm.deviceModel()}")) }
         item { Body(tr("作者 ${AppInfo.AUTHOR}", "Author ${AppInfo.AUTHOR}")) }
         item { Body(tr("簽章 ${vm.signatureShort}", "Signature ${vm.signatureShort}")) }
-        AppInfo.signatureStatus(vm.signatureShort).takeIf { it.isNotEmpty() }?.let { item { Note(it) } }
+        AppInfo.signatureStatus(vm.signatureShort).takeIf { it.isNotEmpty() && Edition.updates }?.let { item { Note(it) } }
         item {
             Chip(
                 onClick = { noBrowser = !openLink(ctx, AppInfo.GITHUB_URL) },
@@ -81,69 +81,71 @@ fun SettingsAbout(vm: CounterViewModel, onOpenChangelog: () -> Unit = {}) {
             )
         }
 
-        item { SectionTitle(tr("更新", "Update")) }
-        item {
-            Chip(
-                onClick = { s.setUpdateMode(UpdateMode.next(updateMode)) },
-                label = { Text(UpdateMode.label(updateMode), maxLines = 2) },
-                secondaryLabel = { Text(tr("點一下切換", "Tap to change"), maxLines = 1) },
-                colors = kindColors(ChipKind.NORMAL, ChipDefaults.secondaryChipColors()),
-                modifier = Modifier.fillMaxWidth(0.9f),
-            )
-        }
-        item { Note(tr("點一下切換：\n• 每次啟動：每次開 App 查一次\n• 每天第一次啟動：一天最多一次\n• 無自動檢查：只在按「檢查更新」時查\n有新版本才在啟動畫面提醒。不會自己下載，也不會中斷射擊。下次開啟生效", "Tap to switch:\n• Every start: check each time the app opens\n• First start each day: at most once a day\n• No automatic check: only when you tap Check for updates\nOnly a new version shows a reminder on the splash screen. Never downloads by itself or interrupts shooting. Takes effect next launch.")) }
-        item {
-            val busy = updateUi.kind == UpdateKind.CHECKING || updateUi.kind == UpdateKind.DOWNLOADING || updateUi.kind == UpdateKind.INSTALLING
-            Chip(
-                onClick = { vm.checkUpdate(manual = true) },
-                label = { Text(tr("檢查更新", "Check for updates"), maxLines = 1) },
-                secondaryLabel = {
-                    Text(
-                        when (updateUi.kind) {
-                            UpdateKind.CHECKING -> tr("檢查中…", "Checking…")
-                            UpdateKind.UP_TO_DATE -> tr("已是最新版", "Up to date")
-                            UpdateKind.AVAILABLE -> tr("有新版本 ${updateUi.info?.tag}", "New version ${updateUi.info?.tag}")
-                            else -> tr("目前 ${vm.versionName}", "Current ${vm.versionName}")
-                        },
-                        maxLines = 1,
-                    )
-                },
-                colors = kindColors(ChipKind.NORMAL, ChipDefaults.secondaryChipColors()),
-                enabled = !busy,
-                modifier = Modifier.fillMaxWidth(0.9f),
-            )
-        }
-        val found = updateUi.info
-        when (updateUi.kind) {
-            UpdateKind.AVAILABLE -> if (found != null) {
-                item {
-                    Body(
-                        tr("有新版本 ${found.tag}（目前 ${vm.versionName}），大小約 ${UpdateText.size(found.apkSize)}", "New version ${found.tag} (current ${vm.versionName}), about ${UpdateText.size(found.apkSize)}") +
-                            if (found.notes.isNotEmpty()) "\n\n" + found.notes else ""
-                    )
-                }
-                item {
-                    Chip(
-                        onClick = { vm.downloadAndInstall() },
-                        label = { Text(tr("下載並安裝", "Download and install"), maxLines = 1) },
-                        colors = kindColors(ChipKind.GO, ChipDefaults.primaryChipColors()),
-                        modifier = Modifier.fillMaxWidth(0.9f),
-                    )
-                }
-                item {
-                    Chip(
-                        onClick = { vm.skipUpdate() },
-                        label = { Text(tr("略過這個版本", "Skip this version"), maxLines = 1) },
-                        colors = kindColors(ChipKind.NORMAL, ChipDefaults.secondaryChipColors()),
-                        modifier = Modifier.fillMaxWidth(0.9f),
-                    )
-                }
-                item { Note(tr("下載完成後，系統會跳出安裝確認畫面，由你按「安裝」。簽章相同，記錄會保留", "When the download finishes, the system asks you to confirm the install. The signature is the same, so your records are kept")) }
+        if (Edition.updates) {
+            item { SectionTitle(tr("更新", "Update")) }
+            item {
+                Chip(
+                    onClick = { s.setUpdateMode(UpdateMode.next(updateMode)) },
+                    label = { Text(UpdateMode.label(updateMode), maxLines = 2) },
+                    secondaryLabel = { Text(tr("點一下切換", "Tap to change"), maxLines = 1) },
+                    colors = kindColors(ChipKind.NORMAL, ChipDefaults.secondaryChipColors()),
+                    modifier = Modifier.fillMaxWidth(0.9f),
+                )
             }
-            UpdateKind.DOWNLOADING -> item { Body(tr("下載中 ${updateUi.percent}%", "Downloading ${updateUi.percent}%")) }
-            UpdateKind.INSTALLING -> item { Body(tr("已交給系統安裝程式。請在系統畫面按「安裝」；安裝完成後應用會重新開啟", "Handed to the system installer. Tap Install on the system screen; the app reopens when it finishes")) }
-            UpdateKind.ERROR -> item { Body(updateUi.error?.let { UpdateText.error(it) } ?: "") }
-            else -> Unit
+            item { Note(tr("點一下切換：\n• 每次啟動：每次開 App 查一次\n• 每天第一次啟動：一天最多一次\n• 無自動檢查：只在按「檢查更新」時查\n有新版本才在啟動畫面提醒。不會自己下載，也不會中斷射擊。下次開啟生效", "Tap to switch:\n• Every start: check each time the app opens\n• First start each day: at most once a day\n• No automatic check: only when you tap Check for updates\nOnly a new version shows a reminder on the splash screen. Never downloads by itself or interrupts shooting. Takes effect next launch.")) }
+            item {
+                val busy = updateUi.kind == UpdateKind.CHECKING || updateUi.kind == UpdateKind.DOWNLOADING || updateUi.kind == UpdateKind.INSTALLING
+                Chip(
+                    onClick = { vm.checkUpdate(manual = true) },
+                    label = { Text(tr("檢查更新", "Check for updates"), maxLines = 1) },
+                    secondaryLabel = {
+                        Text(
+                            when (updateUi.kind) {
+                                UpdateKind.CHECKING -> tr("檢查中…", "Checking…")
+                                UpdateKind.UP_TO_DATE -> tr("已是最新版", "Up to date")
+                                UpdateKind.AVAILABLE -> tr("有新版本 ${updateUi.info?.tag}", "New version ${updateUi.info?.tag}")
+                                else -> tr("目前 ${vm.versionName}", "Current ${vm.versionName}")
+                            },
+                            maxLines = 1,
+                        )
+                    },
+                    colors = kindColors(ChipKind.NORMAL, ChipDefaults.secondaryChipColors()),
+                    enabled = !busy,
+                    modifier = Modifier.fillMaxWidth(0.9f),
+                )
+            }
+            val found = updateUi.info
+            when (updateUi.kind) {
+                UpdateKind.AVAILABLE -> if (found != null) {
+                    item {
+                        Body(
+                            tr("有新版本 ${found.tag}（目前 ${vm.versionName}），大小約 ${UpdateText.size(found.apkSize)}", "New version ${found.tag} (current ${vm.versionName}), about ${UpdateText.size(found.apkSize)}") +
+                                if (found.notes.isNotEmpty()) "\n\n" + found.notes else ""
+                        )
+                    }
+                    item {
+                        Chip(
+                            onClick = { vm.downloadAndInstall() },
+                            label = { Text(tr("下載並安裝", "Download and install"), maxLines = 1) },
+                            colors = kindColors(ChipKind.GO, ChipDefaults.primaryChipColors()),
+                            modifier = Modifier.fillMaxWidth(0.9f),
+                        )
+                    }
+                    item {
+                        Chip(
+                            onClick = { vm.skipUpdate() },
+                            label = { Text(tr("略過這個版本", "Skip this version"), maxLines = 1) },
+                            colors = kindColors(ChipKind.NORMAL, ChipDefaults.secondaryChipColors()),
+                            modifier = Modifier.fillMaxWidth(0.9f),
+                        )
+                    }
+                    item { Note(tr("下載完成後，系統會跳出安裝確認畫面，由你按「安裝」。簽章相同，記錄會保留", "When the download finishes, the system asks you to confirm the install. The signature is the same, so your records are kept")) }
+                }
+                UpdateKind.DOWNLOADING -> item { Body(tr("下載中 ${updateUi.percent}%", "Downloading ${updateUi.percent}%")) }
+                UpdateKind.INSTALLING -> item { Body(tr("已交給系統安裝程式。請在系統畫面按「安裝」；安裝完成後應用會重新開啟", "Handed to the system installer. Tap Install on the system screen; the app reopens when it finishes")) }
+                UpdateKind.ERROR -> item { Body(updateUi.error?.let { UpdateText.error(it) } ?: "") }
+                else -> Unit
+            }
         }
         item { Note(tr("記錄資料夾（用 adb pull 取出）：\n${vm.dataPath}", "Records folder (pull with adb):\n${vm.dataPath}")) }
     }

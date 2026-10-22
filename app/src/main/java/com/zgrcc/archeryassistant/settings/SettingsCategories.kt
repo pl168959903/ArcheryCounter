@@ -34,5 +34,8 @@ object SettingsCategories {
     /** 各分類導覽路由，例如 settings_3 */
     fun route(category: Int): String = "settings_$category"
 
+    /** 手機模式下用不到的分類（偵測、訓練、比賽都在手錶上進行），設定列表不顯示（v1.23）。 */
+    fun hiddenOnPhone(category: Int): Boolean = category == DETECTION || category == TRAINING || category == MATCH
+
     fun valid(category: Int): Boolean = category in 0 until COUNT
 }

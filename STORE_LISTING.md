@@ -26,10 +26,10 @@ Archery Assistant runs on your Wear OS watch, worn on the bow arm. It detects ea
 • Fatigue alert – a buzz when your recent ends get clearly shakier than your first ends
 • Training tools – daily goal, end feedback, auto-pause, low-battery alert, touch lock
 • Adjustable sampling rate (50 / 100 / 200 Hz) and sensitivity
-• Private by design – no ads or trackers, your data stays on your watch (the network is used only to check for app updates on GitHub)
+• Private by design – no ads or trackers, your data stays on your device. The network is used only for optional sharing on your own Wi-Fi
 • English and Traditional Chinese
 
-Requires a Wear OS watch with an accelerometer. Works standalone, no phone needed.
+Requires a Wear OS watch with an accelerometer for detection. Works standalone, no phone needed. The phone version imports and views the watch's records; detection runs on the watch.
 
 **繁體中文**
 
@@ -41,10 +41,10 @@ Archery Assistant 在 Wear OS 手錶上運作，戴在持弓手臂上。它用�
 • 疲勞提醒：最近幾趟比剛開始明顯更抖時震動提醒
 • 訓練輔助：今日目標、每趟回饋、自動暫停、低電量提醒、觸控鎖
 • 可調整取樣頻率（50／100／200 Hz）與靈敏度
-• 重視隱私：沒有廣告和追蹤，資料都只留在手錶上（網路只用於到 GitHub 檢查應用更新）
+• 重視隱私：沒有廣告和追蹤，資料都只留在你的裝置上；網路只用於你主動開啟的區網分享
 • 支援繁體中文與英文
 
-需要有加速度感測器的 Wear OS 手錶。可獨立使用，不需要手機。
+偵測需要有加速度感測器的 Wear OS 手錶，可獨立使用，不需要手機。手機版用來匯入與檢視手錶的記錄，偵測在手錶上進行。
 
 ## 截圖建議（至少 1 張手錶截圖，建議 3～5 張，1:1）
 1. 主畫面（箭數、開始偵測）
@@ -54,8 +54,7 @@ Archery Assistant 在 Wear OS 手錶上運作，戴在持弓手臂上。它用�
 5. 設定頁
 
 ## Data safety 填寫提示
-- 是否蒐集或分享任何必要的使用者資料類型：**否**
-- 資料傳輸加密／資料刪除：不適用（不蒐集、不傳輸）
+見 `store/DATA_SAFETY.md`（逐題草稿，送出前請對照 Play Console 當下的題目與說明）。
 
 ## 個人帳戶的測試要求
 2023-11-13 之後建立的個人開發者帳戶，正式上架前需要**封閉測試：至少 12 位測試者、連續 14 天**。

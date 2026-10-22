@@ -24,7 +24,7 @@
    - 網頁上沒有「新增資料夾」按鈕：點 **Add file → Create new file**，檔名欄輸入路徑（例如 `.github/workflows/build.yml`），輸入 `/` 就會自動建立資料夾，再把內容貼進去。
 3. 打開倉庫的 **Actions** 頁面，等 `Build APK` 跑完（約 3～5 分鐘，綠色勾表示成功）。
    - 沒有自動開始的話，點左邊的 Build APK，再點右邊的 Run workflow。
-4. 點進該次執行，在頁面最底部的 **Artifacts** 下載 `ArcheryCounter-apk`，解壓縮後是 `app-release.apk`（開啟較快）。檔案保留 14 天；v1.21 起不再編 debug APK。
+4. 點進該次執行，在頁面最底部的 **Artifacts** 下載 `ArcheryCounter-apk`，解壓縮後是 `app-github-release.apk`（GitHub 版，開啟較快）。另一個 Artifact `ArcheryAssistant-aab` 是上架 Google Play 用的 Play 版 AAB（沒有自我更新）。檔案保留 14 天。
 5. 如果出現紅色叉叉（編譯失敗），點進去查看紅色的錯誤訊息，依訊息排查修正。
 
 ### 自動發布 Release（選用）
@@ -61,14 +61,14 @@ git push origin v1.18.1
 ```
 adb pair <B 的 IP:連接埠>          # 依提示輸入配對碼
 adb connect <A 的 IP:連接埠>
-adb install app-release.apk
+adb install app-github-release.apk
 ```
 看到 `Success` 就完成了。無線偵錯每次重新開啟，連接埠都會改變，要重新看手錶上的數字。
 
 **⚠ 更新版本前是否要先解除安裝，取決於簽章**
 - **已設定固定簽章**（見下方〈固定簽章〉）：直接覆蓋安裝，記錄和設定都保留。
   ```
-  adb install -r app-release.apk
+  adb install -r app-github-release.apk
   ```
 - **沒有設定固定簽章**：每次 GitHub 編譯出來的 APK 簽章都不同，直接覆蓋安裝會失敗（`INSTALL_FAILED_UPDATE_INCOMPATIBLE`）。要先執行：
   ```

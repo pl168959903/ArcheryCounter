@@ -12,8 +12,8 @@ android {
         applicationId = "com.zgrcc.archeryassistant"
         minSdk = 30
         targetSdk = 35
-        versionCode = 46
-        versionName = "1.22"
+        versionCode = 47
+        versionName = "1.23"
     }
 
     // 固定簽章：GitHub 編譯時由 Secrets 提供金鑰（見 README），這樣每次編譯出來的 APK 簽章都一樣，
@@ -56,7 +56,24 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
+
+    // 兩個發行版本（v1.23）：同一個套件名稱與版本號。
+    // github：APK，內建檢查更新與下載安裝。play：AAB 給 Google Play，沒有自我更新（Play 政策不允許），改版內容改讀內建檔案。
+    flavorDimensions += "dist"
+    productFlavors {
+        create("github") {
+            dimension = "dist"
+            buildConfigField("boolean", "UPDATES", "true")
+        }
+        create("play") {
+            dimension = "dist"
+            buildConfigField("boolean", "UPDATES", "false")
+        }
+    }
+    // Play 版把 CHANGELOG.md 打包進 App，改版內容頁不用連網
+    sourceSets.getByName("play").assets.srcDir(layout.buildDirectory.dir("generated/changelogAssets"))
 }
 
 dependencies {
@@ -85,3 +102,10 @@ dependencies {
 
     testImplementation("junit:junit:4.13.2")
 }
+
+// 把 CHANGELOG.md 複製到 Play 版的 assets 來源資料夾
+val copyChangelog by tasks.registering(Copy::class) {
+    from(rootProject.file("CHANGELOG.md"))
+    into(layout.buildDirectory.dir("generated/changelogAssets"))
+}
+tasks.matching { it.name == "preBuild" }.configureEach { dependsOn(copyChangelog) }

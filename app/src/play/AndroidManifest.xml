@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Google Play 版：Play 政策不允許 App 用 Play 以外的方式更新自己，所以拿掉「安裝應用」權限與更新接收器 -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-permission
+        android:name="android.permission.REQUEST_INSTALL_PACKAGES"
+        tools:node="remove" />
+
+    <application>
+        <receiver
+            android:name=".UpdateInstallReceiver"
+            tools:node="remove" />
+    </application>
+</manifest>

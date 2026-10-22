@@ -774,7 +774,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
     }
 
     /** 版本顯示文字，例如 v1.7（8） */
-    val versionLabel: String = AppInfo.versionLabel(versionName, versionCode)
+    val versionLabel: String get() = AppInfo.versionLabel(versionName, versionCode) + "　" + Edition.label()
 
     /** 簽章指紋前 4 組（SHA-256），用來核對是不是同一把金鑰。讀不到時是「?」。 */
     val signatureShort: String = try {
@@ -901,7 +901,7 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
             author = AppInfo.AUTHOR,
             versionLabel = versionLabel,
             signature = signatureShort,
-            signatureNote = AppInfo.signatureStatus(signatureShort).takeIf { it.isNotEmpty() },
+            signatureNote = AppInfo.signatureStatus(signatureShort).takeIf { it.isNotEmpty() && Edition.updates },
             generatedAtMs = System.currentTimeMillis(),
             iconBase64 = icon,
             arrowsPerEnd = settings.arrowsPerEnd.value,
@@ -925,6 +925,18 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
             _changelog.value = ChangelogUi(loading = true, entries = Changelog.onlyPublished(Changelog.parse(cached), cachedTags), offline = true)
         } else {
             _changelog.value = ChangelogUi(loading = true)
+        }
+        if (!Edition.updates) {
+            // Google Play 版：不連網，讀打包進 App 的 CHANGELOG.md
+            viewModelScope.launch(Dispatchers.IO) {
+                val md = try {
+                    appContext.assets.open("CHANGELOG.md").bufferedReader().use { it.readText() }
+                } catch (e: Exception) {
+                    null
+                }
+                _changelog.value = if (md != null) ChangelogUi(entries = Changelog.parse(md)) else ChangelogUi(failed = true)
+            }
+            return
         }
         viewModelScope.launch(Dispatchers.IO) {
             val mgr = UpdateManager(appContext)
@@ -1155,6 +1167,6 @@ class CounterViewModel(app: Application) : AndroidViewModel(app), SensorEventLis
     // 要放在所有屬性之後，這時 versionName 都已初始化
     init {
         runAutoClean()
-        updates.start()
+        if (Edition.updates) updates.start()
     }
 }

@@ -11,6 +11,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -142,6 +143,13 @@ fun ArcheryApp(vm: CounterViewModel = viewModel(), launch: String? = null, onLau
 private fun AppNav(vm: CounterViewModel, launch: String?, onLaunchHandled: () -> Unit) {
     val nav = rememberSwipeDismissableNavController()
 
+    // 手機：外框限制最大寬度，不在首頁時多一個「返回」按鈕（v1.23）
+    val phoneSetting by vm.settings.phoneMode.collectAsStateWithLifecycle()
+    val phone = PhoneMode.resolve(phoneSetting, vm.isWatch)
+    val backEntry by nav.currentBackStackEntryFlow.collectAsState(initial = null)
+    val route = backEntry?.destination?.route
+    val onMain = route == null || route == ROUTE_MAIN
+
     // 從磁貼進來：依「磁貼快捷啟動」設定直接開始偵測或比賽；沒在偵測才會動作，處理完就清掉
     LaunchedEffect(launch) {
         if (launch != null) {
@@ -157,6 +165,7 @@ private fun AppNav(vm: CounterViewModel, launch: String?, onLaunchHandled: () ->
             onLaunchHandled()
         }
     }
+    PhoneFrame(phone = phone, showBack = !onMain, onBack = { nav.popBackStack() }) {
     SwipeDismissableNavHost(navController = nav, startDestination = ROUTE_MAIN) {
         composable(ROUTE_MAIN) {
             MainScreen(
@@ -167,6 +176,11 @@ private fun AppNav(vm: CounterViewModel, launch: String?, onLaunchHandled: () ->
                 onOpenDisc = { nav.navigate(ROUTE_DISC) },
                 onOpenUpdate = { nav.navigate(SettingsCategories.route(SettingsCategories.ABOUT)) },
                 onOpenImport = { nav.navigate(SettingsCategories.route(SettingsCategories.CONNECT)) },
+                onOpenSession = { id ->
+                    vm.selectSession(id)
+                    nav.navigate(ROUTE_DETAIL)
+                },
+                onOpenTrend = { nav.navigate(ROUTE_HIST_TREND) },
             )
         }
         composable(ROUTE_DISC) {
@@ -279,6 +293,7 @@ private fun AppNav(vm: CounterViewModel, launch: String?, onLaunchHandled: () ->
         composable(ROUTE_CALIBRATION) {
             CalibrationScreen(vm = vm)
         }
+    }
     }
 }
 

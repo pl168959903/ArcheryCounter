@@ -32,6 +32,8 @@ fun MainScreen(
     onOpenDisc: () -> Unit,
     onOpenUpdate: () -> Unit = {},
     onOpenImport: () -> Unit = {},
+    onOpenSession: (String) -> Unit = {},
+    onOpenTrend: () -> Unit = {},
 ) {
     val rateWarnOn by vm.settings.rateWarn.collectAsStateWithLifecycle()
     val phoneModeSetting by vm.settings.phoneMode.collectAsStateWithLifecycle()
@@ -60,6 +62,18 @@ fun MainScreen(
     val compEnabled by vm.settings.compEnabled.collectAsStateWithLifecycle()
     val fatiguePct by vm.fatiguePct.collectAsStateWithLifecycle()
     val measuredHz by vm.measuredHz.collectAsStateWithLifecycle()
+
+    // 手機：另一個首頁（匯入與記錄檢視），沒有偵測、比賽、校準
+    if (phone) {
+        PhoneHome(
+            vm = vm,
+            onOpenSession = onOpenSession,
+            onOpenImport = onOpenImport,
+            onOpenTrend = onOpenTrend,
+            onOpenSettings = onOpenSettings,
+        )
+        return
+    }
 
     // 鎖定時只顯示箭數；長按約 2 秒才解鎖。其他按鈕全部不在畫面上，所以不會被誤觸
     if (locked && running) {
