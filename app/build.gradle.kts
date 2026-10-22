@@ -12,8 +12,8 @@ android {
         applicationId = "com.zgrcc.archeryassistant"
         minSdk = 30
         targetSdk = 35
-        versionCode = 48
-        versionName = "1.23.1"
+        versionCode = 49
+        versionName = "1.23.2"
     }
 
     // 固定簽章：GitHub 編譯時由 Secrets 提供金鑰（見 README），這樣每次編譯出來的 APK 簽章都一樣，
@@ -59,24 +59,37 @@ android {
         buildConfig = true
     }
 
-    // 兩個發行版本（v1.23）：版本號相同。
+    // 發行版本：版本號相同。
     // github：APK，內建檢查更新與下載安裝，套件名稱維持原本的，現有使用者照常更新。
-    // play：AAB 給 Google Play，套件名稱加 .play，沒有自我更新（Play 政策不允許），改版內容改讀內建檔案。
+    // playWatch／playPhone（v1.23.2）：兩份 AAB 給 Google Play，同一個套件名稱（加 .play）、兩個外形規格，
+    //   沒有自我更新（Play 政策不允許），改版內容改讀內建檔案。
+    //   手錶版 watch 功能 required=true；手機版不宣告 watch 功能。Play 要求同一個 App 的版本碼不能重複，
+    //   所以手錶版用 版本碼×10、手機版用 版本碼×10+1。
     flavorDimensions += "dist"
     productFlavors {
         create("github") {
             dimension = "dist"
             buildConfigField("boolean", "UPDATES", "true")
         }
-        create("play") {
+        create("playWatch") {
             dimension = "dist"
             // 套件名稱加 .play：Play 版與 GitHub 版是兩個不同的 App，可以同時裝在一支手錶上，資料各自獨立
             applicationIdSuffix = ".play"
+            versionCode = 49 * 10
+            buildConfigField("boolean", "UPDATES", "false")
+        }
+        create("playPhone") {
+            dimension = "dist"
+            applicationIdSuffix = ".play"
+            versionCode = 49 * 10 + 1
             buildConfigField("boolean", "UPDATES", "false")
         }
     }
-    // Play 版把 CHANGELOG.md 打包進 App，改版內容頁不用連網
-    sourceSets.getByName("play").assets.srcDir(layout.buildDirectory.dir("generated/changelogAssets"))
+    // 兩個 Play 版共用的資源（App 名稱），Manifest 各自一份；CHANGELOG.md 打包進 App，改版內容頁不用連網
+    for (name in listOf("playWatch", "playPhone")) {
+        sourceSets.getByName(name).res.srcDir("src/play/res")
+        sourceSets.getByName(name).assets.srcDir(layout.buildDirectory.dir("generated/changelogAssets"))
+    }
 }
 
 dependencies {

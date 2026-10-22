@@ -2,6 +2,10 @@
 
 這個專案的每個版本改了什麼。最新的在最上面。
 
+### v1.23.2
+- **Play 版拆成兩份 AAB**：Google Play 不接受把 watch 功能設成 `required=false`。現在編譯時同時產生「手錶版」（`ArcheryAssistant-aab-watch`，watch 功能 required=true，Wear OS 外形規格）和「手機版」（`ArcheryAssistant-aab-phone`，不宣告 watch 功能，用來匯入與檢視記錄），兩份套件名稱相同（`com.zgrcc.archeryassistant.play`），版本碼分別是 490 與 491（Play 要求不重複）。GitHub 版 APK 不變（versionCode 49）。
+- 沒有改動程式邏輯，單元測試維持 470 項。標籤請打 `v1.23.2`。
+
 ### v1.23.1
 - 修正手機畫面最上面被標題列與狀態列蓋住的問題：拿掉手機上多餘的標題列，並替系統列留出位置。手錶不受影響。
 - 本版只改介面外框，沒有改動邏輯，單元測試維持 470 項。標籤請打 `v1.23.1`。

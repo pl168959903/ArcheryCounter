@@ -1,7 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Google Play 版：Play 政策不允許 App 用 Play 以外的方式更新自己，所以拿掉「安裝應用」權限與更新接收器 -->
+<!-- Google Play 手機版（手機外形規格）：不宣告 watch 功能，Play 才會當成手機 App；
+     手機版用來匯入與檢視手錶的記錄。同樣拿掉「安裝應用」權限與更新接收器 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-feature
+        android:name="android.hardware.type.watch"
+        tools:node="remove" />
 
     <uses-permission
         android:name="android.permission.REQUEST_INSTALL_PACKAGES"
