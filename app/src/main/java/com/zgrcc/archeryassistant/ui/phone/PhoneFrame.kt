@@ -6,6 +6,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -35,7 +38,8 @@ fun PhoneFrame(phone: Boolean, showBack: Boolean, onBack: () -> Unit, content: @
         content()
         return
     }
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+    // Android 15 起畫面延伸到狀態列與導覽列底下，手機要自己留出系統列的位置，否則最上面會被蓋住
+    Box(modifier = Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.systemBars), contentAlignment = Alignment.TopCenter) {
         Column(modifier = Modifier.fillMaxHeight().widthIn(max = PHONE_MAX_WIDTH).fillMaxWidth()) {
             if (showBack) {
                 Row(
